@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Laravel\Sanctum\HasApiTokens;
+
+class Task extends Model
+{
+    use HasFactory, HasApiTokens;
+
+    protected $fillable = [
+        'web_user_id',
+        'emp_name',
+        'emp_id',
+        'date',
+        'description',
+        'assigned_by',
+        'assigned_by_id',
+        'assigned_to',
+        'assigned_to_id',
+        'project_id',
+        'project',
+        'priority',
+        'status',
+        'progress_note',
+        'deadline'
+    ];
+
+    protected $casts = [
+        'date' => 'date',
+        'deadline' => 'date'
+    ];
+
+    public function project()
+    {
+        return $this->belongsTo(Projects::class, 'project_id');
+    }
+
+    public function assignedBy()
+    {
+        return $this->belongsTo(WebUser::class, 'assigned_by');
+    }
+}

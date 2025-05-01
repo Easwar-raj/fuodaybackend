@@ -1,0 +1,28 @@
+.footerBlock {
+    background: #141414;
+    color: #fff;
+    .footerWrap{
+        .fullBlock{
+            border-bottom: 1px solid hsla(0, 0%, 100%, .2);
+            margin-bottom: 0 !important;
+            .footerFirst{
+                border-right: 1px solid hsla(0, 0%, 100%, .2);
+                padding-right: 20px;
+                .footerfirstview{
+                    margin-top: 50px;
+                    .paraDesc{
+                        font-size: 30px;
+                    }
+                    .paraSub{
+                        font-size: 12px;
+                        max-width: 200px;
+                        color: #777777;
+                        span{
+                            font-weight: 800;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

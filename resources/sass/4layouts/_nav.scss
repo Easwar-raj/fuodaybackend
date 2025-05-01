@@ -1,0 +1,325 @@
+// Colors
+$primary-color: #555;
+$secondary-color: #777;
+$hover-color: #0f7de4;
+$text-color: #000;
+$background-color: #ffffff;
+
+// Breakpoints
+// _variables.scss
+$breakpoint-mobile: 576px;
+
+$breakpoint-tablet: 768px;
+$breakpoint-laptop: 1024px;
+
+// Spacing
+$padding-small: 5px;
+$padding-medium: 10px;
+$padding-large: 20px;
+
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: $background-color;
+    height: auto;
+    &.custom-navbar{
+        padding: 10px 150px;
+    }
+    &.bottomline{
+        border-bottom: 1px solid #3f3e3e29;;
+    }
+    .navbar-brand{
+      color: $text-color;
+      text-decoration: none;
+      font-size: 16px;
+      font-family: sans-serif;
+      &:hover {
+        color: unset;
+      }
+    }
+    .nav-left {
+      display: flex;
+      align-items: center;
+
+
+      .nav-items {
+        display: flex;
+        list-style: none;
+        margin-bottom: 0;
+      }
+
+      .logo{
+        a{
+          width: 200px;
+          height: 50px;
+          display: flex;
+          align-items: center;
+        }
+        img{
+            height: 100%;
+            width: 100%;
+            object-fit: contain;
+        }
+    }
+    }
+    .navbar-nav{
+      li {
+        margin: 0 15px;
+
+        a {
+          color: $text-color;
+          text-decoration: none ;
+          font-size: 14px;
+          font-family: sans-serif;
+          white-space: nowrap;
+          padding: 5px;
+
+          &:hover {
+            color: $hover-color;
+          }
+        }
+      }
+    }
+
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+
+      .search-bar {
+        display: flex;
+        border: 1px solid #4343434f;
+        border-radius: 100px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        &:hover{
+            border: 1px solid $hover-color;
+        }
+        input {
+          padding: 5px 10px;
+          border: unset;
+          border-radius: 100px;
+          padding-right: 50px;
+          &:focus-visible{
+            outline: 1px solid $hover-color;
+            }
+
+        }
+        button {
+          border: none;
+          background-color: transparent;
+          color: white;
+          cursor: pointer;
+          position: absolute;
+          right: 0px;
+          padding: 5px 7px;
+          border-left:1px solid #4343434f;
+          &:hover {
+            background-color: transparent;
+          }
+        }
+      }
+
+      .language-dropdown {
+        margin-left: 15px;
+        display: flex;
+        // gap: 10px;
+        img{
+            object-fit: contain;
+        }
+
+        select {
+          padding: $padding-small;
+          border: none;
+          border-radius: 3px;
+          background-color: transparent;
+          color: rgb(0, 0, 0);
+        }
+      }
+
+    //   .profile {
+    //     margin-left: 15px;
+    //     border-radius: 50%;
+    //     background-color: rgb(212, 124, 9);
+    //     width: 50px;
+    //     height: 50px;
+
+    //     img {
+    //         height: 100%;
+    //         width: 100%;
+    //         border-radius: 50%;
+    //         cursor: pointer;
+    //         object-fit: contain;
+    //     }
+    //   }
+    }
+  }
+
+  // Media Queries
+  @media (max-width: $breakpoint-laptop) {
+    .nav-items {
+      li {
+        margin: 0 10px;
+      }
+    }
+  }
+
+  @media (max-width: $breakpoint-tablet) {
+    .nav-items {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .search-bar,
+    .language-dropdown,
+    .profile {
+      display: none;
+    }
+  }
+
+
+
+  @media (max-width: $breakpoint-mobile) {
+    .navbar {
+      flex-direction: column;
+
+      .nav-left,
+      .nav-right {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .nav-items {
+        flex-direction: column;
+
+        li {
+          margin: 10px 0;
+        }
+      }
+    }
+  }
+
+/* Dropdown Container */
+.dropdown {
+    position: relative;
+    display: inline-block;
+
+    /* Adjust for mobile responsiveness */
+    @media (max-width: 768px) {
+      display: block;
+      width: 100%;
+    }
+  }
+
+  /* Dropdown Menu */
+  .dropdown-menu {
+    display: none;
+    position: absolute;
+    background-color: #fff;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+    list-style: none;
+    padding: 10px;
+    margin: 0;
+    min-width: 200px;
+    border-radius: 4px;
+    flex-direction: column;
+
+    /* Mobile View Adjustments */
+    @media (max-width: 768px) {
+      position: static;
+      box-shadow: none;
+      width: 100%;
+    }
+  }
+
+  /* Dropdown Menu Items */
+  .dropdown-menu li {
+    padding: 10px;
+  }
+
+  .dropdown-menu li a {
+    color: black;
+    text-decoration: none;
+    display: block;
+    padding: 5px 10px;
+  }
+
+  .dropdown-menu li a:hover {
+    background-color: #ddd;
+  }
+
+  /* Show dropdown when active */
+  .dropdown:hover .dropdown-menu {
+    display: flex;
+  }
+
+  /* Navbar Item Styling */
+  .nav-items {
+    display: flex;
+    list-style: none;
+
+    li {
+      margin: 0 15px;
+    }
+
+    a {
+      color: rgb(0, 0, 0);
+      text-decoration: none;
+      font-size: 15px;
+      align-items: center;
+      transition: 0.3ms;
+    }
+
+    a:hover {
+      color: $hover-color;
+    }
+  }
+
+  /* For Mobile View */
+  @media (max-width: 768px) {
+    .nav-items {
+      flex-direction: column;
+      align-items: center;
+
+      li {
+        margin: 10px 0;
+      }
+    }
+  }
+
+
+// /* Default styles */
+// .navbar {
+//     display: flex;
+//     justify-content: space-between;
+//     align-items: center;
+//     padding: 10px;
+//   }
+
+//   .nav-left, .nav-right {
+//     display: flex;
+//     align-items: center;
+//   }
+
+//   .search-bar, .language-dropdown {
+//     margin-left: 15px;
+//   }
+
+  /* Mobile view: Hide all content */
+  @media (max-width: 768px) {
+    .navbar {
+      display: none;
+    }
+  }
+
+  /* Tablet view: Hide search bar and language dropdown */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .search-bar, .language-dropdown {
+      display: none;
+    }
+  }

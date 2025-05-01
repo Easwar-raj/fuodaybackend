@@ -1,0 +1,688 @@
+
+
+// Variables for theme colors and fonts
+$primary-color: #0f7de4;
+$secondary-color: #2ecc71;
+$text-color: #333;
+$background-color: #f9f9f9;
+$font-stack: 'Arial', sans-serif;
+
+// General reset
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: $font-stack;
+//   background-color: $background-color;
+  color: $text-color;
+  line-height: 1.6;
+}
+
+.main-fuoday {
+  .pagewrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+
+// hr-management
+.header-top{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    border-radius: 10px;
+
+    .hr-management {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+
+        .contant-page {
+            flex: 1;
+            margin: 0 20px;
+            text-align: left;
+
+            .hr-h1 {
+                font-size: 2rem;
+                color: $primary-color;
+                margin-bottom: 20px;
+            }
+
+            .hr-p {
+                font-size: 1.2rem;
+                margin-bottom: 20px;
+            }
+
+            h6 {
+                font-size: 1rem;
+                margin-bottom: 10px;
+                color: rgb(51, 50, 50);
+                display: flex;
+                align-items: center;
+
+                &:before {
+                    content: "\2714"; // Placeholder for checkmark symbol
+                    margin-right: 10px;
+                    color: black;
+                }
+            }
+            .create-button {
+                display: inline-block;
+                background-color: $primary-color;
+                color: white;
+                padding: 10px 20px;
+                font-size: 1rem;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                text-transform: uppercase;
+                transition: background-color 0.3s ease;
+
+                &:hover {
+                  background-color: darken($primary-color, 10%);
+                }
+              }
+        }
+
+        .hr-image {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+
+            .hr-imagetag {
+                max-width: 100%;
+                height: auto;
+                border-radius: 10px;
+            }
+        }
+    }
+
+    // Tablet and Mobile View Adjustments
+    @media (max-width: 1024px) {
+        .hr-management {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+
+            .contant-page {
+                margin: 0;
+                order: 1; // Ensure content comes first in smaller views
+                h6{
+                    // text-align: center;
+                    justify-content: start;
+                }
+
+            }
+
+            .hr-image {
+                order: 2; // Image follows the content
+                margin-top: 20px;
+
+                .hr-imagetag {
+                    width: 80%; // Adjust image size for smaller screens
+                }
+
+
+            }
+
+        }
+    }
+
+    @media (max-width: 768px) {
+        .hr-management {
+            .contant-page {
+                .hr-h1 {
+                    font-size: 1.4rem;
+                }
+
+                .hr-p {
+                    font-size: 1rem;
+                }
+
+                h6 {
+                    font-size: 0.9rem;
+                    // text-align: center;
+                    justify-content: start;
+
+                }
+
+            }
+
+            .hr-image {
+                .hr-imagetag {
+                    width: 100%; // Full width for smaller screens
+                }
+
+            }
+
+        }
+    }
+}
+
+    // end hr-management
+
+    // start attendance-management
+    .fuoday-landing-attendance-management {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        padding: 40px;
+
+        .attendance-management {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+
+            .contant-page {
+                flex: 1;
+                margin: 0 20px;
+                text-align: left;
+
+                .hr-h1 {
+                    font-size: 2rem;
+                    color: $primary-color;
+                    margin-bottom: 20px;
+                }
+
+                .hr-p {
+                    font-size: 1.2rem;
+                    margin-bottom: 20px;
+                }
+                h6 {
+                    font-size: 1rem;
+                    margin-bottom: 10px;
+                    color: rgb(51, 50, 50);
+                    display: flex;
+                    align-items: center;
+
+                    &:before {
+                        content: "\2714"; // Placeholder for checkmark symbol
+                        margin-right: 10px;
+                        color: rgb(24, 151, 236);
+                    }
+                }
+
+                .attendance-learnmore{
+                    display: inline-block;
+                    margin-top: 20px;
+                    background-color: $primary-color;
+                    color: white;
+                    padding: 10px 20px;
+                    font-size: 1rem;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    text-transform: uppercase;
+                    transition: background-color 0.3s ease;
+
+                    &:hover {
+                        background-color: darken($primary-color, 10%);
+                    }
+                }
+            }
+
+            .hr-image {
+                flex: 1;
+                display: flex;
+                justify-content: center;
+
+                .hr-imagetag {
+                    max-width: 100%;
+                    height: auto;
+                    border-radius: 10px;
+                }
+            }
+        }
+
+        // Tablet and Mobile View Adjustments
+        @media (max-width: 1024px) {
+            .attendance-management {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+
+                .contant-page {
+                    .center-content {
+                        align-items: center; // Center align for h6 and button
+                    }
+                }
+            }
+        }
+
+        @media (max-width: 768px) {
+            .attendance-management {
+                .contant-page {
+
+                        .hr-h1 {
+                            font-size: 1.4rem;
+                        }
+
+                        .hr-p {
+                            font-size: 1rem;
+                        }
+
+                        h6 {
+                            font-size: 0.9rem;
+                        }
+
+                        .attendance-learnmore {
+                            width: 80%; // Adjust button width for smaller screens
+                        }
+
+                }
+            }
+        }
+    }
+
+    // end attendance-management
+
+    //  time-management
+
+    .fuoday-landing-time-management {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        padding: 40px;
+        border-radius: 10px;
+
+        .time-management {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+
+            .contant-page {
+                flex: 1;
+                margin: 0 20px;
+                text-align: left;
+
+                .hr-h1 {
+                    font-size: 2rem;
+                    color: $primary-color;
+                    margin-bottom: 20px;
+                }
+
+                .hr-p {
+                    font-size: 1.2rem;
+                    margin-bottom: 20px;
+                }
+
+                h6 {
+                    font-size: 1rem;
+                    margin-bottom: 10px;
+                    color: rgb(51, 50, 50);
+                    display: flex;
+                    align-items: center;
+
+                    &:before {
+                        content: ""; // Placeholder for checkmark symbol
+                        margin-right: 10px;
+                        color: $secondary-color;
+                    }
+                }
+            }
+
+            .hr-image {
+                flex: 1;
+                display: flex;
+                justify-content: center;
+
+                .hr-imagetag {
+                    max-width: 100%;
+                    height: auto;
+                    border-radius: 10px;
+                }
+            }
+        }
+
+        // Tablet and Mobile View Adjustments
+        @media (max-width: 1024px) {
+            .time-management {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+
+                .contant-page {
+                    margin: 0;
+                    order: 1; // Ensure content comes first in smaller views
+                }
+
+                .hr-image {
+                    order: 2; // Image follows the content
+                    margin-top: 20px;
+
+                    .hr-imagetag {
+                        width: 80%; // Adjust image size for smaller screens
+                    }
+                }
+            }
+        }
+
+        @media (max-width: 768px) {
+            .time-management {
+                .contant-page {
+                    .hr-h1 {
+                        font-size: 1.4rem;
+                    }
+
+                    .hr-p {
+                        font-size: 1rem;
+                    }
+
+                    h6 {
+                        font-size: 0.9rem;
+                    }
+                }
+
+                .hr-image {
+                    .hr-imagetag {
+                        width: 100%; // Full width for smaller screens
+                    }
+                }
+            }
+        }
+    }
+
+     // end time-management
+
+    //  start leave management
+
+      .fuoday-landing-leave-management {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        padding: 40px;
+        border-radius: 10px;
+
+        .leave-management {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+
+            .contant-page {
+                flex: 1;
+                margin: 0 20px;
+                text-align: left;
+
+                .hr-h1 {
+                    font-size: 2rem;
+                    color: $primary-color;
+                    margin-bottom: 20px;
+                }
+
+                .hr-p {
+                    font-size: 1.2rem;
+                    margin-bottom: 20px;
+                }
+
+                h6 {
+                    font-size: 1rem;
+                    margin-bottom: 10px;
+                    color: rgb(51, 50, 50);
+                    display: flex;
+                    align-items: center;
+
+                    &:before {
+                        content: ""; // Placeholder for checkmark symbol
+                        margin-right: 10px;
+                        color: $secondary-color;
+                    }
+                }
+            }
+
+            .hr-image {
+                flex: 1;
+                display: flex;
+                justify-content: center;
+
+                .hr-imagetag {
+                    max-width: 100%;
+                    height: auto;
+                    border-radius: 10px;
+                }
+            }
+        }
+
+        // Tablet and Mobile View Adjustments
+        @media (max-width: 1024px) {
+            .leave-management {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+
+                .contant-page {
+                    margin: 0;
+                    order: 1; // Ensure content comes first in smaller views
+                }
+
+                .hr-image {
+                    order: 2; // Image follows the content
+                    margin-top: 20px;
+
+                    .hr-imagetag {
+                        width: 80%; // Adjust image size for smaller screens
+                    }
+                }
+            }
+        }
+
+        @media (max-width: 768px) {
+            .leave-management {
+                .contant-page {
+                    .hr-h1 {
+                        font-size: 1.4rem;
+                    }
+
+                    .hr-p {
+                        font-size: 1rem;
+                    }
+
+                    h6 {
+                        font-size: 0.9rem;
+                    }
+                }
+
+                .hr-image {
+                    .hr-imagetag {
+                        width: 100%; // Full width for smaller screens
+                    }
+                }
+            }
+        }
+    }
+     //  end leave management
+
+    //  Performance Strategy
+    .fuoday-landing-performance-management {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        padding: 40px;
+        border-radius: 10px;
+
+        .performance-management {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+
+            .contant-page {
+                flex: 1;
+                margin: 0 20px;
+                text-align: left;
+
+                .hr-h1 {
+                    font-size: 2rem;
+                    color: $primary-color;
+                    margin-bottom: 20px;
+                }
+
+                .hr-p {
+                    font-size: 1.2rem;
+                    margin-bottom: 20px;
+                }
+
+                h6 {
+                    font-size: 1rem;
+                    margin-bottom: 10px;
+                    color: rgb(51, 50, 50);
+                    display: flex;
+                    align-items: center;
+
+                    &:before {
+                        content: ""; // Placeholder for checkmark symbol
+                        margin-right: 10px;
+                        color: $secondary-color;
+                    }
+                }
+            }
+
+            .hr-image {
+                flex: 1;
+                display: flex;
+                justify-content: center;
+
+                .hr-imagetag {
+                    max-width: 100%;
+                    height: auto;
+                    border-radius: 10px;
+                }
+            }
+        }
+
+        // Tablet and Mobile View Adjustments
+        @media (max-width: 1024px) {
+            .performance-management {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+
+                .contant-page {
+                    margin: 0;
+                    order: 1; // Ensure content comes first in smaller views
+                }
+
+                .hr-image {
+                    order: 2; // Image follows the content
+                    margin-top: 20px;
+
+                    .hr-imagetag {
+                        width: 80%; // Adjust image size for smaller screens
+                    }
+                }
+            }
+        }
+
+        @media (max-width: 768px) {
+            .performance-management {
+                .contant-page {
+                    .hr-h1 {
+                        font-size: 1.4rem;
+                    }
+
+                    .hr-p {
+                        font-size: 1rem;
+                    }
+
+                    h6 {
+                        font-size: 0.9rem;
+                    }
+                }
+
+                .hr-image {
+                    .hr-imagetag {
+                        width: 100%; // Full width for smaller screens
+                    }
+                }
+            }
+        }
+    }
+
+     //  Performance Strategy
+
+  }
+}
+
+
+
+
+
+
+
+// Media Queries for responsiveness
+@media (max-width: 768px) {
+  .header-top {
+    flex-direction: column;
+
+    .hr-management {
+      .contant-page,
+      .hr-image {
+        margin: 20px 0;
+        text-align: center;
+      }
+
+      .contant-page {
+        margin-right: 0;
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .header-top {
+    padding: 20px;
+
+    .contant-page {
+      .hr-h1 {
+        font-size: 1.5rem;
+      }
+
+      .hr-p {
+        font-size: 1rem;
+      }
+
+      h6 {
+        font-size: 0.9rem;
+      }
+
+      .create-button {
+        font-size: 0.9rem;
+        padding: 8px 16px;
+      }
+    }
+  }
+}
+
+.loginBlock{
+    margin-left: 15px;
+    .login{
+        a{
+            color: $primary-color;
+            border: 1px solid $primary-color;
+            background-color: transparent;
+            padding: 10px 20px;
+            border-radius: 50px;
+            transition: 0.3s;
+            &:hover{
+                background-color: $primary-color;
+                color: #fff;
+            }
+        }
+    }
+}

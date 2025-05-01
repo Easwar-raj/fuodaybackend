@@ -1,0 +1,484 @@
+section{
+    &.section{
+        color: #444444;
+        background-color: #fff;
+        padding: 60px 0;
+        scroll-margin-top: 88px;
+        overflow: clip;
+        &.fuodayBlock{
+            .fuodaySection{
+                text-align: center;
+                padding-bottom: 30px;
+                position: relative;
+                h1{
+                    font-size: 32px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    color: #0f7de4;
+                }
+                p{
+                    font-size: 20px;
+                    font-weight: 600;
+                    color: #000;
+                }
+            }
+            .leftBlock{
+                p{
+                    text-align: justify;
+                }
+            }
+            .rightBlock{
+                display: flex;
+                justify-content: center;
+                .imgSection{
+                    width: 500px;
+                    img{
+                        width:100%;
+                    }
+                    .animated{
+                        animation: up-down 2s ease-in-out infinite alternate-reverse both;
+                    }
+                }
+            }
+        }
+        // Keyfeatures
+
+        &.keyfeatureBlock{
+            padding-top: 0 !important;
+            .keyfeatureSection{
+                text-align: center;
+                padding-bottom: 15px;
+                position: relative;
+                h1{
+                    font-size: 32px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    color: #0f7de4;
+                }
+                p{
+                    font-size: 20px;
+                    font-weight: 600;
+                    color: #000;
+                }
+            }
+            .keyBlock{
+                margin-bottom: 30px;
+                text-align: center;
+                width: 100%;
+                display: flex;
+                justify-content: center;
+                .paraDesc{
+                    max-width: 950px;
+                }
+            }
+            .row-gap-20{
+                row-gap: 20px;
+            }
+            .leftBlock{
+                .paraDesc{
+                    text-align: justify;
+                    margin-bottom: 10px !important;
+                }
+            }
+            .rightBlock{
+                display: flex;
+                justify-content: center;
+                .imgSection{
+                    width: 500px;
+                    img{
+                        width:100%;
+                    }
+                    .animated{
+                        animation: up-down 2s ease-in-out infinite alternate-reverse both;
+                    }
+                }
+            }
+            .card{
+                border: unset;
+
+                .cardblock{
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+                    text-align: center;
+                    .card_img{
+                        width: 70px;
+                        height: 70px;
+                        border: 1px solid ;
+                        border-radius: 50px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        img{
+                            width: 40px;
+                            height: 40px;
+                        }
+                    }
+                    .card_det{
+                        max-width: 300px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 5px;
+                        margin-top: 10px;
+                        h1{
+                            font-size: 20px;
+                        }
+                    }
+                }
+            }
+        }
+
+        // HR-Management
+
+        &.hrMangBlock{
+            padding-top: 0 !important;
+            .hrMangSection{
+                text-align: center;
+                padding-bottom: 30px;
+                position: relative;
+                h1{
+                    font-size: 32px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    color: #0f7de4;
+                }
+            }
+            .leftBlock{
+                .paraDesc{
+                    text-align: justify;
+                    margin-bottom: 10px !important;
+                }
+            }
+            .rightBlock{
+                display: flex;
+                justify-content: center;
+                .imgSection{
+                    width: 500px;
+                    img{
+                        width:100%;
+                    }
+                    .animated{
+                        animation: up-down 2s ease-in-out infinite alternate-reverse both;
+                    }
+                }
+            }
+        }
+
+
+    }
+
+    // Attendance Management
+    &.attMangBlock{
+        padding-top: 0 !important;
+        .attMangSection{
+            text-align: center;
+            padding-bottom: 30px;
+            position: relative;
+            h1{
+                font-size: 32px;
+                font-weight: 700;
+                text-transform: uppercase;
+                color: #0f7de4;
+            }
+        }
+        .leftBlock{
+            .paraDesc{
+                text-align: justify;
+                margin-bottom: 10px !important;
+            }
+        }
+        .rightBlock{
+            display: flex;
+            justify-content: center;
+            .imgSection{
+                width: 500px;
+                img{
+                    width:100%;
+                }
+                .animated{
+                    animation: up-down 2s ease-in-out infinite alternate-reverse both;
+                }
+            }
+        }
+    }
+        // Time Management
+        &.timeMangBlock{
+            padding-top: 0 !important;
+            .timeMangSection{
+                text-align: center;
+                padding-bottom: 30px;
+                position: relative;
+                h1{
+                    font-size: 32px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    color: #0f7de4;
+                }
+            }
+            .leftBlock{
+                .paraDesc{
+                    text-align: justify;
+                    margin-bottom: 10px !important;
+                }
+            }
+            .rightBlock{
+                display: flex;
+                justify-content: center;
+                .imgSection{
+                    width: 500px;
+                    img{
+                        width:100%;
+                    }
+                    .animated{
+                        animation: up-down 2s ease-in-out infinite alternate-reverse both;
+                    }
+                }
+            }
+        }
+         // Leave Management
+         &.leaMangBlock{
+            padding-top: 0 !important;
+            .leaMangSection{
+                text-align: center;
+                padding-bottom: 30px;
+                position: relative;
+                h1{
+                    font-size: 32px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    color: #0f7de4;
+                }
+            }
+            .leftBlock{
+                .paraDesc{
+                    text-align: justify;
+                    margin-bottom: 10px !important;
+                }
+            }
+            .rightBlock{
+                display: flex;
+                justify-content: center;
+                .imgSection{
+                    width: 500px;
+                    img{
+                        width:100%;
+                    }
+                    .animated{
+                        animation: up-down 2s ease-in-out infinite alternate-reverse both;
+                    }
+                }
+            }
+        }
+            // Performance Management
+
+            &.performMangBlock{
+            padding-top: 0 !important;
+            .performMangSection{
+                text-align: center;
+                padding-bottom: 30px;
+                position: relative;
+                h1{
+                    font-size: 32px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    color: #0f7de4;
+                }
+            }
+            .leftBlock{
+                .paraDesc{
+                    text-align: justify;
+                    margin-bottom: 10px !important;
+                }
+            }
+            .rightBlock{
+                display: flex;
+                justify-content: center;
+                .imgSection{
+                    width: 500px;
+                    img{
+                        width:100%;
+                    }
+                    .animated{
+                        animation: up-down 2s ease-in-out infinite alternate-reverse both;
+                    }
+                }
+            }
+        }
+
+        // Customer Style
+
+        &.customerBlock{
+            padding-top: 0 !important;
+            background-color: #b5bff852;
+            padding-bottom: 0;
+            .customerSection{
+                text-align: center;
+                padding-bottom: 15px;
+                position: relative;
+                z-index: 1;
+                .header_level{
+                  padding-top: 50px;
+                  padding-bottom: 30px;
+                }
+                h1{
+                    font-size: 32px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    color: #0f7de4;
+                }
+            }
+            .custom_block{
+                .customer_overall{
+                    .custom_col{
+                        display: grid;
+                        grid-row-gap: 15px;
+                        grid-template-rows: repeat(2, auto) 1fr;
+                        height: auto;
+                        max-height: initial;
+                        align-items: stretch;
+                        .customlead{
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: space-between;
+                            border-radius: 16px;
+                            border: 1px solid #D4D2D0;
+                            background: #fff;
+                            width: 100%;
+                            padding: 15px;
+                            height: fit-content;
+                            p{
+                                // font-family: var(--body-font-family);
+                                color: #38312F;
+                                font-size: 14px;
+                                font-weight: 300;
+                                line-height: 22px;
+                            }
+                            .custom_rev{
+                                display: flex;
+                                align-items: flex-start;
+                                margin-top: 10px;
+                                h4{
+                                    color: #38312F;
+                                    font-family: 'Inter', 'Lato', arial;;
+                                    font-size: 12px;
+                                    font-weight: 400;
+                                    line-height: 18px;
+                                    margin-left: 12px;
+                                    strong{
+                                        font-family: 'Inter', 'Lato', arial;;
+                                        font-size: 16px;
+                                        font-weight: 700;
+                                        line-height: 26px;
+                                        display: block;
+                                        padding-bottom: 4px;
+                                    }
+                                }
+                                img{
+                                    display: block;
+                                    max-width: 48px;
+                                    height: auto;
+                                    object-fit: cover;
+                                    width: 100%;
+                                    height: 100%;
+                                }
+
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Security
+
+        &.securityMangBlock{
+            padding-top: 100px;
+            .securityMangSection{
+                text-align: center;
+                padding-bottom: 15px;
+                position: relative;
+                z-index: 1;
+                .header_level{
+                  padding-top: 50px;
+                  padding-bottom: 30px;
+                }
+                .leftblock{
+                    img{
+                        width:250px;
+                    }
+
+                }
+                .rightblock{
+                    img{
+                        width:400px;
+                    }
+
+                }
+                .securcontent{
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    .securHead{
+                        font-size: 25px;
+                    }
+                    .paraDesc{
+                        font-size: 14px;
+                        max-width: 500px;
+                    }
+                }
+
+            }
+        }
+
+}
+
+// HR-Management Page
+
+@keyframes up-down{
+    0%{
+        transform: translateY(10px);
+    }
+    100%{
+        transform: translateY(-10px);
+    }
+}
+
+// HR-Management Page End
+
+
+
+
+// Media Query Customer Style
+
+@media (min-width: 1025px){
+    .custom_block{
+        .customer_overall{
+            transform: none !important;
+            cursor: initial !important;
+        }
+    }
+}
+@media (min-width: 600px){
+    .custom_block{
+        .customer_overall{
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            grid-gap: 17px;
+            box-sizing: border-box;
+            padding: 0 10px 23px;
+            // margin-top: 63px;
+        }
+    }
+}
+
+@media screen and (min-width: 600px) and (max-width: 1024px) {
+    .custom_block{
+        .customer_overall{
+        grid-template-columns: 1fr 1fr;
+        margin-top: 47px;
+        margin-bottom: 0;
+    }
+}
+}
+
