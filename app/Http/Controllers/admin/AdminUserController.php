@@ -26,6 +26,7 @@ use App\Models\Event;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Policies;
 use App\Models\PolicyQuestions;
+use Aws\S3\S3Client;
 
 class AdminUserController extends Controller
 {
@@ -46,10 +47,9 @@ class AdminUserController extends Controller
 
         if ($request->hasFile('logo')) {
             $logoExtension = $request->file('logo')->getClientOriginalExtension();
-            $logoName = "{$request->company_name}.{$logoExtension}";
 
             // Check if any previous logo exists and delete
-            $existingFiles = Storage::disk('s3')->files("{$request->admin_user_id}/logo_{$request->company_name}");
+            $existingFiles = Storage::disk('s3')->files("{$request->company_name}/logo_{$request->company_name}");
 
             foreach ($existingFiles as $existingFile) {
                 if (pathinfo($existingFile, PATHINFO_FILENAME) == "logo_{$request->company_name}") {
@@ -57,16 +57,25 @@ class AdminUserController extends Controller
                 }
             }
 
-            $admin_user = AdminUser::orderBy('id', 'desc')->first();
+            $s3 = new S3Client([
+                'region'  => env('AWS_DEFAULT_REGION'),
+                'version' => 'latest',
+                'credentials' => [
+                    'key'    => env('AWS_ACCESS_KEY_ID'),
+                    'secret' => env('AWS_SECRET_ACCESS_KEY'),
+                ],
+            ]);
+            $bucket = env('AWS_BUCKET');
+            $key = "{$request->company_name}/logo_{$request->company_name}.{$logoExtension}";
 
-            // Store the new logo
-            $logoPath = $request->file('logo')->storeAs(
-                (int)$admin_user->id + 1,
-                "logo_$logoName",
-                's3'
-            );
+            $s3->putObject([
+                'Bucket' => $bucket,
+                'Key'    => $key,
+                'Body'   => $request->file('logo')->get(),
+                'ContentType' => 'image/png',
+            ]);
 
-            $logoUrl = $logoPath ? Storage::disk('s3')->url($logoPath) : null;
+            $logoUrl = $s3->getObjectUrl($bucket, $key);
         }
 
         // Create the admin user
@@ -394,27 +403,37 @@ class AdminUserController extends Controller
         if (!$adminUser) {
             return response()->json(['message' => 'Invalid admin user'], 400);
         }
-
-        $clientName = $request->name;
         $logoExtension = $request->file('logo')->getClientOriginalExtension();
-        $logoName = "{$clientName}.{$logoExtension}";
 
         // Check if the file exists with any extension
-        $existingFiles = Storage::disk('s3')->files("{$request->admin_user_id}/clients_{$clientName}");
+        $existingFiles = Storage::disk('s3')->files("{$adminUser->company_name}/client/{$request->name}");
 
         // If a file with the same name exists, delete it
         foreach ($existingFiles as $existingFile) {
-            if (basename($existingFile, pathinfo($existingFile, PATHINFO_EXTENSION)) == "clients_{$clientName}") {
+            if (basename($existingFile, pathinfo($existingFile, PATHINFO_EXTENSION)) == $request->name) {
                 Storage::disk('s3')->delete($existingFile);
             }
         }
 
-        // Store the new logo with the desired name and extension
-        $logoPath = $request->file('logo')
-            ? $request->file('logo')->storeAs("{$request->admin_user_id}", "client_$logoName", 's3')
-            : null;
+        $s3 = new S3Client([
+            'region'  => env('AWS_DEFAULT_REGION'),
+            'version' => 'latest',
+            'credentials' => [
+                'key'    => env('AWS_ACCESS_KEY_ID'),
+                'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            ],
+        ]);
+        $bucket = env('AWS_BUCKET');
+        $key = "{$adminUser->company_name}/client/{$request->name}.{$logoExtension}";
 
-        $logoUrl = $logoPath ? Storage::disk('s3')->url($logoPath) : null;
+        $s3->putObject([
+            'Bucket' => $bucket,
+            'Key'    => $key,
+            'Body'   => $request->file('logo')->get(),
+            'ContentType' => 'image/png',
+        ]);
+
+        $logoUrl = $s3->getObjectUrl($bucket, $key);
 
         if ($request->action === 'create') {
             // Create the client
@@ -434,7 +453,7 @@ class AdminUserController extends Controller
         $client->update([
             'name' => $request->name,
             'description' => $request->description ?? $client->description,
-            'logo' => $logoPath,
+            'logo' => $logoUrl,
         ]);
 
         return response()->json(['message' => 'Client updated successfully.']);

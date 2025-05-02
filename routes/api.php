@@ -118,13 +118,10 @@ Route::prefix('hrms')->group(function () {
         });
         Route::prefix('attendance')->group(function () {
             Route::get('/getattendances/{id}', [AttendancePageController::class, 'getAttendance']);
-            Route::post('/addattendance', [PerformancePageController::class, 'addAttendance']);
-            Route::post('/updateattendance', [PerformancePageController::class, 'updateAttendance']);
+            Route::post('/addattendance', [AttendancePageController::class, 'addAttendance']);
+            Route::post('/updateattendance', [AttendancePageController::class, 'updateAttendance']);
         });
-        Route::prefix('leave')->group(function () {
-            Route::get('/getleave/{id}', [LeaveTrackerPageController::class, 'getLeaveStatus']);
-            Route::post('/addleave', [LeaveTrackerPageController::class, 'addLeave']);
-        });
+
         Route::prefix('timetracker')->group(function () {
             Route::get('/gettracker/{id}', [TimeTrackerPageController::class, 'gettimetracker']);
             Route::post('/addschedule', [TimeTrackerPageController::class, 'addShiftSchedule']);
@@ -152,6 +149,10 @@ Route::prefix('hrms')->group(function () {
             Route::post('/addticket', [SupportPageController::class, 'addTicket']);
             Route::post('/updateticket/{ticketId}', [SupportPageController::class, 'updateTicket']);
         });
+    });
+    Route::prefix('leave')->group(function () {
+        Route::get('/getleave/{id}', [LeaveTrackerPageController::class, 'getLeaveStatus']);
+        Route::post('/addleave', [LeaveTrackerPageController::class, 'addLeave']);
     });
 });
 

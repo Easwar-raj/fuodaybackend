@@ -16,10 +16,12 @@ return new class extends Migration
             $table->foreignId('web_user_id')->nullable()->constrained('web_users')->onDelete('cascade');
             $table->string('emp_name')->nullable();
             $table->string('emp_id')->nullable();
+            $table->date('date')->nullable();
             $table->string('department')->nullable();
             $table->string('type');
             $table->date('from');
             $table->date('to');
+            $table->string('days')->nullable();
             $table->string('reason');
             $table->string('status');
             $table->string('comment')->nullable();

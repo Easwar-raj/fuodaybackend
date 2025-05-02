@@ -14,10 +14,12 @@ class LeaveRequest extends Model
         'web_user_id',
         'emp_name',
         'emp_id',
+        'date',
         'department',
         'type',
         'from',
         'to',
+        'days',
         'reason',
         'status',
         'comment'
@@ -26,9 +28,10 @@ class LeaveRequest extends Model
     protected $casts = [
         'from' => 'date',
         'to' => 'date',
+        'date' => 'date',
     ];
 
-    
+
     public function webUser()
     {
         return $this->belongsTo(WebUser::class, 'web_user_id');

@@ -219,15 +219,9 @@ class WebpageUserController extends Controller
             imagepng($image);
             $imageData = ob_get_clean();
             imagedestroy($image);
-            // Free up memory
+            $adminUser = AdminUser::find($adminUserId);
 
-
-            $imageName = "{$empId}.png";
-
-            // Folder structure for the file in S3
-            $folderPath = "{$adminUserId}/avatar"; // Structure: profile/{user_id}/file
-
-            $existingFiles = Storage::disk('s3')->files("{$adminUserId}/avatar/{$empId}");
+            $existingFiles = Storage::disk('s3')->files("{$adminUser->company_name}/avatar/{$empId}");
 
             foreach ($existingFiles as $existingFile) {
                 if (pathinfo($existingFile, PATHINFO_FILENAME) == $empId) {
@@ -244,7 +238,7 @@ class WebpageUserController extends Controller
             ]);
 
             $bucket = env('AWS_BUCKET');
-            $key = "{$adminUserId}/avatar/{$empId}.png";
+            $key = "{$adminUser->company_name}/avatar/{$empId}.png";
 
             $s3->putObject([
                 'Bucket' => $bucket,
@@ -264,13 +258,13 @@ class WebpageUserController extends Controller
     // Update a web user
     public function update(Request $request, $id)
     {
-        $user = Auth::user();
-        if($user->id !== (int) $id) {
-            return response()->json([
-                'message' => 'Unauthorized',
-                'status' => 'error'
-            ], 401);
-        }
+        // $user = Auth::user();
+        // if($user->id !== (int) $id) {
+        //     return response()->json([
+        //         'message' => 'Unauthorized',
+        //         'status' => 'error'
+        //     ], 401);
+        // }
 
         $webUser = WebUser::find($id);
 
@@ -293,12 +287,9 @@ class WebpageUserController extends Controller
         if ($request->hasFile('profile')) {
             $file = $request->file('profile');
             $extension = $file->getClientOriginalExtension();
-            $imageName = "{$webUser->emp_id}.{$extension}";
+            $adminUser = AdminUser::find($webUser->admin_user_id);
 
-            // Folder structure for the file in S3
-            $folderPath = "{$webUser->admin_user_id}/profile"; // Structure: profile/{user_id}/file
-
-            $existingFiles = Storage::disk('s3')->files("{$request->admin_user_id}/profile/{$webUser->emp_id}");
+            $existingFiles = Storage::disk('s3')->files("{$adminUser->company_name}/profile/{$webUser->emp_id}");
 
             foreach ($existingFiles as $existingFile) {
                 if (pathinfo($existingFile, PATHINFO_FILENAME) == $webUser->emp_id) {
@@ -306,11 +297,26 @@ class WebpageUserController extends Controller
                 }
             }
 
-            $profilePhoto = $request->file('profile')
-            ? $request->file('profile')->storeAs($folderPath, $imageName, 's3')
-            : null;
+            $s3 = new S3Client([
+                'region'  => env('AWS_DEFAULT_REGION'),
+                'version' => 'latest',
+                'credentials' => [
+                    'key'    => env('AWS_ACCESS_KEY_ID'),
+                    'secret' => env('AWS_SECRET_ACCESS_KEY'),
+                ],
+            ]);
 
-            $profileUrl = $profilePhoto ? Storage::disk('s3')->url($profilePhoto) : null;
+            $bucket = env('AWS_BUCKET');
+            $key = "{$adminUser->company_name}/profile/{$webUser->emp_id}.{$extension}";
+
+            $s3->putObject([
+                'Bucket' => $bucket,
+                'Key'    => $key,
+                'Body'   => $request->file('profile')->get(),
+                'ContentType' => 'image/png',
+            ]);
+
+            $profileUrl = $s3->getObjectUrl($bucket, $key);
         }
 
 
@@ -445,7 +451,7 @@ class WebpageUserController extends Controller
 
         // Check if the user exists
         $webUser = WebUser::where('email', $request->input('email'))->with(['employeeDetails' => function ($query) {
-            $query->select('profile_photo');
+            $query->select('web_user_id','profile_photo');
         }])->first();
 
         if(($webUser->role === 'hr' && $request->role === 'recruiter') || ($webUser->role !== 'hr_recruiter' && $webUser->role !== 'hr'  && $request->role !== $webUser->role)) {

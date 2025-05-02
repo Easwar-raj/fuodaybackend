@@ -32,6 +32,9 @@ class LeaveTrackerPageController extends Controller
             ->get()
             ->map(function ($row) {
                 $row->remaining = max($row->allowed - $row->taken, 0);
+                $row->remaining_percentage = $row->allowed > 0
+                ? intval(($row->remaining / $row->allowed) * 100)
+                : 0;
                 return $row;
             });
 
@@ -42,11 +45,25 @@ class LeaveTrackerPageController extends Controller
             ->orderBy('date', 'asc')
             ->get();
 
+        $leaveReport = LeaveRequest::where('web_user_id', $id)
+        ->select(
+            'date',
+            'type',
+            'from',
+            'to',
+            'days',
+            'reason',
+            'status',
+        )
+        ->orderBy('date', 'desc')
+        ->get();
+
         // Step 4: Return data
         return response()->json([
             'status' => 'success',
             'leave_summary' => $leaveSummary,
-            'holidays' => $holidays
+            'holidays' => $holidays,
+            'leave_report' => $leaveReport,
         ]);
     }
 
@@ -73,10 +90,12 @@ class LeaveTrackerPageController extends Controller
             'web_user_id' => $request->web_user_id,
             'emp_id' => $webUser->emp_id,
             'emp_name' => $webUser->name,
+            'date' => Carbon::today()->toDateString(),
             'department' => $webUser->department,
             'type' => $request->type,
             'from' => $request->from,
             'to' => $request->to,
+            'days' => Carbon::parse($request->from)->diffInDays(Carbon::parse($request->to)) + 1,
             'reason' => $request->reason,
             'status' => 'pending',
         ]);

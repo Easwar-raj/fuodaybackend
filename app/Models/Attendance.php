@@ -17,6 +17,7 @@ class Attendance extends Model
         'date',
         'checkin',
         'checkout',
+        'worked_hours',
         'location',
         'status',
     ];

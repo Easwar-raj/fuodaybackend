@@ -19,6 +19,7 @@ return new class extends Migration
             $table->date('date');
             $table->string('checkin')->nullable();
             $table->string('checkout')->nullable();
+            $table->string('worked_hours')->nullable();
             $table->string('location')->nullable(); // hybrid / remote / WFH / WFO
             $table->string('status');
             $table->timestamps();
