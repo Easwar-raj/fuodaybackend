@@ -123,7 +123,7 @@ class WebpageUserController extends Controller
             }
 
             $initials = strtoupper($request->first_name[0] ?? '') . strtoupper($request->last_name[0] ?? '');
-            $profilePhotoPath = $this->generateProfileImage($initials, $request->emp_id);
+            $profilePhotoPath = $this->generateProfileImage($initials, $request->emp_id, $request->admin_user_id);
 
             $webUser = WebUser::create(array_merge($webUserDetails, [
                 'admin_user_id' => $request->admin_user_id,
