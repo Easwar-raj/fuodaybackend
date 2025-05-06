@@ -182,7 +182,7 @@ class AttendancePageController extends Controller
         // Validate input
         $request->validate([
             'web_user_id' => 'required|exists:web_users,id',
-            'checkout' => 'required|string', // e.g., "06:00 PM"
+            'checkout' => 'required|string',
         ]);
 
         // Get today's date
@@ -203,7 +203,7 @@ class AttendancePageController extends Controller
 
         // Update checkout time
         $attendance->checkout = $request->checkout;
-        // $attendance->worked_hours = $workedHours;
+        $attendance->worked_hours = $workedHours;
         $attendance->save();
 
         return response()->json(['message' => 'Checkout time updated successfully.'], 200);

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Incentives;
 use App\Models\Onboarding;
 use App\Models\Payroll;
+use App\Models\Payslip;
 use App\Models\WebUser;
 use Illuminate\Http\Request;
 
@@ -21,8 +22,9 @@ class PayrollPageController extends Controller
             ->map(function ($payroll) {
                 return [
                     'payroll_id'       => $payroll->id,
+                    'designation'      => $payroll->designation,
                     'date'             => optional($payroll->payslip->date)->format('Y-m-d'),
-                    'time'             => $payroll->payslip->time,
+                    'time'             => $payroll->payslip->timeformat('h:i:s A'),
                     'total_salary'     => $payroll->monthly_salary,
                     'total_ctc'        => $payroll->ctc,
                     'total_gross'      => $payroll->payslip->gross,
