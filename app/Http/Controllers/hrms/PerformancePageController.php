@@ -13,9 +13,7 @@ use App\Models\FeedbackReplies;
 use App\Models\EmployeeDetails;
 use App\Models\FeedbackQuestions;
 use App\Models\WebUser;
-use App\Models\Ticket;
 use App\Models\Heirarchies;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class PerformancePageController extends Controller
@@ -143,12 +141,9 @@ class PerformancePageController extends Controller
 
         return response()->json([
             'team_availability' => $availabilityPercentage,
-            'total_tasks' => $totalTasks,
-            'completed_tasks' => $completedTasks,
-            'pending_tasks' => $pendingTasks,
             'completed_percentage' => $completedPercentage,
             'pending_percentage' => $pendingPercentage,
-            'timely_performance_percentage' => $timelyPerformance,
+            'performance_score' => $timelyPerformance,
             'performance_rating_out_of_5' => $ratingOutOfFive,
         ]);
     }
