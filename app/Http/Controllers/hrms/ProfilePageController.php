@@ -9,6 +9,9 @@ use App\Models\WebUser;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\Skills;
+use App\Models\Experience;
+use App\Models\Education;
 
 class ProfilePageController extends Controller
 {
@@ -136,9 +139,178 @@ class ProfilePageController extends Controller
 
         return response()->json([
             'message' => 'Profile updated successfully.',
+            'status' => 'Success',
             'user' => $webUser,
             'employee_details' => $employeeDetail
         ], 200);
     }
 
+    public function updateOrCreateSkill(Request $request)
+    {
+        // Validate input
+        $validated = $request->validate([
+            'web_user_id' => 'required|exists:web_users,id',
+            'skill' => 'required|string',
+            'level' => 'required|string',
+        ]);
+
+        $webUser = WebUser::find($request->web_user_id);
+
+        if(!$validated || !$webUser) {
+            return response()->json([
+                'message' => 'Invalid data provided.'
+            ], 400);
+        }
+
+        // Update the skill level if it exists, otherwise create a new record
+        $skill = Skills::updateOrCreate(
+            [
+                'web_user_id' => $request->web_user_id,
+                'skill' => $request->skill,
+            ],
+            [
+                'level' => $request->level,
+                'emp_name' => $webUser->name ?? null,
+                'emp_id' => $webUser->emp_id ?? null,
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Skill updated or created successfully.',
+            'status' => 'Success',
+            'data' => $skill
+        ]);
+    }
+
+    public function updateOrCreateEducation(Request $request)
+    {
+        // Validate input
+        $validated = $request->validate([
+            'web_user_id' => 'required|exists:web_users,id',
+            'qualification' => 'required|string',
+            'university' => 'required|string',
+            'year_of_passing' => 'required|string',
+        ]);
+
+        $webUser = WebUser::find($request->web_user_id);
+
+        if(!$validated || !$webUser) {
+            return response()->json([
+                'message' => 'Invalid data provided.'
+            ], 400);
+        }
+
+        // Update existing education or insert a new one
+        $education = Education::updateOrCreate(
+            [
+                'web_user_id' => $request->web_user_id,
+                'qualification' => $request->qualification,
+            ],
+            [
+                'university' => $request->university,
+                'year_of_passing' => $request->year_of_passing,
+                'emp_name' => $webUser->name ?? null,
+                'emp_id' => $webUser->emp_id ?? null,
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Education record updated or created successfully.',
+            'status' => 'Success',
+            'data' => $education
+        ]);
+    }
+
+    public function updateOrCreateExperience(Request $request)
+    {
+        $validated = $request->validate([
+            'web_user_id'      => 'required|exists:web_users,id',
+            'company_name'     => 'required|string',
+            'no_of_yrs'        => 'required|string',
+            'role'             => 'required|string',
+            'duration'         => 'required|string',
+            'responsibilities' => 'required|string',
+            'achievements'     => 'nullable|date',
+            'emp_name'         => 'nullable|string',
+            'emp_id'           => 'nullable|string',
+        ]);
+
+        $webUser = WebUser::find($request->web_user_id);
+
+        if(!$validated || !$webUser) {
+            return response()->json([
+                'message' => 'Invalid data provided.'
+            ], 400);
+        }
+
+        $experience = Experience::updateOrCreate(
+            [
+                'web_user_id'  => $request->web_user_id,
+                'company_name' => $request->company_name,
+                'role'         => $request->role,
+            ],
+            [
+                'no_of_yrs'        => $request->no_of_yrs,
+                'role'             => $request->role,
+                'duration'         => $request->duration,
+                'responsibilities' => $request->responsibilities,
+                'achievements'     => $request->achievements,
+                'emp_name'         => $webUser->name,
+                'emp_id'           => $webUser->emp_id,
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Experience record updated or created successfully.',
+            'status'  => 'Success',
+            'data'    => $experience
+        ]);
+    }
+
+    public function updateOnboardingDocuments(Request $request)
+    {
+        $validated = $request->validate([
+            'web_user_id'         => 'required|exists:web_users,id',
+            'welcome_email_sent'  => 'nullable|date',
+            'scheduled_date'      => 'nullable|date',
+            'photo'               => 'nullable|string',
+            'pan'                 => 'nullable|string',
+            'passbook'            => 'nullable|string',
+            'payslip'             => 'nullable|string',
+            'offer_letter'        => 'nullable|string',
+        ]);
+
+        $webUser = WebUser::find($request->web_user_id);
+
+        if(!$validated || !$webUser) {
+            return response()->json([
+                'message' => 'Invalid data provided.'
+            ], 400);
+        }
+
+        $onboarding = Onboarding::where('web_user_id', $request->web_user_id)->first();
+
+        if (!$onboarding) {
+            return response()->json([
+                'message' => 'Onboarding record not found.',
+                'status'  => 'error',
+            ], 404);
+        }
+
+        $onboarding->update([
+            'welcome_email_sent' => $request->welcome_email_sent ?? $onboarding->welcome_email_sent,
+            'scheduled_date'     => $request->scheduled_date ?? $onboarding->scheduled_date,
+            'photo'              => $request->photo ?? $onboarding->photo,
+            'pan'                => $request->pan ?? $onboarding->pan,
+            'passbook'           => $request->passbook ?? $onboarding->passbook,
+            'payslip'            => $request->payslip ?? $onboarding->payslip,
+            'offer_letter'       => $request->offer_letter ?? $onboarding->offer_letter,
+        ]);
+
+        return response()->json([
+            'message' => 'Onboarding documents updated successfully.',
+            'status'  => 'Success',
+            'data'    => $onboarding
+        ]);
+    }
 }

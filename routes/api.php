@@ -115,13 +115,20 @@ Route::prefix('hrms')->group(function () {
         Route::prefix('profile')->group(function () {
             Route::get('/getprofile/{id}', [ProfilePageController::class, 'getProfile']);
             Route::post('/updateemployeeprofile', [ProfilePageController::class, 'updateEmployeeProfile']);
+            Route::post('/updateskills', [ProfilePageController::class, 'updateOrCreateSkill']);
+            Route::post('/updateeducation', [ProfilePageController::class, 'updateOrCreateEducation']);
+            Route::post('/updateexperience', [ProfilePageController::class, 'updateOrCreateExperience']);
+            Route::post('/updateonboarding', [ProfilePageController::class, 'updateOnboardingDocuments']);
         });
         Route::prefix('attendance')->group(function () {
             Route::get('/getattendances/{id}', [AttendancePageController::class, 'getAttendance']);
             Route::post('/addattendance', [AttendancePageController::class, 'addAttendance']);
             Route::post('/updateattendance', [AttendancePageController::class, 'updateAttendance']);
         });
-
+        Route::prefix('leave')->group(function () {
+            Route::get('/getleave/{id}', [LeaveTrackerPageController::class, 'getLeaveStatus']);
+            Route::post('/addleave', [LeaveTrackerPageController::class, 'addLeave']);
+        });
         Route::prefix('timetracker')->group(function () {
             Route::get('/gettracker/{id}', [TimeTrackerPageController::class, 'gettimetracker']);
             Route::post('/addschedule', [TimeTrackerPageController::class, 'addShiftSchedule']);
@@ -149,10 +156,6 @@ Route::prefix('hrms')->group(function () {
             Route::post('/addticket', [SupportPageController::class, 'addTicket']);
             Route::post('/updateticket/{ticketId}', [SupportPageController::class, 'updateTicket']);
         });
-    });
-    Route::prefix('leave')->group(function () {
-        Route::get('/getleave/{id}', [LeaveTrackerPageController::class, 'getLeaveStatus']);
-        Route::post('/addleave', [LeaveTrackerPageController::class, 'addLeave']);
     });
 });
 

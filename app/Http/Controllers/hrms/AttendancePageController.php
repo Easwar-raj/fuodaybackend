@@ -196,14 +196,17 @@ class AttendancePageController extends Controller
             return response()->json(['message' => 'Attendance record for today not found.'], 404);
         }
 
-        $diffInMinutes = $attendance->checkin->diffInMinutes($request->checkout);
+        $checkin = Carbon::parse($attendance->checkin);
+        $checkout = Carbon::parse($request->checkout);
+
+        $diffInMinutes = $checkin->diffInMinutes($checkout);
         $hours = floor($diffInMinutes / 60);
         $minutes = $diffInMinutes % 60;
         $workedHours = sprintf('%02d:%02d hours', $hours, $minutes);
 
         // Update checkout time
         $attendance->checkout = $request->checkout;
-        $attendance->worked_hours = $workedHours;
+        $attendance->worked_hours = $workedHours; 
         $attendance->save();
 
         return response()->json(['message' => 'Checkout time updated successfully.'], 200);

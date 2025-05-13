@@ -459,7 +459,6 @@ class AdminUserController extends Controller
         return response()->json(['message' => 'Client updated successfully.']);
     }
 
-
     public function saveService(Request $request)
     {
         $validated = $request->validate([

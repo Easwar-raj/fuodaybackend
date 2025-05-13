@@ -26,4 +26,9 @@ class ProjectTeam extends Model
     public function webUser() {
         return $this->belongsTo(WebUser::class);
     }
+
+    public function project()
+    {
+        return $this->belongsTo(Projects::class);
+    }
 }

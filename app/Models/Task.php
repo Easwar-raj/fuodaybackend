@@ -38,8 +38,12 @@ class Task extends Model
         return $this->belongsTo(Projects::class, 'project_id');
     }
 
-    public function assignedBy()
+    public function projectTeamTo()
     {
-        return $this->belongsTo(WebUser::class, 'assigned_by');
+        return $this->belongsTo(ProjectTeam::class, 'assigned_to_id', 'web_user_id');
+    }
+    public function projectTeamBy()
+    {
+        return $this->belongsTo(ProjectTeam::class, 'assigned_by_id', 'web_user_id');
     }
 }

@@ -36,7 +36,11 @@ class TimeTrackerPageController extends Controller
 
         $attendances = Attendance::where('web_user_id', $id)
             ->whereBetween('date', [$startOfWeek, $endOfWeek])
-            ->get();
+            ->get()
+            ->map(function ($attendance) {
+                $attendance->formatted_date = Carbon::parse($attendance->date)->format('l, F d, Y');
+                return $attendance;
+            });
 
         // Step 4: Get project IDs from project_teams
         $projectIds = ProjectTeam::where('web_user_id', $id)->pluck('project_id')->unique();
