@@ -24,6 +24,7 @@ use App\Models\TotalLeaves;
 use App\Models\WebUser;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Models\Task;
 
 class HomePageController extends Controller
 {
@@ -73,76 +74,75 @@ class HomePageController extends Controller
     {
         $today = Carbon::today()->toDateString();
 
-        $selectColumns = [
-            'tasks.date',
-            'tasks.description',
-            'tasks.assigned_by',
-            'tasks.assigned_to',
-            'tasks.project',
-            'projects.name',
-            'projects.progress',
-            'projects.deadline',
-            DB::raw('NULL as schedule_event')
-        ];
+        // 1. Schedules for current month
+        $schedules = Schedule::where('web_user_id', $id)
+            ->whereNotNull('event')
+            ->whereBetween('date', [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()])
+            ->get(['date', 'event as schedule_event'])
+            ->map(function ($item) {
+                return [
+                    'date' => Carbon::parse($item->date)->format('d-m-Y'),
+                    'schedule_event' => $item->schedule_event,
+                ];
+            });
 
-        // Query from tasks base (if tasks exist)
-        $fromTasks = DB::table('tasks')
-            ->leftJoin('project_teams as pt_to', function ($join) {
-                $join->on('pt_to.web_user_id', '=', 'tasks.assigned_to_id');
-            })
-            ->leftJoin('project_teams as pt_by', function ($join) {
-                $join->on('pt_by.web_user_id', '=', 'tasks.assigned_by_id');
-            })
-            ->leftJoin('projects', function ($join) {
-                $join->on('projects.id', '=', 'pt_to.project_id')
-                    ->orOn('projects.id', '=', 'pt_by.project_id');
-            })
-            ->where(function ($query) use ($id) {
-                $query->where('tasks.assigned_to_id', $id)
-                    ->orWhere('tasks.assigned_by_id', $id);
-            })
-            ->whereDate('tasks.date', $today)
-            ->select($selectColumns);
+        // 2. Tasks for today
+        $tasks = Task::whereDate('date', $today)
+            ->with(['projectTeamTo.project', 'projectTeamBy.project'])
+            ->get();
 
-        // Query from projects base (in case tasks don't exist)
-        $fromProjects = DB::table('project_teams')
-            ->join('projects', 'projects.id', '=', 'project_teams.project_id')
-            ->leftJoin('tasks', function ($join) use ($id, $today) {
-                $join->on(function ($sub) {
-                        $sub->on('tasks.assigned_to_id', '=', 'project_teams.web_user_id')
-                            ->orOn('tasks.assigned_by_id', '=', 'project_teams.web_user_id');
-                    })
-                    ->whereDate('tasks.date', $today);
-            })
-            ->where('project_teams.web_user_id', $id)
-            ->select($selectColumns);
+        $assignedTo = $tasks->where('assigned_to_id', $id)->map(function ($task) {
+            $project = optional($task->projectTeamTo->project ?? $task->projectTeamBy->project);
+            return [
+                'date' => Carbon::parse($task->date)->format('d-m-Y'),
+                'description' => $task->description,
+                'assigned_by' => $task->assigned_by,
+                'assigned_to' => $task->assigned_to,
+                'project' => $task->project,
+                'project_name' => $project->name,
+                'progress' => $project->progress,
+                'deadline' => Carbon::parse($project->deadline)->format('d-m-Y'),
+            ];
+        })->values();
 
-        $fromSchedules = DB::table('schedules')
-            ->where('schedules.web_user_id', $id)
-            ->whereNotNull('schedules.event')
-            ->whereBetween('schedules.date', [
-                Carbon::now()->startOfMonth()->toDateString(),
-                Carbon::now()->endOfMonth()->toDateString()
-            ])
-            ->select([
-                'schedules.date',
-                DB::raw('NULL as description'),
-                DB::raw('NULL as assigned_by'),
-                DB::raw('NULL as assigned_to'),
-                DB::raw('NULL as project'),
-                DB::raw('NULL as name'),
-                DB::raw('NULL as progress'),
-                DB::raw('NULL as deadline'),
-                'schedules.event as schedule_event'
-            ]);
+        $assignedBy = $tasks->where('assigned_by_id', $id)->map(function ($task) {
+            $project = optional($task->projectTeamTo->project ?? $task->projectTeamBy->project);
+            return [
+                'date' => Carbon::parse($task->date)->format('d-m-Y'),
+                'description' => $task->description,
+                'assigned_by' => $task->assigned_by,
+                'assigned_to' => $task->assigned_to,
+                'project' => $task->project,
+                'project_name' => $project->name,
+                'progress' => $project->progress,
+                'deadline' => Carbon::parse($project->deadline)->format('d-m-Y'),
+            ];
+        })->values();
 
-        // Combine both using unionAll
-        $data = $fromTasks->unionAll($fromProjects)->unionAll($fromSchedules)->get();
+        // 3. Projects user is involved in
+        $projects = ProjectTeam::where('web_user_id', $id)
+            ->with('project')
+            ->get()
+            ->pluck('project')
+            ->unique('id') // avoid duplicates if user is in multiple roles on same project
+            ->values()
+            ->map(function ($project) {
+                return [
+                    'name' => $project->name,
+                    'progress' => $project->progress,
+                    'deadline' => Carbon::parse($project->deadline)->format('d-m-Y'),
+                ];
+            });
 
         return response()->json([
             'message' => 'Feeds data retrieved successfully',
-            'status' => 'Success',
-            'data' => $data
+            'status' => 'success',
+            'data' => [
+                'schedules' => $schedules,
+                'assigned_to_me' => $assignedTo,
+                'assigned_by_me' => $assignedBy,
+                'projects' => $projects,
+            ]
         ]);
     }
 
