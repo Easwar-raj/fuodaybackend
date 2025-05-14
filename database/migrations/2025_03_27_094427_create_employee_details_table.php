@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('web_user_id')->nullable()->constrained('web_users')->onDelete('cascade');
             $table->string('emp_name')->nullable();
             $table->string('emp_id')->nullable();
+            $table->string('gender')->nullable();
             $table->string('profile_photo')->nullable();
             $table->string('place');
             $table->string('designation');
@@ -33,6 +34,7 @@ return new class extends Migration
             $table->string('pan_no')->nullable();
             $table->string('blood_group')->nullable();
             $table->string('personal_contact_no')->nullable();
+            $table->string('emergency_contact_no')->nullable();
             $table->string('official_contact_no')->nullable();
             $table->string('official_email')->nullable();
             $table->string('permanent_address')->nullable();

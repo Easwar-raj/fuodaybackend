@@ -44,6 +44,8 @@ class AttendancePageController extends Controller
             'total_permission' => 0,
             'total_half_day' => 0,
             'total_punctual' => 0,
+            'total_leave' => 0,
+            'total_holiday' => 0,
             'average_checkin_time' => null,
             'average_checkout_time' => null,
             'average_attendance_percent' => 0,
@@ -86,7 +88,11 @@ class AttendancePageController extends Controller
                 'Early' => $analytics['total_early']++,
                 'Permission' => $analytics['total_permission']++,
                 'Half Day' => $analytics['total_half_day']++,
+                'Leave' => $analytics['total_leave']++,
+                'Holiday' => $analytics['total_holiday']++,
+                default => null,
             };
+
 
             // Punctual check-in before 09:05 AM
             if ($checkin->format('H:i:s') <= '09:05:00') {
@@ -206,7 +212,7 @@ class AttendancePageController extends Controller
 
         // Update checkout time
         $attendance->checkout = $request->checkout;
-        $attendance->worked_hours = $workedHours; 
+        $attendance->worked_hours = $workedHours;
         $attendance->save();
 
         return response()->json(['message' => 'Checkout time updated successfully.'], 200);
