@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Skills;
 use App\Models\Experience;
 use App\Models\Education;
+use App\Models\Onboarding;
 
 class ProfilePageController extends Controller
 {

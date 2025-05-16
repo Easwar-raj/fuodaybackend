@@ -49,22 +49,31 @@ class AttendancePageController extends Controller
             'average_checkin_time' => null,
             'average_checkout_time' => null,
             'average_attendance_percent' => 0,
-            'best_month' => null
+            'best_month' => null,
+            'graph' => []
         ];
 
         $checkinTimes = [];
         $checkoutTimes = [];
+        $monthlyGraph = [];
 
         foreach ($attendances as $a) {
             $date = Carbon::parse($a->date);
             $checkin = Carbon::parse($a->checkin);
-            $checkout = Carbon::parse($a->checkout);
+            $checkout = $a->checkout ? Carbon::parse($a->checkout) : null;
+            $date = Carbon::parse($a->date);
+            $monthLabel = $date->format('F'); // Jan, Feb...
+            $monthKey = $date->format('Y-m');
 
             // Weekday
             $weekday = $date->format('l'); // Monday, Tuesday...
 
             // Worked hours
-            $workedHours = $checkout->diffInMinutes($checkin) / 60;
+            if ($checkin && $checkout) {
+                $workedHours = $checkout->diffInMinutes($checkin) / 60;
+            } else {
+                $workedHours = 0; // or null, or any default fallback
+            }
             $analytics['total_worked_hours'] += $workedHours;
 
             // Collect for average time
@@ -93,7 +102,6 @@ class AttendancePageController extends Controller
                 default => null,
             };
 
-
             // Punctual check-in before 09:05 AM
             if ($checkin->format('H:i:s') <= '09:05:00') {
                 $analytics['total_punctual']++;
@@ -104,31 +112,75 @@ class AttendancePageController extends Controller
                 'date' => $date->format('Y-m-d'),
                 'day' => $weekday,
                 'checkin' => $checkin->format('h:i:s A'),
-                'checkout' => $checkout->format('h:i:s A'),
+                'checkout' => $checkout ? $checkout->format('h:i:s A') : null,
                 'status' => $a->status,
                 'worked_hours' => round($workedHours, 2)
             ];
+
+            if (!isset($monthlyGraph[$monthKey])) {
+                $monthlyGraph[$monthKey] = [
+                    'month' => $monthLabel,
+                    'present' => 0,
+                    'absent' => 0,
+                    'permission' => 0,
+                    'leave' => 0
+                ];
+            }
+
+            switch (strtolower($a->status)) {
+                case 'present':
+                case 'late':
+                case 'early':
+                    $monthlyGraph[$monthKey]['present'] += 1;
+                    break;
+                case 'absent':
+                    $monthlyGraph[$monthKey]['absent'] += 1;
+                    break;
+                case 'permission':
+                    // You can customize this logic based on if it's half/fullday
+                    $monthlyGraph[$monthKey]['permission'] += 1;
+                    break;
+                case 'half day':
+                    $monthlyGraph[$monthKey]['present'] += 0.5;
+                    $monthlyGraph[$monthKey]['leave'] += 0.5;
+                    break;
+                case 'leave':
+                    $monthlyGraph[$monthKey]['leave'] += 1;
+                    break;
+            }
         }
 
+        // Final formatting of graph array
+        $analytics['graph'] = array_values($monthlyGraph);
+ 
         // Average checkin/checkout
         if (count($checkinTimes)) {
-            $avgCheckin = Carbon::createFromTimestamp(
-                array_sum(array_map(fn ($c) => $c->timestamp, $checkinTimes)) / count($checkinTimes)
-            );
-            $analytics['average_checkin_time'] = $avgCheckin->format('h:i:s A');
+            $validCheckinTimes = array_filter($checkinTimes, fn($c) => !is_null($c) && isset($c->timestamp));
+            if (count($validCheckinTimes) > 0) {
+                $avgCheckin = \Carbon\Carbon::createFromTimestamp(
+                    array_sum(array_map(fn ($c) => $c->timestamp, $validCheckinTimes)) / count($validCheckinTimes)
+                );
+                $analytics['average_checkin_time'] = $avgCheckin->format('h:i:s A');
+            } else {
+                $analytics['average_checkin_time'] = null; // or 'N/A', '00:00:00', etc.
+            }
         }
 
         if (count($checkoutTimes)) {
-            $avgCheckout = Carbon::createFromTimestamp(
-                array_sum(array_map(fn ($c) => $c->timestamp, $checkoutTimes)) / count($checkoutTimes)
-            );
-            $analytics['average_checkout_time'] = $avgCheckout->format('h:i:s A');
+            $validCheckoutTimes = array_filter($checkoutTimes, fn($c) => !is_null($c) && isset($c->timestamp));
+            if (count($validCheckoutTimes) > 0) {
+                $avgTimestamp = array_sum(array_map(fn ($c) => $c->timestamp, $validCheckoutTimes)) / count($validCheckoutTimes);
+                $avgCheckout = \Carbon\Carbon::createFromTimestamp($avgTimestamp);
+                $analytics['average_checkout_time'] = $avgCheckout->format('h:i:s A');
+            } else {
+                $analytics['average_checkout_time'] = null; // or 'N/A' or any fallback
+            }
         }
 
         // Average attendance percentage (assuming ~22 workdays per month)
         $totalMonths = count($analytics['monthly_counts']);
         if ($totalMonths) {
-            $percentages = array_map(fn ($c) => ($c / 22) * 100, $analytics['monthly_counts']);
+            $percentages = array_map(fn ($c) => ($c / 28) * 100, $analytics['monthly_counts']);
             $analytics['average_attendance_percent'] = round(array_sum($percentages) / $totalMonths, 2);
             $bestMonthKey = array_keys($analytics['monthly_counts'], max($analytics['monthly_counts']))[0];
             $analytics['best_month'] = Carbon::parse($bestMonthKey . '-01')->format('F Y');

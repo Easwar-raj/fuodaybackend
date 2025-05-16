@@ -15,8 +15,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('admin_user_id')->nullable()->constrained('admin_users')->onDelete('cascade');
             $table->string('company_name')->nullable();
+            $table->date('date');
             $table->string('title');
             $table->string('position');
+            $table->string('no_of_openings');
             $table->string('posted_at')->nullable();
             $table->string('applied')->nullable();
             $table->string('review')->nullable();

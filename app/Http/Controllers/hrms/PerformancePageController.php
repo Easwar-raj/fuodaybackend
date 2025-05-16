@@ -21,7 +21,7 @@ class PerformancePageController extends Controller
     public function getUserTasks($id)
     {
         // Get all tasks assigned to this user
-        $tasks = Task::with(['project', 'assignedBy'])
+        $tasks = Task::with(['project', 'projectTeamBy'])
             ->where('assigned_to_id', $id)
             ->get()
             ->map(function ($task) {
@@ -31,6 +31,7 @@ class PerformancePageController extends Controller
                     'project'     => $task->project ?? null,
                     'priority'    => $task->priority,
                     'status'      => $task->status,
+                    'progress_note' => $task->progress_note,
                     'deadline'    => $task->deadline->format('Y-m-d'),
                     'date'        => $task->date->format('Y-m-d'),
                 ];

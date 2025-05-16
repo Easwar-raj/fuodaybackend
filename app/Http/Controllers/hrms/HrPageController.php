@@ -9,8 +9,6 @@ use App\Models\JobOpening;
 use App\Models\LeaveRequest;
 use App\Models\Projects;
 use App\Models\WebUser;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class HrPageController extends Controller
@@ -113,7 +111,7 @@ class HrPageController extends Controller
         $openPositions = JobOpening::where('admin_user_id', $adminUserId)
             ->where('status', 'Open')
             ->take(3)
-            ->get(['title', 'posted_at']);
+            ->get(['title', 'posted_at', 'no_of_openings']);
 
         return response()->json([
             'stats' => [

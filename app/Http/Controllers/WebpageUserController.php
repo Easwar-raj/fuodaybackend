@@ -463,7 +463,7 @@ class WebpageUserController extends Controller
 
         // Check if the user exists
         $webUser = WebUser::where('email', $request->input('email'))->with(['employeeDetails' => function ($query) {
-            $query->select('web_user_id','profile_photo');
+            $query->select('web_user_id','profile_photo', 'designation');
         }])->first();
 
         if(($webUser->role === 'hr' && $request->role === 'recruiter') || ($webUser->role !== 'hr_recruiter' && $webUser->role !== 'hr'  && $request->role !== $webUser->role)) {
