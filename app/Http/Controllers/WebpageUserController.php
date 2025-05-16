@@ -463,7 +463,7 @@ class WebpageUserController extends Controller
 
         // Check if the user exists
         $webUser = WebUser::where('email', $request->input('email'))->with(['employeeDetails' => function ($query) {
-            $query->select('web_user_id','profile_photo', 'designation');
+            $query->select('web_user_id','profile_photo','designation');
         }])->first();
 
         if(($webUser->role === 'hr' && $request->role === 'recruiter') || ($webUser->role !== 'hr_recruiter' && $webUser->role !== 'hr'  && $request->role !== $webUser->role)) {
@@ -509,7 +509,7 @@ class WebpageUserController extends Controller
             return null; // No empty section found
         }
         $neededSection = (!empty($selections) && isset($selections[0]) && $selections[0]->section_name !== 'all') ? findFirstEmptySection($selections) : 'my_zone';
-
+        // $adminLogo = AdminUser::where($webUser->admin_user_id)->
         return response()->json([
             'status' => 'success',
             'message' => 'Login successful',
