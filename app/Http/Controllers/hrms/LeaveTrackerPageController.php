@@ -78,7 +78,7 @@ class LeaveTrackerPageController extends Controller
             $monthNames = [1=>'Jan', 2=>'Feb', 3=>'March', 4=>'April', 5=>'May', 6=>'June', 7=>'July', 8=>'Aug', 9=>'Sep', 10=>'Oct', 11=>'Nov', 12=>'Dec'];
             return [
                 'month' => $monthNames[$item->month] ?? $item->month,
-                'leave' => $item->leave_days,
+                'leave' => (int)$item->leave_days,
                 'days' => 15 // or calculate dynamically if needed
             ];
         });
@@ -102,7 +102,7 @@ class LeaveTrackerPageController extends Controller
 
         foreach ($leaveTypes as $type => $allowed) {
             $taken = $takenLeaves[$type] ?? 0;
-            $graphRow[$type] = $taken;
+            $graphRow[$type] = (int)$taken;
             $totalAllowed += (int) $allowed;
             $totalTaken += (int) $taken;
         }
