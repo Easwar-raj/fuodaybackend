@@ -462,9 +462,14 @@ class WebpageUserController extends Controller
         }
 
         // Check if the user exists
-        $webUser = WebUser::where('email', $request->input('email'))->with(['employeeDetails' => function ($query) {
-            $query->select('web_user_id','profile_photo','designation');
-        }])->first();
+        $webUser = WebUser::where('email', $request->input('email'))
+            ->with([
+                'employeeDetails' => function ($query) {
+                    $query->select('web_user_id', 'profile_photo', 'designation');
+                },
+                'adminUser:id,logo' // Load only necessary columns
+            ])
+            ->first();
 
         if(($webUser->role === 'hr' && $request->role === 'recruiter') || ($webUser->role !== 'hr_recruiter' && $webUser->role !== 'hr'  && $request->role !== $webUser->role)) {
             return response()->json([
@@ -481,7 +486,6 @@ class WebpageUserController extends Controller
         }
 
         $token = $webUser->createToken('UserAccessToken')->plainTextToken; // use `plainTextToken` instead of `accessToken`
-
         $selections = SectionSelection::where('admin_user_id', $webUser->admin_user_id)->get();
         function findFirstEmptySection($sections, $parentId = null) {
             foreach ($sections as $section) {

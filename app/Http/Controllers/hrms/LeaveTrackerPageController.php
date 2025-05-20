@@ -49,7 +49,7 @@ class LeaveTrackerPageController extends Controller
             ->orderBy('date', 'asc')
             ->get()
             ->map(function ($holiday) {
-                $holiday->date = \Carbon\Carbon::parse($holiday->date)->format('d-m-Y');
+                $holiday->date = Carbon::parse($holiday->date)->format('d-m-Y');
                 return $holiday;
             });
 
@@ -59,9 +59,9 @@ class LeaveTrackerPageController extends Controller
             ->orderBy('date', 'desc')
             ->get()
             ->map(function ($leave) {
-                $leave->date = $leave->date ? \Carbon\Carbon::parse($leave->date)->format('d-m-Y') : null;
-                $leave->from = $leave->from ? \Carbon\Carbon::parse($leave->from)->format('d-m-Y') : null;
-                $leave->to = $leave->to ? \Carbon\Carbon::parse($leave->to)->format('d-m-Y') : null;
+                $leave->date = $leave->date ? Carbon::parse($leave->date)->format('d-m-Y') : null;
+                $leave->from = $leave->from ? Carbon::parse($leave->from)->format('d-m-Y') : null;
+                $leave->to = $leave->to ? Carbon::parse($leave->to)->format('d-m-Y') : null;
                 return $leave;
             });
 

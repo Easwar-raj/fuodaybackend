@@ -33,4 +33,9 @@ class WebUser extends Authenticatable
     {
         return $this->hasOne(Payroll::class, 'web_user_id');
     }
+
+    public function adminUser()
+    {
+        return $this->belongsTo(AdminUser::class);
+    }
 }

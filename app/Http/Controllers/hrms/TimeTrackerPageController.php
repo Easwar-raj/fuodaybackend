@@ -50,8 +50,9 @@ class TimeTrackerPageController extends Controller
             ->where('admin_user_id', $adminUserId)
             ->get()
             ->map(function ($project) {
-                $project->formatted_deadline = \Carbon\Carbon::parse($project->deadline)->format('F j, Y');
-                return $project;
+                $projectArray = $project->toArray();
+                $projectArray['formatted_deadline'] = Carbon::parse($project->deadline)->format('F j, Y');
+                return $projectArray;
             });
 
         $tasks = Task::where('assigned_to_id', $id)

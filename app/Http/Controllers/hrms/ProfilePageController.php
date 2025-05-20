@@ -27,6 +27,7 @@ class ProfilePageController extends Controller
                 'employee_details.department',
                 'employee_details.employment_type',
                 'employee_details.reporting_manager_id',
+                'employee_details.reporting_manager_name',
                 'employee_details.about',
                 'employee_details.dob',
                 'employee_details.address',
