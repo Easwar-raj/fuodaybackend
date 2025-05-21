@@ -9,6 +9,7 @@ use App\Models\Onboarding;
 use App\Models\Payroll;
 use App\Models\Payslip;
 use App\Models\WebUser;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class PayrollPageController extends Controller
@@ -24,7 +25,7 @@ class PayrollPageController extends Controller
                     'payroll_id'       => $payroll->id,
                     'designation'      => $payroll->designation,
                     'date'             => optional($payroll->payslip->date)->format('Y-m-d'),
-                    'time'             => $payroll->payslip->timeformat('h:i:s A'),
+                    'time'             => optional($payroll->payslip)?->time ? Carbon::parse($payroll->payslip->time)->format('h:i A') : null,
                     'total_salary'     => $payroll->monthly_salary,
                     'total_ctc'        => $payroll->ctc,
                     'total_gross'      => $payroll->payslip->gross,

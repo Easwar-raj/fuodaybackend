@@ -22,6 +22,7 @@ class AdminUser extends Model
         'password',
         'company_name',
         'logo',
+        'brand_logo',
         'allowed_users'
     ];
 

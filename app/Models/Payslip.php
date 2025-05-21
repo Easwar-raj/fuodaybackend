@@ -27,4 +27,9 @@ class Payslip extends Model
     protected $casts = [
         'date' => 'date',
     ];
+
+    public function payroll()
+    {
+        return $this->belongsTo(Payroll::class, 'payroll_id');
+    }
 }

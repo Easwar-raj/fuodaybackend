@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('payslip', function (Blueprint $table) {
+        Schema::create('payslips', function (Blueprint $table) {
             $table->id();
             $table->foreignId('payroll_id')->nullable()->constrained('payrolls')->onDelete('cascade');
             $table->date('date')->nullable();

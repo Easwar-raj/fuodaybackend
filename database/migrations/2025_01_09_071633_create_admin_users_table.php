@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('password'); // Store hashed passwords
             $table->string('company_name');
             $table->string('logo')->nullable();
+            $table->string('brand_logo')->nullable();
             $table->string('allowed_users');
             $table->timestamps(); // Created at and updated at columns
         });

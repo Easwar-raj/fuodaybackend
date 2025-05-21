@@ -24,8 +24,7 @@ class LeaveTrackerPageController extends Controller
         $leaveSummary = LeaveRequest::where('web_user_id', $id)
             ->whereIn('status', ['approved', 'pending'])
             ->leftJoin('total_leaves', function ($join) use ($adminUserId) {
-                $join->on('total_leaves.type', '=', 'leave_requests.type')
-                    ->where('total_leaves.admin_user_id', '=', $adminUserId);
+                $join->on('total_leaves.type', '=', 'leave_requests.type')->where('total_leaves.admin_user_id', '=', $adminUserId);
             })
             ->select(
                 'total_leaves.type',
@@ -49,7 +48,11 @@ class LeaveTrackerPageController extends Controller
             ->orderBy('date', 'asc')
             ->get()
             ->map(function ($holiday) {
-                $holiday->date = Carbon::parse($holiday->date)->format('d-m-Y');
+                if (!empty($holiday->date)) {
+                    $holiday->formatted_date = Carbon::parse($holiday->date)->format('d-m-Y');
+                } else {
+                    $holiday->formatted_date = null;
+                }
                 return $holiday;
             });
 

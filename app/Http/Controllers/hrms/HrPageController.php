@@ -9,6 +9,7 @@ use App\Models\JobOpening;
 use App\Models\LeaveRequest;
 use App\Models\Projects;
 use App\Models\WebUser;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class HrPageController extends Controller
@@ -89,7 +90,7 @@ class HrPageController extends Controller
                 return [
                     'name' => $project->name,
                     'domain' => $project->domain,
-                    'deadline' => $project->deadline,
+                    'deadline' => $project->deadline->format('Y-m-d'),
                     'team_members' => $project->projectTeam->map(function ($team) {
                         return [
                             'name' => $team->webUser->name ?? null,
@@ -105,7 +106,13 @@ class HrPageController extends Controller
             ->get(['id', 'name', 'role', 'emp_id'])
             ->sortByDesc(fn ($user) => $user->employeeDetails->date_of_joining)
             ->take(4)
-            ->values(); // Reset the keys
+            ->values()
+            ->map(function ($user) {
+                if ($user->employeeDetails && $user->employeeDetails->date_of_joining) {
+                    $user->employeeDetails->date_of_joining = Carbon::parse($user->employeeDetails->date_of_joining)->format('Y-m-d');
+                }
+                return $user;
+            });
 
         // Open Positions
         $openPositions = JobOpening::where('admin_user_id', $adminUserId)

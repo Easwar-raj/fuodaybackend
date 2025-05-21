@@ -23,6 +23,7 @@ class AttendancePageController extends Controller
                 'checkout',
                 'status',
             ])
+            ->orderBy('date', 'desc')
             ->get();
 
         if ($attendances->isEmpty()) {
@@ -152,7 +153,7 @@ class AttendancePageController extends Controller
 
         // Final formatting of graph array
         $analytics['graph'] = array_values($monthlyGraph);
- 
+
         // Average checkin/checkout
         if (count($checkinTimes)) {
             $validCheckinTimes = array_filter($checkinTimes, fn($c) => !is_null($c) && isset($c->timestamp));
@@ -211,15 +212,9 @@ class AttendancePageController extends Controller
 
         // Get current date (today)
         $today = Carbon::today()->toDateString();
-
-        // Check if attendance for today already exists
-        $attendance = Attendance::where('web_user_id', $request->web_user_id)->where('date', $today)->first();
         $empDetails = EmployeeDetails::where('web_user_id', $request->web_user_id)->first();
         if (!$empDetails) {
             return response()->json(['message' => 'Employee details not found.'], 404);
-        }
-        if ($attendance) {
-            return response()->json(['message' => 'Attendance for today already exists.'], 400);
         }
 
         $newAttendance = Attendance::create([
@@ -247,20 +242,20 @@ class AttendancePageController extends Controller
         $today = Carbon::today()->toDateString();
 
         // Find today's attendance for the given web_user_id
-        $attendance = Attendance::where('web_user_id', $request->web_user_id)->where('date', $today)->first();
+        $attendance = Attendance::where('web_user_id', $request->web_user_id)->where('date', $today)->orderBy('created_at', 'desc')->first();
 
         // If no attendance record found for today, return error
-        if (!$attendance) {
+        if (!$attendance || $attendance->checkout) {
             return response()->json(['message' => 'Attendance record for today not found.'], 404);
         }
 
         $checkin = Carbon::parse($attendance->checkin);
         $checkout = Carbon::parse($request->checkout);
-
         $diffInMinutes = $checkin->diffInMinutes($checkout);
         $hours = floor($diffInMinutes / 60);
         $minutes = $diffInMinutes % 60;
         $workedHours = sprintf('%02d:%02d hours', $hours, $minutes);
+
 
         // Update checkout time
         $attendance->checkout = $request->checkout;
@@ -269,5 +264,4 @@ class AttendancePageController extends Controller
 
         return response()->json(['message' => 'Checkout time updated successfully.'], 200);
     }
-
 }

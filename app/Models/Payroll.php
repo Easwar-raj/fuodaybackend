@@ -24,7 +24,7 @@ class Payroll extends Model
 
     public function payslip()
     {
-        return $this->belongsTo(Payslip::class, 'payroll_id');
+        return $this->hasOne(Payslip::class, 'payroll_id');
     }
 
     public function incentives()

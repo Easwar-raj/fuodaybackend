@@ -87,9 +87,7 @@ class HomePageController extends Controller
             });
 
         // 2. Tasks for today
-        $tasks = Task::whereDate('date', $today)
-            ->with(['projectTeamTo.project', 'projectTeamBy.project'])
-            ->get();
+        $tasks = Task::with(['projectTeamTo.project', 'projectTeamBy.project'])->get();
 
         $assignedTo = $tasks->where('assigned_to_id', $id)->map(function ($task) {
             $project = optional($task->projectTeamTo->project ?? $task->projectTeamBy->project);
@@ -388,7 +386,7 @@ class HomePageController extends Controller
                 return [
                     'name' => $project->name,
                     'domain' => $project->domain,
-                    'deadline' => $project->deadline,
+                    'deadline' => $project->deadline->format('Y-m-d'),
                     'team_members' => $project->projectTeam->map(function ($team) {
                         return [
                             'name' => $team->webUser->name ?? null,
