@@ -14,6 +14,7 @@ class Payslip extends Model
         'payroll_id',
         'date',
         'time',
+        'month',
         'basic',
         'overtime',
         'total_paid_days',

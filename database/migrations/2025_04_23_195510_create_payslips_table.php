@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('payroll_id')->nullable()->constrained('payrolls')->onDelete('cascade');
             $table->date('date')->nullable();
             $table->string('time')->nullable();
+            $table->string('month')->nullable();
             $table->string('basic')->nullable();
             $table->string('overtime')->nullable();
             $table->string('total_paid_days')->nullable();

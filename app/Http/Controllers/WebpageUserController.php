@@ -382,7 +382,6 @@ class WebpageUserController extends Controller
         ], 200);
     }
 
-
     // Delete a web user
     public function destroy($id)
     {

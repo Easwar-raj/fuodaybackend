@@ -49,7 +49,7 @@ class PayrollPageController extends Controller
             'data' => [
                 'total_ctc'         => $latestPayroll->ctc ?? 0,
                 'total_salary'      => $latestPayroll->monthly_salary ?? 0,
-                'total_deductions'  => $latestPayroll->payslip->total_deductions ?? 0,
+                'current_month_salary' => $latestPayroll->payslip->total_salary ?? 0,
                 'total_gross'       => $latestPayroll->payslip->gross ?? 0,
                 'payrolls' => $payrolls,
                 'incentives' => $incentives

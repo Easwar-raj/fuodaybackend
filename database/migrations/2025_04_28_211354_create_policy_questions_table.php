@@ -82,6 +82,28 @@ return new class extends Migration
                     'Other',
                 ]),
             ],
+            [
+                'question' => 'Choose your organization\'s salary calculation period?',
+                'options' => json_encode([
+                    '26 to 25th of every month',
+                    '1st to 31st of every month',
+                    '15th to 14th of every month',
+                    '1st to 15th of every month',
+                    '15th to 30th of every month',
+                    'Other',
+                ]),
+            ],
+            [
+                'question' => 'What is the salary date for your organization?',
+                'options' => json_encode([
+                    '26th of every month',
+                    '1st of every month',
+                    '5th of every month',
+                    '10th of every month',
+                    '15th of every month',
+                    'Other',
+                ]),
+            ],
         ]);
     }
 

@@ -10,7 +10,7 @@ class AttendanceService
     public static function verifyAttendanceStatuses()
     {
         $today = Carbon::today();
-        $weekday = strtolower($today->format('l')); // e.g., 'saturday'
+        $weekday = strtolower($today->format('l'));
         $attendances = Attendance::whereDate('date', $today)->get();
 
         // === Fetch Policies ===
@@ -23,6 +23,8 @@ class AttendanceService
             "Is LOP applied for unauthorized leaves?",
             "Is LOP applied when employees exhaust their leave quota?",
             "Which days are considered weekly holidays in your organization?",
+            "salary_period",
+            "salary_date"
         ])->pluck('policy', 'title');
 
         // === Parse Policies ===
@@ -36,15 +38,13 @@ class AttendanceService
             }
         }
 
-        $dailyWorkHours = 8;
-        if (isset($policies["What is the standard work time per day in your organization?"])) {
-            $dailyWorkHours = (int) filter_var($policies["What is the standard work time per day in your organization?"], FILTER_SANITIZE_NUMBER_INT);
-        }
+        $dailyWorkHours = isset($policies["What is the standard work time per day in your organization?"])
+            ? (int) filter_var($policies["What is the standard work time per day in your organization?"], FILTER_SANITIZE_NUMBER_INT)
+            : 8;
 
-        $breakTimeHours = 1;
-        if (isset($policies["How many hours of break time are provided per day in your organization?"])) {
-            $breakTimeHours = (int) filter_var($policies["How many hours of break time are provided per day in your organization?"], FILTER_SANITIZE_NUMBER_INT);
-        }
+        $breakTimeHours = isset($policies["How many hours of break time are provided per day in your organization?"])
+            ? (int) filter_var($policies["How many hours of break time are provided per day in your organization?"], FILTER_SANITIZE_NUMBER_INT)
+            : 1;
 
         $lateArrivalWarnings = null;
         if (isset($policies["Do employees receive LOP for late arrivals? If yes, after how many warnings?"])) {
@@ -56,8 +56,56 @@ class AttendanceService
 
         $weeklyHolidays = [];
         if (isset($policies["Which days are considered weekly holidays in your organization?"])) {
-            $weeklyHolidays = array_map('strtolower', explode(',', $policies["Which days are considered weekly holidays in your organization?"]));
-            $weeklyHolidays = array_map('trim', $weeklyHolidays);
+            $weeklyHolidays = array_map('strtolower', array_map('trim', explode(',', $policies["Which days are considered weekly holidays in your organization?"])));
+        }
+
+        // Payslip generation day check
+        $salaryPeriod = $policies['salary_period'] ?? null;
+        $salaryDateDay = $policies['salary_date'] ?? null;
+
+        if ($salaryPeriod && $salaryDateDay) {
+            $startDay = (int) explode('To', $salaryPeriod)[0];
+            $triggerDay = $startDay - 1;
+            if ((int)$today->format('d') === $triggerDay) {
+                foreach ($attendances as $attendance) {
+                    $userId = $attendance->user_id;
+                    $webUserId = User::find($userId)->web_user_id ?? null;
+                    if (!$webUserId) continue;
+
+                    $payroll = Payroll::where('web_user_id', $webUserId)->first();
+                    if (!$payroll) continue;
+
+                    // === Determine period days ===
+                    [$periodStart, $periodEnd] = explode('To', $salaryPeriod);
+                    $periodDays = (int) Carbon::createFromFormat('d', trim($periodEnd))
+                        ->diffInDays(Carbon::createFromFormat('d', trim($periodStart)), false) + 1;
+
+                    $basic = $payroll->monthy_salary ?? '0';
+                    $basicFloat = (float) $basic;
+
+                    $earnings = Payroll::where('web_user_id', $webUserId)->where('type', 'earnings')->sum('amount');
+                    $deductions = Payroll::where('web_user_id', $webUserId)->where('type', 'deductions')->sum('amount');
+
+                    $gross = $basicFloat + $earnings;
+                    $totalDeductions = $deductions;
+                    $totalSalary = $gross - $totalDeductions;
+
+                    Payslip::create([
+                        'payroll_id' => $payroll->id,
+                        'date' => Carbon::createFromFormat('d', $salaryDateDay)->format('Y-m-d'),
+                        'time' => null,
+                        'month' => $today->format('F'),
+                        'basic' => $basicFloat,
+                        'overtime' => null,
+                        'total_paid_days' => $periodDays,
+                        'lop' => 0,
+                        'gross' => $gross,
+                        'total_deductions' => $totalDeductions,
+                        'total_salary' => $totalSalary,
+                        'status' => 'unpaid',
+                    ]);
+                }
+            }
         }
 
         // === Check if today is a company holiday ===
@@ -66,15 +114,8 @@ class AttendanceService
         foreach ($attendances as $attendance) {
             $userId = $attendance->user_id;
 
-            // === Check company holiday first
-            if ($isCompanyHoliday) {
-                $attendance->status = 'Holiday';
-                $attendance->save();
-                continue;
-            }
-
-            // === Check weekly holiday
-            if (in_array($weekday, $weeklyHolidays)) {
+            // === Check holiday types
+            if ($isCompanyHoliday || in_array($weekday, $weeklyHolidays)) {
                 $attendance->status = 'Holiday';
                 $attendance->save();
                 continue;
@@ -93,48 +134,74 @@ class AttendanceService
                 continue;
             }
 
-            // === Fetch shift schedule
+            // === Shift Timings
             $schedule = Schedule::where('user_id', $userId)->whereDate('date', $today)->first();
             $shiftStart = $schedule ? Carbon::parse($schedule->start_time)->format('H:i') : $defaultShiftStart;
             $shiftEnd = $schedule ? Carbon::parse($schedule->end_time)->format('H:i') : $defaultShiftEnd;
 
-            $expectedWorkHours = $dailyWorkHours;
-
             $checkin = $attendance->checkin ? Carbon::parse($attendance->checkin) : null;
             $checkout = $attendance->checkout ? Carbon::parse($attendance->checkout) : null;
 
+            $originalStatus = $attendance->status;
+            $newStatus = 'Absent';
+
             if (!$checkin && !$checkout) {
-                $attendance->status = 'Absent';
+                $newStatus = 'Absent';
             } else {
                 if ($checkin && $checkout) {
                     $hoursWorked = $checkout->diffInMinutes($checkin) / 60 - $breakTimeHours;
                     $shiftStartCarbon = Carbon::createFromFormat('H:i', $shiftStart);
                     $lateThreshold = $shiftStartCarbon->copy()->addMinutes(15);
 
-                    if ($hoursWorked >= $expectedWorkHours) {
+                    if ($hoursWorked >= $dailyWorkHours) {
                         if ($checkin->gt($lateThreshold)) {
                             $attendance->late_warnings = ($attendance->late_warnings ?? 0) + 1;
-                            if ($lateArrivalWarnings && $attendance->late_warnings > $lateArrivalWarnings) {
-                                $attendance->status = 'LOP';
-                            } else {
-                                $attendance->status = 'Late Present';
-                            }
+                            $newStatus = ($lateArrivalWarnings && $attendance->late_warnings > $lateArrivalWarnings) ? 'LOP' : 'Late Present';
                         } else {
-                            $attendance->status = 'Present';
+                            $newStatus = 'Present';
                         }
-                    } elseif ($hoursWorked >= ($expectedWorkHours / 2)) {
-                        $attendance->status = 'Half Day';
+                    } elseif ($hoursWorked >= ($dailyWorkHours / 2)) {
+                        $newStatus = 'Half Day';
                     } else {
-                        $attendance->status = 'LOP';
+                        $newStatus = 'LOP';
                     }
                 } elseif ($checkin && !$checkout) {
-                    $attendance->status = 'Checkout Missing';
+                    $newStatus = 'Checkout Missing';
                 } elseif (!$checkin && $checkout) {
-                    $attendance->status = 'Checkin Missing';
+                    $newStatus = 'Checkin Missing';
                 }
             }
 
+            $attendance->status = $newStatus;
             $attendance->save();
+
+            // === If updated to LOP, update payslip
+            if ($newStatus === 'LOP') {
+                $webUserId = User::find($userId)->web_user_id ?? null;
+                if (!$webUserId) continue;
+
+                $payroll = Payroll::where('web_user_id', $webUserId)->first();
+                if (!$payroll) continue;
+
+                $payslip = Payslip::where('payroll_id', $payroll->id)->where('month', $today->month)->whereYear('date', $today->year)->first();
+                if (!$payslip) continue;
+
+                $existingLOP = (int) ($payslip->lop ?? 0);
+                $payslip->lop = $existingLOP + 1;
+
+                // Recalculate salary
+                [$periodStart, $periodEnd] = explode('To', $salaryPeriod);
+                $periodDays = (int) Carbon::createFromFormat('d', trim($periodEnd))
+                    ->diffInDays(Carbon::createFromFormat('d', trim($periodStart)), false) + 1;
+
+                $perDaySalary = $payslip->total_paid_days ? ((float)$payslip->gross / $payslip->total_paid_days) : 0;
+                $deductedAmount = $perDaySalary;
+
+                $payslip->total_deductions = (float)$payslip->total_deductions + $deductedAmount;
+                $payslip->total_salary = (float)$payslip->total_salary - $deductedAmount;
+
+                $payslip->save();
+            }
         }
     }
 }
