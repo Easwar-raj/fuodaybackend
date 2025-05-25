@@ -468,7 +468,7 @@ class WebpageUserController extends Controller
                 'employeeDetails' => function ($query) {
                     $query->select('web_user_id', 'profile_photo', 'designation');
                 },
-                'adminUser:id,logo'
+                'adminUser:id,logo,company_name'
             ])
             ->first();
 
@@ -515,11 +515,17 @@ class WebpageUserController extends Controller
         }
         $neededSection = (!empty($selections) && isset($selections[0]) && $selections[0]->section_name !== 'all') ? findFirstEmptySection($selections) : 'my_zone';
 
+        $companyWord = null;
+        if ($webUser->adminUser && $webUser->adminUser->company_name) {
+            $companyWord = strtolower(strtok($webUser->adminUser->company_name, ' '));
+        }
+
         return response()->json([
             'status' => 'Success',
             'message' => 'Login successful',
             'data' => $webUser,
             'token' => $token,
+            'company_word' => $companyWord,
         ], 200);
     }
     // Logout with Sanctum
