@@ -142,8 +142,10 @@ class ProfilePageController extends Controller
         return response()->json([
             'message' => 'Profile updated successfully.',
             'status' => 'Success',
-            'user' => $webUser,
-            'employee_details' => $employeeDetail
+            'data' => [
+                'user' => $webUser,
+                'employee_details' => $employeeDetail
+            ]
         ], 200);
     }
 
@@ -180,8 +182,7 @@ class ProfilePageController extends Controller
         return response()->json([
             'message' => 'Skill updated or created successfully.',
             'status' => 'Success',
-            'data' => $skill
-        ]);
+        ], 200);
     }
 
     public function updateOrCreateEducation(Request $request)
@@ -219,8 +220,7 @@ class ProfilePageController extends Controller
         return response()->json([
             'message' => 'Education record updated or created successfully.',
             'status' => 'Success',
-            'data' => $education
-        ]);
+        ], 200);
     }
 
     public function updateOrCreateExperience(Request $request)
@@ -265,8 +265,7 @@ class ProfilePageController extends Controller
         return response()->json([
             'message' => 'Experience record updated or created successfully.',
             'status'  => 'Success',
-            'data'    => $experience
-        ]);
+        ], 200);
     }
 
     public function updateOnboardingDocuments(Request $request)
@@ -312,7 +311,6 @@ class ProfilePageController extends Controller
         return response()->json([
             'message' => 'Onboarding documents updated successfully.',
             'status'  => 'Success',
-            'data'    => $onboarding
-        ]);
+        ], 200);
     }
 }

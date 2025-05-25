@@ -115,13 +115,16 @@ class LeaveTrackerPageController extends Controller
 
         // Step 7: Final JSON response
         return response()->json([
-            'status' => 'success',
-            'leave_summary' => $leaveSummary,
-            'holidays' => $holidays,
-            'leave_report' => $leaveReport,
-            'monthly_graph' => $monthlyGraph,
-            'graph' => $graph
-        ]);
+            'status' => 'Success',
+            'message' => 'Leave status fetched successfully.',
+            'data' => [
+                'leave_summary' => $leaveSummary,
+                'holidays' => $holidays,
+                'leave_report' => $leaveReport,
+                'monthly_graph' => $monthlyGraph,
+                'graph' => $graph
+            ],
+        ], 200);
     }
 
     public function addLeave(Request $request)
@@ -157,8 +160,9 @@ class LeaveTrackerPageController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Leave request added successfully.'
-        ]);
+            'message' => 'Leave request added successfully.',
+            'status' => 'Success'
+        ], 201);
     }
 
 

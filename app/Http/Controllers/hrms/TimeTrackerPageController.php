@@ -36,11 +36,24 @@ class TimeTrackerPageController extends Controller
 
         $attendances = Attendance::where('web_user_id', $id)
             ->whereBetween('date', [$startOfWeek, $endOfWeek])
+            ->orderBy('date')
+            ->orderBy('login_time') // assuming you have login_time and logout_time
             ->get()
-            ->map(function ($attendance) {
-                $attendance->formatted_date = Carbon::parse($attendance->date)->format('l, F d, Y');
-                return $attendance;
-            });
+            ->groupBy(function ($attendance) {
+                return Carbon::parse($attendance->date)->toDateString(); // group by date
+            })
+            ->map(function ($dayAttendances, $date) {
+                $first = $dayAttendances->first();
+                $last = $dayAttendances->last();
+
+                return (object)[
+                    'date' => Carbon::parse($date)->format('l, F d, Y'),
+                    'first_login' => $first->login_time,
+                    'last_logout' => $last->logout_time,
+                    'entries' => $dayAttendances, // optional: keep all raw entries if needed
+                ];
+            })
+            ->values(); // reset keys for clean array
 
         // Step 4: Get project IDs from project_teams
         $projectIds = ProjectTeam::where('web_user_id', $id)->pluck('project_id')->unique();
@@ -61,11 +74,15 @@ class TimeTrackerPageController extends Controller
             ->groupBy('project_id');
 
         return response()->json([
-            'policies' => $policy,
-            'attendances_this_week' => $attendances,
-            'projects' => $projects,
-            'tasks' => $tasks,
-        ]);
+            'message' => 'Time Tracker Data Retrieved Successfully',
+            'status' => 'Success',
+            'data' => [
+                'policies' => $policy,
+                'attendances_this_week' => $attendances,
+                'projects' => $projects,
+                'tasks' => $tasks,
+            ],
+        ], 200);
     }
 
     public function addShiftSchedule(Request $request)
@@ -95,7 +112,8 @@ class TimeTrackerPageController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Shift schedule added successfully.'
+            'message' => 'Shift schedule added successfully.',
+            'status' => 'Success',
         ], 201);
     }
 
@@ -124,8 +142,12 @@ class TimeTrackerPageController extends Controller
             ->get();
 
         return response()->json([
-            'month' => $month,
-            'shifts' => $shifts
+            'message' => 'Monthly Shifts Retrieved Successfully',
+            'status' => 'Success',
+            'data' => [
+                'month' => $month,
+                'shifts' => $shifts
+            ]
         ]);
     }
 

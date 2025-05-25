@@ -17,6 +17,16 @@ class PayrollPageController extends Controller
     public function getPayrollDetails($id)
     {
         $incentives = Incentives::where('web_user_id', $id)->sum('amount');
+
+        $latestPayroll = Payroll::where('web_user_id', $id)
+            ->whereHas('payslip') // make sure it has a payslip
+            ->with('payslip')
+            ->get()
+            ->sortByDesc(function ($payroll) {
+                return $payroll->payslip->date ?? now()->subYears(10); // fallback to a very old date if null
+            })
+            ->first();
+
         // Fetch payrolls for the admin_user_id
         $payrolls = Payroll::where('web_user_id', $id)->with('payslip')
             ->get()
@@ -27,7 +37,6 @@ class PayrollPageController extends Controller
                     'date'             => optional($payroll->payslip->date)->format('Y-m-d'),
                     'time'             => optional($payroll->payslip)?->time ? Carbon::parse($payroll->payslip->time)->format('h:i A') : null,
                     'total_salary'     => $payroll->monthly_salary,
-                    'total_ctc'        => $payroll->ctc,
                     'total_gross'      => $payroll->payslip->gross,
                     'total_deductions' => $payroll->payslip->total_deductions,
                     'status'           => $payroll->payslip->status,
@@ -35,9 +44,17 @@ class PayrollPageController extends Controller
             });
 
         return response()->json([
-            'payrolls' => $payrolls,
-            'incentives' => $incentives
-        ]);
+            'status' => 'Success',
+            'message' => 'Payroll details fetched successfully.',
+            'data' => [
+                'total_ctc'         => $latestPayroll->ctc ?? 0,
+                'total_salary'      => $latestPayroll->monthly_salary ?? 0,
+                'total_deductions'  => $latestPayroll->payslip->total_deductions ?? 0,
+                'total_gross'       => $latestPayroll->payslip->gross ?? 0,
+                'payrolls' => $payrolls,
+                'incentives' => $incentives
+            ],
+        ], 200);
     }
 
     public function getCurrentPayrollDetails($id)
@@ -63,11 +80,10 @@ class PayrollPageController extends Controller
             ], 404);
         }
 
-        // Step 2: Get Payroll components for this user and month
-        $payrollComponents = Payroll::where('web_user_id', $id)
-            ->whereMonth('created_at', optional($payslip->date)->month)
-            ->whereYear('created_at', optional($payslip->date)->year)
-            ->get();
+        // Get latest updated salary components
+        $latestPayrollDate = Payroll::where('web_user_id', $id)->orderByDesc('updated_at')->value('updated_at'); // get latest update timestamp
+
+        $payrollComponents = Payroll::where('web_user_id', $id)->whereDate('updated_at', $latestPayrollDate)->get()->groupBy('type'); // Group by type
 
         // Step 3: Get WebUser + EmployeeDetails
         $webUser = WebUser::with('employeeDetails')->find($id);
@@ -78,46 +94,53 @@ class PayrollPageController extends Controller
 
         // Step 5: Format Response
         return response()->json([
-            'payslip' => [
-                'month'            => optional($payslip->date)->format('F Y'),
-                'basic'            => $payslip->basic,
-                'overtime'         => $payslip->overtime,
-                'total_paid_days'  => $payslip->total_paid_days,
-                'lop'              => $payslip->lop,
-                'gross'            => $payslip->gross,
-                'total_deductions' => $payslip->total_deductions,
-                'total_salary'     => $payslip->total_salary,
-                'status'           => $payslip->status,
-                'date'             => optional($payslip->date)->format('Y-m-d'),
-            ],
+            'status' => 'Success',
+            'message' => 'Current payroll details fetched successfully.',
+            'data' => [
+                'payslip' => [
+                    'month'            => optional($payslip->date)->format('F Y'),
+                    'basic'            => $payslip->basic,
+                    'overtime'         => $payslip->overtime,
+                    'total_paid_days'  => $payslip->total_paid_days,
+                    'lop'              => $payslip->lop,
+                    'gross'            => $payslip->gross,
+                    'total_deductions' => $payslip->total_deductions,
+                    'total_salary'     => $payslip->total_salary,
+                    'status'           => $payslip->status,
+                    'date'             => optional($payslip->date)->format('Y-m-d'),
+                ],
 
-            'salary_components' => $payrollComponents->map(function($component) {
-                return [
-                    'emp_name'         => $component->emp_name,
-                    'emp_id'           => $component->emp_id,
-                    'designation'      => $component->designation,
-                    'ctc'              => $component->ctc,
-                    'monthly_salary'   => $component->monthy_salary,
-                    'salary_component' => $component->salary_component,
-                    'type'             => $component->type,
-                    'amount'           => $component->amount,
-                ];
-            }),
+                // ✅ Grouped salary components by type
+                'salary_components' => $payrollComponents->map(function($group) {
+                    return $group->map(function($component) {
+                        return [
+                            'emp_name'         => $component->emp_name,
+                            'emp_id'           => $component->emp_id,
+                            'designation'      => $component->designation,
+                            'ctc'              => $component->ctc,
+                            'monthly_salary'   => $component->monthy_salary,
+                            'salary_component' => $component->salary_component,
+                            'type'             => $component->type,
+                            'amount'           => $component->amount,
+                        ];
+                    });
+                }),
 
-            'employee_details' => [
-                'name'             => $webUser->name,
-                'designation'      => $employeeDetail->designation ?? null,
-                'emp_id'           => $webUser->emp_id,
-                'date_of_joining'  => $employeeDetail?->date_of_joining ? $employeeDetail->date_of_joining->format('Y-m-d') : null,
-                'year'             => $employeeDetail?->date_of_joining ? $employeeDetail->date_of_joining->format('Y') : null,
-            ],
+                'employee_details' => [
+                    'name'             => $webUser->name,
+                    'designation'      => $employeeDetail->designation ?? null,
+                    'emp_id'           => $webUser->emp_id,
+                    'date_of_joining'  => $employeeDetail?->date_of_joining ? $employeeDetail->date_of_joining->format('Y-m-d') : null,
+                    'year'             => $employeeDetail?->date_of_joining ? $employeeDetail->date_of_joining->format('Y') : null,
+                ],
 
-            'onboarding_details' => [
-                'pf_account_no'     => $onboarding->pf_account_no ?? null,
-                'uan'               => $onboarding->uan ?? null,
-                'esi_no'            => $onboarding->esi_no ?? null,
-                'bank_account_no'   => $onboarding->account_no ?? null,
+                'onboarding_details' => [
+                    'pf_account_no'     => $onboarding->pf_account_no ?? null,
+                    'uan'               => $onboarding->uan ?? null,
+                    'esi_no'            => $onboarding->esi_no ?? null,
+                    'bank_account_no'   => $onboarding->account_no ?? null,
+                ],
             ],
-        ]);
+        ], 200);
     }
 }

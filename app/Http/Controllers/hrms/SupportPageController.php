@@ -33,9 +33,10 @@ class SupportPageController extends Controller
         });
 
         return response()->json([
-            'message' => 'Success',
-            'tickets' => $groupedTickets,
-        ]);
+            'message' => 'Successfully fetched tickets',
+            'status' => 'success',
+            'data' => $groupedTickets,
+        ], 200);
     }
 
     public function addTicket(Request $request)
@@ -91,7 +92,8 @@ class SupportPageController extends Controller
 
         // Step 4: Return success response
         return response()->json([
-            'message' => 'Ticket created successfully'
+            'message' => 'Ticket created successfully',
+            'status' => 'success'
         ], 201);
     }
 
@@ -139,7 +141,8 @@ class SupportPageController extends Controller
         $ticket->save();
 
         return response()->json([
-            'message' => 'Ticket status updated successfully'
+            'message' => 'Ticket status updated successfully',
+            'status' => 'success',
         ], 200);
     }
 

@@ -182,9 +182,9 @@ class WebpageUserController extends Controller
             $webUser->payroll()->update($payrollData);
 
             return response()->json([
-                'status' => 'success',
+                'status' => 'Success',
                 'message' => 'Web user updated successfully.'
-            ]);
+            ], 200);
         }
 
         return response()->json([
@@ -345,7 +345,7 @@ class WebpageUserController extends Controller
         }
 
 
-        return response()->json(['status' => 'success', 'message' => 'Web user updated successfully.'], 200);
+        return response()->json(['status' => 'Success', 'message' => 'Web user updated successfully.'], 200);
     }
 
     public function getWebUserById(Request $request)
@@ -376,9 +376,10 @@ class WebpageUserController extends Controller
         ])->where('admin_user_id', $request->admin_user_id)->where('id', $request->web_user_id)->first();
 
         return response()->json([
-            'status' => 'success',
+            'status' => 'Success',
+            'message' => 'Web user details fetched successfully.',
             'data' => $webUsers
-        ]);
+        ], 200);
     }
 
 
@@ -406,7 +407,7 @@ class WebpageUserController extends Controller
 
         $webUser->delete();
 
-        return response()->json(['status' => 'success', 'message' => 'Web user deleted successfully.'], 200);
+        return response()->json(['status' => 'Success', 'message' => 'Web user deleted successfully.'], 200);
     }
 
     public function index(Request $request)
@@ -439,7 +440,7 @@ class WebpageUserController extends Controller
         }
 
         return response()->json([
-            'status' => 'success',
+            'status' => 'Success',
             'message' => 'List of users based on role.',
             'data' => $webUsers,
         ], 200);
@@ -515,7 +516,7 @@ class WebpageUserController extends Controller
         $neededSection = (!empty($selections) && isset($selections[0]) && $selections[0]->section_name !== 'all') ? findFirstEmptySection($selections) : 'my_zone';
 
         return response()->json([
-            'status' => 'success',
+            'status' => 'Success',
             'message' => 'Login successful',
             'data' => $webUser,
             'token' => $token,
@@ -537,7 +538,7 @@ class WebpageUserController extends Controller
         $user->tokens()->delete();
 
         return response()->json([
-            'status' => 'success',
+            'status' => 'Success',
             'message' => 'Logout successful. All tokens have been revoked.',
         ], 200);
     }
@@ -549,7 +550,7 @@ class WebpageUserController extends Controller
         $webUsers = WebUser::all();
 
         return response()->json([
-            'status' => 'success',
+            'status' => 'Success',
             'message' => 'List of all created users.',
             'data' => $webUsers,
         ], 200);
@@ -576,7 +577,7 @@ class WebpageUserController extends Controller
         );
 
         if ($response == Password::RESET_LINK_SENT) {
-            return response()->json(['message' => 'Password reset link sent successfully.']);
+            return response()->json(['message' => 'Password reset link sent successfully.', 'status' => 'Success'], 200);
         }
 
         return response()->json(['message' => 'Failed to send reset link, please check your email.'], 400);
@@ -610,7 +611,7 @@ public function reset(Request $request)
 
     // Check the response status
     if ($response == Password::PASSWORD_RESET) {
-        return response()->json(['message' => 'Password reset successfully.']);
+        return response()->json(['message' => 'Password reset successfully.', 'status' => 'Success'], 200);
     }
 
     return response()->json(['message' => 'Failed to reset password, invalid token or email.'], 400);

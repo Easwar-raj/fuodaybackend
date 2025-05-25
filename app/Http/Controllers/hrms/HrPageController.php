@@ -121,25 +121,29 @@ class HrPageController extends Controller
             ->get(['title', 'posted_at', 'no_of_openings']);
 
         return response()->json([
-            'stats' => [
-                'totalEmployees' => $totalEmployees,
-                'employeeChange' => round($employeeChange, 2),
-                'totalLeaveRequests' => $totalLeaveRequests,
-                'leaveChange' => round($leaveChange, 2),
-                'totalPermissions' => $totalPermissions,
-                'permissionChange' => round($permissionChange, 2),
+            'message' => 'HR Dashboard Data Retrieved Successfully',
+            'status' => 'Success',
+            'data' => [
+                'stats' => [
+                    'totalEmployees' => $totalEmployees,
+                    'employeeChange' => round($employeeChange, 2),
+                    'totalLeaveRequests' => $totalLeaveRequests,
+                    'leaveChange' => round($leaveChange, 2),
+                    'totalPermissions' => $totalPermissions,
+                    'permissionChange' => round($permissionChange, 2),
+                ],
+                'attendanceToday' => [
+                    'early' => $early,
+                    'regular' => $regular,
+                    'late' => $late,
+                    'total' => $totalAttendance,
+                ],
+                'employeeChart' => $employeeChart,
+                'projects' => $projects,
+                'recentEmployees' => $recentEmployees,
+                'openPositions' => $openPositions,
             ],
-            'attendanceToday' => [
-                'early' => $early,
-                'regular' => $regular,
-                'late' => $late,
-                'total' => $totalAttendance,
-            ],
-            'employeeChart' => $employeeChart,
-            'projects' => $projects,
-            'recentEmployees' => $recentEmployees,
-            'openPositions' => $openPositions,
-        ]);
+        ], 200);
     }
 
 }

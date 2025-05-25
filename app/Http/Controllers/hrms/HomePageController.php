@@ -67,7 +67,7 @@ class HomePageController extends Controller
             'message' => 'Activities data retrieved successfully',
             'status' => 'Success',
             'data' => $data
-        ]);
+        ], 200);
     }
 
     public function getFeeds($id)
@@ -134,14 +134,61 @@ class HomePageController extends Controller
 
         return response()->json([
             'message' => 'Feeds data retrieved successfully',
-            'status' => 'success',
+            'status' => 'Success',
             'data' => [
                 'schedules' => $schedules,
                 'assigned_to_me' => $assignedTo,
                 'assigned_by_me' => $assignedBy,
                 'projects' => $projects,
             ]
+        ], 200);
+    }
+
+    public function createTask(Request $request)
+    {
+        $validated = $request->validate([
+            'web_user_id'     => 'required|exists:web_users,id',
+            'date'            => 'required|date',
+            'description'     => 'required|string',
+            'assigned_by'     => 'nullable|string',
+            'assigned_by_id'  => 'nullable|exists:web_users,id',
+            'assigned_to'     => 'required|string',
+            'assigned_to_id'  => 'nullable|exists:web_users,id',
+            'project_id'      => 'nullable|exists:projects,id',
+            'project'         => 'nullable|string',
+            'priority'        => 'required|string',
+            'deadline'        => 'required|date|after_or_equal:date',
         ]);
+
+        $webUser = WebUser::find($request->web_user_id);
+
+        if (!$validated || !$webUser) {
+            return response()->json([
+                'message' => 'Invalid data or user not found'
+            ], 400);
+        }
+
+        $task = Task::create([
+            'web_user_id' => $request->web_user_id,
+            'emp_id' => $webUser->emp_id,
+            'emp_name' => $webUser->name,
+            'date' => $request->date,
+            'description' => $request->description,
+            'assigned_by' => $request->assigned_by,
+            'assigned_by_id' => $request->assigned_by_id,
+            'assigned_to' => $request->assigned_to,
+            'assigned_to_id' => $request->assigned_to_id,
+            'project_id' => $request->project_id ?? null,
+            'project' => $request->project ?? null,
+            'priority' => $request->priority,
+            'status' => 'pending',
+            'deadline' => $request->deadline,
+        ]);
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Task created successfully.'
+        ], 201);
     }
 
     public function getEmployeeData($id)
@@ -194,7 +241,7 @@ class HomePageController extends Controller
             'message' => 'Employee data retrieved successfully',
             'status' => 'Success',
             'data' => $employee
-        ]);
+        ], 200);
     }
 
     public function getApprovals($id)
@@ -213,10 +260,14 @@ class HomePageController extends Controller
             ->get(['type', 'reason', 'amount', 'status', 'comment']);
 
         return response()->json([
-            'leave_requests' => $leaveRequests,
-            'project_approvals' => $approvals,
-            'expenses' => $expenses,
-        ]);
+            'message' => 'Approvals data retrieved successfully',
+            'status' => 'Success',
+            'data' => [
+                'leave_requests' => $leaveRequests,
+                'project_approvals' => $approvals,
+                'expenses' => $expenses,
+            ]
+        ], 200);
     }
 
     public function getLeaveSummary($id)
@@ -242,14 +293,18 @@ class HomePageController extends Controller
             ->first();
 
         return response()->json([
-            'total_leaves_by_type' => $totalLeaves,
-            'total_utilized_leaves' => $utilizedLeaves,
-            'status_summary' => [
-                'approved' => $statusCounts->total_approved,
-                'pending' => $statusCounts->total_pending,
-                'rejected' => $statusCounts->total_rejected,
+            'message' => 'Leave summary retrieved successfully',
+            'status' => 'Success',
+            'data' => [
+                'total_leaves_by_type' => $totalLeaves,
+                'total_utilized_leaves' => $utilizedLeaves,
+                'status_summary' => [
+                    'approved' => $statusCounts->total_approved,
+                    'pending' => $statusCounts->total_pending,
+                    'rejected' => $statusCounts->total_rejected,
+                ],
             ],
-        ]);
+        ], 200);
     }
 
     public function getAttendance($id)
@@ -322,52 +377,33 @@ class HomePageController extends Controller
         ], 200);
     }
 
-    public function getProjectReportees($id)
+    public function getAllReportees($id)
     {
-        // Get the admin_user_id for the given web_user_id
+        // Step 1: Get admin_user_id of current user
         $adminUserId = WebUser::where('id', $id)->value('admin_user_id');
 
-        // Get all project IDs the user is working on
-        $projectIds = ProjectTeam::where('web_user_id', $id)
-            ->pluck('project_id');
-
-        // Get all team members under same admin_user_id in those projects, excluding the current user
-        $teamMembers = ProjectTeam::with('webUser')
-            ->whereIn('project_id', $projectIds)
-            ->whereHas('webUser', function ($query) use ($adminUserId) {
-                $query->where('admin_user_id', $adminUserId);
-            })
-            ->where('web_user_id', '!=', $id)
+        // Step 2: Get all users with their employee details (excluding self)
+        $users = WebUser::with('employeeDetails')
+            ->where('admin_user_id', $adminUserId)
+            ->where('id', '!=', $id)
             ->get()
-            ->map(function ($team) {
+            ->map(function ($user) {
                 return [
-                    'web_user_id' => $team->web_user_id,
-                    'name' => $team->webUser->name ?? null,
-                    'role' => $team->webUser->role ?? null,
-                    'email' => $team->webUser->email ?? null
+                    'id' => $user->id,
+                    'name' => $user->full_name,
+                    'designation' => $user->employeeDetails->designation,
+                    'profile' => $user->employeeDetails->profile_photo,
+                    'department' => $user->employeeDetails->department,
+                    'parentId' => $user->employeeDetails->reporting_manager_id ?? null,
                 ];
             })
-            ->unique('web_user_id')
             ->values();
 
-        // Role hierarchy
-        $hierarchy = [
-            'Manager' => 1,
-            'Team Lead' => 2,
-            'Senior Developer' => 3,
-            'Developer' => 4,
-            'Junior Developer' => 5,
-            'Intern' => 6,
-        ];
-
-        // Sort based on hierarchy
-        $sortedTeam = $teamMembers->sortBy(function ($member) use ($hierarchy) {
-            return $hierarchy[$member['role']] ?? 999;
-        })->values();
-
         return response()->json([
-            'my_team_members' => $sortedTeam
-        ]);
+            'status' => 'Success',
+            'message' => 'Reportees fetched successfully',
+            'data' =>  $users
+        ], 200);
     }
 
     public function getHandledProjects($id)
@@ -397,8 +433,10 @@ class HomePageController extends Controller
             });
 
         return response()->json([
-            'handled_projects' => $projects
-        ]);
+            'status' => 'Success',
+            'message' => 'Handled projects fetched successfully',
+            'data' => $projects
+        ], 200);
     }
 
     public function getEmployeesGroupedByDepartment($id)
@@ -425,8 +463,10 @@ class HomePageController extends Controller
         $groupedByDepartment = $employees->groupBy('department');
 
         return response()->json([
-            'departments' => $groupedByDepartment,
-        ]);
+            'status' => 'Success',
+            'message' => 'Employees grouped by department fetched successfully',
+            'data' => $groupedByDepartment,
+        ], 200);
     }
 
     public function getTeamByDepartment($id)
@@ -470,9 +510,13 @@ class HomePageController extends Controller
         });
 
         return response()->json([
-            'department' => $department,
-            'team_members' => $teamWithLocation,
-        ]);
+            'status' => 'Success',
+            'message' => 'Team members fetched successfully',
+            'data' => [
+                'department' => $department,
+                'team_members' => $teamWithLocation,
+            ],
+        ], 200);
     }
 
     public function getAbout($id)
@@ -488,9 +532,13 @@ class HomePageController extends Controller
             ->get(['achievement', 'values']);
 
         return response()->json([
-            'description' => $description,
-            'about' => $achievements,
-        ]);
+            'status' => 'Success',
+            'message' => 'About info fetched successfully',
+            'data' => [
+                'description' => $description,
+                'about' => $achievements,
+            ]
+        ], 200);
     }
 
     public function getServices($id)
@@ -506,9 +554,13 @@ class HomePageController extends Controller
             ->get(['name', 'description']);
 
         return response()->json([
-            'description' => $description,
-            'services' => $services,
-        ]);
+            'status' => 'Success',
+            'message' => 'Services fetched successfully',
+            'data' => [
+                'description' => $description,
+                'services' => $services,
+            ]
+        ], 200);
     }
 
     public function getIndustries($id)
@@ -524,9 +576,13 @@ class HomePageController extends Controller
             ->get(['name', 'description']);
 
         return response()->json([
-            'description' => $description,
-            'industries' => $industry,
-        ]);
+            'status' => 'Success',
+            'message' => 'Industries fetched successfully',
+            'data' => [
+                'description' => $description,
+                'industries' => $industry,
+            ]
+        ], 200);
     }
 
     public function getClients($id)
@@ -542,9 +598,13 @@ class HomePageController extends Controller
             ->get(['name', 'logo']);
 
         return response()->json([
-            'description' => $description,
-            'clients' => $client,
-        ]);
+            'status' => 'Success',
+            'message' => 'Clients fetched successfully',
+            'data' => [
+                'description' => $description,
+                'clients' => $client,
+            ]
+        ], 200);
     }
 
     public function getTeamDescription($id)
@@ -573,9 +633,13 @@ class HomePageController extends Controller
         $groupedByDepartment = $employees->groupBy('department');
 
         return response()->json([
-            'description' => $description,
-            'team' => $groupedByDepartment,
-        ]);
+            'status' => 'Success',
+            'message' => 'Team description fetched successfully',
+            'data' => [
+                'description' => $description,
+                'team' => $groupedByDepartment,
+            ],
+        ], 200);
     }
 
     public function getDashboardDetails($id)
@@ -671,16 +735,20 @@ class HomePageController extends Controller
             ->get(['holiday', 'date']);
 
         return response()->json([
-            'new_joinees' => $newJoinees,
-            'leave_report' => $leaveReport,
-            'upcoming_leaves' => $upcomingLeaves,
-            'announcements' => $announcements,
-            'work_anniversaries' => $anniversaries,
-            'goals' => $goals,
-            'upcoming_birthdays' => $birthdays,
-            'todays_leaves' => $todaysLeaves,
-            'upcoming_holidays' => $holidays,
-        ]);
+            'message' => 'Dashboard details fetched successfully',
+            'status' => 'Success',
+            'data' => [
+                'new_joinees' => $newJoinees,
+                'leave_report' => $leaveReport,
+                'upcoming_leaves' => $upcomingLeaves,
+                'announcements' => $announcements,
+                'work_anniversaries' => $anniversaries,
+                'goals' => $goals,
+                'upcoming_birthdays' => $birthdays,
+                'todays_leaves' => $todaysLeaves,
+                'upcoming_holidays' => $holidays,
+            ]
+        ], 200);
     }
 
     public function getSchedules($id, $month = null)
@@ -690,8 +758,10 @@ class HomePageController extends Controller
         $schedules = Schedule::where('web_user_id', $id)->whereMonth('date', $requiredMonth)->get();
 
         return response()->json([
-            'schedules' => $schedules,
-        ]);
+            'message' => 'Schedules fetched successfully',
+            'status' => 'Success',
+            'data' => $schedules,
+        ], 200);
     }
 
 }

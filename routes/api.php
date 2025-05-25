@@ -111,6 +111,7 @@ Route::prefix('hrms')->group(function () {
             Route::get('/getteamdescription/{id}', [HomePageController::class, 'getTeamDescription']);
 
             Route::get('/getfeeds/{id}', [HomePageController::class, 'getFeeds']);
+            Route::post('/addtask', [HomePageController::class, 'createTask']);
         });
         Route::prefix('profile')->group(function () {
             Route::get('/getprofile/{id}', [ProfilePageController::class, 'getProfile']);

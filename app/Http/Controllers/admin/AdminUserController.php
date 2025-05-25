@@ -90,7 +90,7 @@ class AdminUserController extends Controller
         ]);
 
         return response()->json([
-            'status' => 'success',
+            'status' => 'Success',
             'message' => 'Admin user created successfully.'
         ], 201);
     }
@@ -128,7 +128,7 @@ class AdminUserController extends Controller
         $token = $adminUser->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'status' => 'success',
+            'status' => 'Success',
             'message' => 'Login successful.',
             'token' => $token,
             'data' => $adminUser,
@@ -198,7 +198,7 @@ class AdminUserController extends Controller
             'parent_id' => null
         ]);
 
-        return response()->json(['message' => 'Selections saved successfully!', 'status' => 'success'], 200);
+        return response()->json(['message' => 'Selections saved successfully!', 'status' => 'Success'], 200);
     }
 
     public function getSelectedSections(Request $request)
@@ -239,9 +239,9 @@ class AdminUserController extends Controller
         $nestedSections = buildTree($sections);
 
         return response()->json([
-            'status' => 'success',
+            'status' => 'Success',
             'selected_sections' => $nestedSections
-        ]);
+        ], 200);
     }
 
     public function logout(Request $request)
@@ -260,7 +260,7 @@ class AdminUserController extends Controller
         $user->tokens()->delete();
 
         return response()->json([
-            'status' => 'success',
+            'status' => 'Success',
             'message' => 'Logout successful. All tokens have been revoked.',
         ], 200);
     }
@@ -293,7 +293,7 @@ class AdminUserController extends Controller
                 'description' => $request->description ?? null,
             ]);
 
-            return response()->json(['message' => 'Hierarchy created successfully.'], 201);
+            return response()->json(['message' => 'Hierarchy created successfully.', 'status' => 'Success'], 201);
         }
 
         $heirarchy = Heirarchies::find($request->id);
@@ -306,7 +306,7 @@ class AdminUserController extends Controller
             'description' => $request->description ?? $heirarchy->description,
         ]);
 
-        return response()->json(['message' => 'Hierarchy updated successfully.']);
+        return response()->json(['message' => 'Hierarchy updated successfully.', 'status' => 'Success'], 200);
     }
 
     public function saveHoliday(Request $request)
@@ -335,7 +335,7 @@ class AdminUserController extends Controller
                 'description' => $request->description ?? null,
             ]);
 
-            return response()->json(['message' => 'Holiday created successfully.'], 201);
+            return response()->json(['message' => 'Holiday created successfully.', 'status' => 'Success'], 201);
         }
 
         $holiday = Holidays::find($request->id);
@@ -347,7 +347,7 @@ class AdminUserController extends Controller
             'description' => $request->description ?? $holiday->description,
         ]);
 
-        return response()->json(['message' => 'Holiday updated successfully.']);
+        return response()->json(['message' => 'Holiday updated successfully.', 'status' => 'Success'], 200);
     }
 
     public function saveIndustry(Request $request)
@@ -374,7 +374,7 @@ class AdminUserController extends Controller
                 'description' => $request->description ?? null,
             ]);
 
-            return response()->json(['message' => 'Industry created successfully.'], 201);
+            return response()->json(['message' => 'Industry created successfully.', 'status' => 'Success'], 201);
         }
 
         $industry = Industries::find($request->id);
@@ -385,7 +385,7 @@ class AdminUserController extends Controller
             'description' => $request->description ?? $industry->description,
         ]);
 
-        return response()->json(['message' => 'Industry updated successfully.']);
+        return response()->json(['message' => 'Industry updated successfully.', 'status' => 'Success'], 200);
     }
 
     public function saveClient(Request $request)
@@ -445,7 +445,7 @@ class AdminUserController extends Controller
                 'logo' => $logoUrl,
             ]);
 
-            return response()->json(['message' => 'Client created successfully.'], 201);
+            return response()->json(['message' => 'Client created successfully.', 'status' => 'Success'], 201);
         }
 
         $client = Client::find($request->id);
@@ -456,7 +456,7 @@ class AdminUserController extends Controller
             'logo' => $logoUrl,
         ]);
 
-        return response()->json(['message' => 'Client updated successfully.']);
+        return response()->json(['message' => 'Client updated successfully.', 'status' => 'Success'], 200);
     }
 
     public function saveService(Request $request)
@@ -482,7 +482,7 @@ class AdminUserController extends Controller
                 'description' => $request->description ?? null,
             ]);
 
-            return response()->json(['message' => 'Service created successfully.'], 201);
+            return response()->json(['message' => 'Service created successfully.', 'status' => 'Status'], 201);
         }
 
         $service = Service::find($request->id);
@@ -491,7 +491,7 @@ class AdminUserController extends Controller
             'description' => $request->description ?? $service->description,
         ]);
 
-        return response()->json(['message' => 'Service updated successfully.']);
+        return response()->json(['message' => 'Service updated successfully.', 'status' => 'Success'], 200);
     }
 
     public function saveAbout(Request $request)
@@ -523,7 +523,7 @@ class AdminUserController extends Controller
                 'team' => $request->team ?? null
             ]);
 
-            return response()->json(['message' => 'About information created successfully.'], 201);
+            return response()->json(['message' => 'About information created successfully.', 'status' => 'Success'], 201);
         }
 
         $about = About::find($request->id);
@@ -535,7 +535,7 @@ class AdminUserController extends Controller
             'team' => $request->team ?? $about->team
         ]);
 
-        return response()->json(['message' => 'About information updated successfully.']);
+        return response()->json(['message' => 'About information updated successfully.', 'status' => 'Success'], 200);
     }
 
     public function saveEvent(Request $request)
@@ -565,7 +565,7 @@ class AdminUserController extends Controller
                 'description' => $request->description ?? null
             ]);
 
-            return response()->json(['message' => 'Event created successfully.'], 201);
+            return response()->json(['message' => 'Event created successfully.', 'status' => 'Success'], 201);
         }
 
         $event = Event::find($request->id);
@@ -576,7 +576,7 @@ class AdminUserController extends Controller
             'description' => $request->description ?? $event->description
         ]);
 
-        return response()->json(['message' => 'Event updated successfully.']);
+        return response()->json(['message' => 'Event updated successfully.', 'status' => 'Success'], 200);
     }
 
     public function saveAchievements(Request $request)
@@ -602,7 +602,7 @@ class AdminUserController extends Controller
                 'values' => $request->values ?? null,
             ]);
 
-            return response()->json(['message' => 'Achievement created successfully.'], 201);
+            return response()->json(['message' => 'Achievement created successfully.', 'status' => 'Success'], 201);
         }
 
         $achievement = Achievement::find($request->id);
@@ -611,7 +611,7 @@ class AdminUserController extends Controller
             'values' => $request->values ?? $achievement->values,
         ]);
 
-        return response()->json(['message' => 'Achievement updated successfully.']);
+        return response()->json(['message' => 'Achievement updated successfully.', 'status' => 'Success'], 200);
     }
 
     public function saveFeedbackQuestions(Request $request)
@@ -636,7 +636,7 @@ class AdminUserController extends Controller
                 'question' => $request->question ?? null,
             ]);
 
-            return response()->json(['message' => 'Feedback question created successfully.'], 201);
+            return response()->json(['message' => 'Feedback question created successfully.', 'status' => 'Success'], 201);
         }
 
         $feedbackQuestion = FeedbackQuestions::find($request->id);
@@ -644,7 +644,7 @@ class AdminUserController extends Controller
             'question' => $request->question ?? $feedbackQuestion->question,
         ]);
 
-        return response()->json(['message' => 'Feedback question updated successfully.']);
+        return response()->json(['message' => 'Feedback question updated successfully.', 'status' => 'Success'], 200);
     }
 
     public function saveJobOpenings(Request $request)
@@ -670,7 +670,7 @@ class AdminUserController extends Controller
                 'position' => $request->position
             ]);
 
-            return response()->json(['message' => 'Job opening created successfully.'], 201);
+            return response()->json(['message' => 'Job opening created successfully.', 'status' => 'Success'], 201);
         }
 
         $job = JobOpening::find($request->id);
@@ -679,7 +679,7 @@ class AdminUserController extends Controller
             'position' => $request->position
         ]);
 
-        return response()->json(['message' => 'Job opening updated successfully.']);
+        return response()->json(['message' => 'Job opening updated successfully.', 'status' => 'Success'], 200);
     }
 
     public function saveProjects(Request $request)
@@ -739,7 +739,7 @@ class AdminUserController extends Controller
                 }
             }
 
-            return response()->json(['message' => 'Project created successfully.'], 201);
+            return response()->json(['message' => 'Project created successfully.', 'status' => 'Success'], 201);
         }
 
         $project = Projects::find($request->id);
@@ -753,7 +753,7 @@ class AdminUserController extends Controller
             'comment' => $request->comment
         ]);
 
-        return response()->json(['message' => 'Project updated successfully.']);
+        return response()->json(['message' => 'Project updated successfully.', 'status' => 'Success'], 200);
     }
 
     public function saveTotalLeaves(Request $request)
@@ -781,7 +781,7 @@ class AdminUserController extends Controller
                 'period' => $request->period
             ]);
 
-            return response()->json(['message' => 'Leave policy created successfully.'], 201);
+            return response()->json(['message' => 'Leave policy created successfully.', 'status' => 'Success'], 201);
         }
 
         $leave = TotalLeaves::find($request->id);
@@ -791,7 +791,7 @@ class AdminUserController extends Controller
             'period' => $request->period
         ]);
 
-        return response()->json(['message' => 'Leave policy updated successfully.']);
+        return response()->json(['message' => 'Leave policy updated successfully.', 'status' => 'Success'], 200);
     }
 
     public function savePolicies(Request $request)
@@ -819,7 +819,7 @@ class AdminUserController extends Controller
                 'description' => $request->description
             ]);
 
-            return response()->json(['message' => 'Policy created successfully.'], 201);
+            return response()->json(['message' => 'Policy created successfully.', 'status' => 'Success'], 201);
         }
 
         $policy = Policies::find($request->id);
@@ -829,7 +829,7 @@ class AdminUserController extends Controller
             'description' => $request->description
         ]);
 
-        return response()->json(['message' => 'Policy updated successfully.']);
+        return response()->json(['message' => 'Policy updated successfully.', 'status' => 'Success'], 200);
     }
 
 
@@ -853,7 +853,7 @@ class AdminUserController extends Controller
 
         $heirarchy->delete();
 
-        return response()->json(['message' => 'Hierarchy deleted successfully.']);
+        return response()->json(['message' => 'Hierarchy deleted successfully.', 'status' => 'Success'], 200);
     }
 
     public function deleteHoliday(Request $request)
@@ -876,7 +876,7 @@ class AdminUserController extends Controller
 
         $holiday->delete();
 
-        return response()->json(['message' => 'Holiday deleted successfully.']);
+        return response()->json(['message' => 'Holiday deleted successfully.', 'status' => 'Success'], 200);
     }
 
     public function deleteIndustry(Request $request)
@@ -899,7 +899,7 @@ class AdminUserController extends Controller
 
         $industry->delete();
 
-        return response()->json(['message' => 'Industry deleted successfully.']);
+        return response()->json(['message' => 'Industry deleted successfully.', 'status' => 'Success'], 200);
     }
 
     public function deleteClient(Request $request)
@@ -925,7 +925,7 @@ class AdminUserController extends Controller
 
         $client->delete();
 
-        return response()->json(['message' => 'Client deleted successfully.']);
+        return response()->json(['message' => 'Client deleted successfully.', 'status' => 'Success'], 200);
     }
 
     public function deleteService(Request $request)
@@ -948,7 +948,7 @@ class AdminUserController extends Controller
 
         $service->delete();
 
-        return response()->json(['message' => 'Service deleted successfully.']);
+        return response()->json(['message' => 'Service deleted successfully.', 'status' => 'Success'], 200);
     }
 
     public function deleteAbout(Request $request)
@@ -971,7 +971,7 @@ class AdminUserController extends Controller
 
         $about->delete();
 
-        return response()->json(['message' => 'About section deleted successfully.']);
+        return response()->json(['message' => 'About section deleted successfully.', 'status' => 'Success'], 200);
     }
 
     public function deleteEvent(Request $request)
@@ -994,7 +994,7 @@ class AdminUserController extends Controller
 
         $event->delete();
 
-        return response()->json(['message' => 'Event deleted successfully.']);
+        return response()->json(['message' => 'Event deleted successfully.', 'status' => 'Success'], 200);
     }
 
     public function deleteAchievements(Request $request)
@@ -1017,7 +1017,7 @@ class AdminUserController extends Controller
 
         $achievement->delete();
 
-        return response()->json(['message' => 'Achievement deleted successfully.']);
+        return response()->json(['message' => 'Achievement deleted successfully.', 'status' => 'Success'], 200);
     }
 
     public function deleteFeedbackQuestions(Request $request)
@@ -1041,7 +1041,7 @@ class AdminUserController extends Controller
 
         $feedbackQuestion->delete();
 
-        return response()->json(['message' => 'Feedback question deleted successfully.']);
+        return response()->json(['message' => 'Feedback question deleted successfully.', 'status' => 'Success'], 200);
     }
 
     public function deleteJobOpenings(Request $request)
@@ -1065,7 +1065,7 @@ class AdminUserController extends Controller
 
         $job->delete();
 
-        return response()->json(['message' => 'Job opening deleted successfully.']);
+        return response()->json(['message' => 'Job opening deleted successfully.', 'status' => 'Success'], 200);
     }
 
     public function deleteProjects(Request $request)
@@ -1089,7 +1089,7 @@ class AdminUserController extends Controller
 
         $project->delete();
 
-        return response()->json(['message' => 'Project and related team deleted successfully.']);
+        return response()->json(['message' => 'Project and related team deleted successfully.', 'status' => 'Success'], 200);
     }
 
     public function deleteTotalLeave(Request $request)
@@ -1113,7 +1113,7 @@ class AdminUserController extends Controller
 
         $leave->delete();
 
-        return response()->json(['message' => 'Leave policy deleted successfully.']);
+        return response()->json(['message' => 'Leave policy deleted successfully.', 'status' => 'Success'], 200);
     }
 
     public function deletePolicies(Request $request)
@@ -1141,7 +1141,7 @@ class AdminUserController extends Controller
 
         $policy->delete();
 
-        return response()->json(['message' => 'Policy deleted successfully.']);
+        return response()->json(['message' => 'Policy deleted successfully.', 'status' => 'Success'], 200);
     }
 
     public function getAllAdminPanelData($id)
@@ -1172,10 +1172,10 @@ class AdminUserController extends Controller
         ];
 
         return response()->json([
-            'status' => 'success',
+            'status' => 'Success',
             'message' => 'Admin panel data fetched successfully',
             'data' => $data
-        ]);
+        ], 200);
     }
 
     public function getAllWebUsers($id)
@@ -1195,11 +1195,14 @@ class AdminUserController extends Controller
         }])->get();
 
         return response()->json([
-            'status' => 'success',
+            'status' => 'Success',
             'message' => 'Web users fetched successfully',
-            'allowed_users' => $adminUser->allowed_users,
-            'created' => $webUsers->count(),
-            'data' => $webUsers
-        ]);
+            'data' => [
+                'company_name' => $adminUser->company_name,
+                'allowed_users' => $adminUser->allowed_users,
+                'created' => $webUsers->count(),
+                'user_data' => $webUsers
+            ]
+        ], 200);
     }
 }

@@ -43,11 +43,15 @@ class PerformancePageController extends Controller
         $totalInProgress = Task::where('assigned_to_id', $id)->where('status', 'In Progress')->count();
 
         return response()->json([
-            'tasks'             => $tasks,
-            'total_completed'   => $totalCompleted,
-            'total_pending'     => $totalPending,
-            'total_in_progress' => $totalInProgress,
-        ]);
+            'status' => 'Success',
+            'message' => 'Tasks fetched successfully.',
+            'data' => [
+                'tasks' => $tasks,
+                'total_completed' => $totalCompleted,
+                'total_pending' => $totalPending,
+                'total_in_progress' => $totalInProgress,
+            ],
+        ], 200);
     }
 
     public function updateTaskStatus(Request $request)
@@ -61,7 +65,7 @@ class PerformancePageController extends Controller
         ]);
 
         // Step 2: Find the task and make sure it belongs to the given web_user_id
-        $task = Task::where('id', $request->task_id)->where('web_user_id', $request->web_user_id)->first();
+        $task = Task::where('id', $request->task_id)->where('assigned_to_id', $request->web_user_id)->first();
 
         if (!$validated || !$task) {
             return response()->json([
@@ -76,7 +80,8 @@ class PerformancePageController extends Controller
 
         // Step 4: Return success response
         return response()->json([
-            'message' => 'Task updated successfully.'
+            'message' => 'Task updated successfully.',
+            'status' => 'Success'
         ], 200);
     }
 
@@ -141,12 +146,16 @@ class PerformancePageController extends Controller
         $ratingOutOfFive = round(($timelyPerformance / 100) * 5, 2);
 
         return response()->json([
-            'team_availability' => $availabilityPercentage,
-            'completed_percentage' => $completedPercentage,
-            'pending_percentage' => $pendingPercentage,
-            'performance_score' => $timelyPerformance,
-            'performance_rating_out_of_5' => $ratingOutOfFive,
-        ]);
+            'status' => 'Success',
+            'message' => 'Team performance data fetched successfully.',
+            'data' => [
+                'team_availability' => $availabilityPercentage,
+                'completed_percentage' => $completedPercentage,
+                'pending_percentage' => $pendingPercentage,
+                'performance_score' => $timelyPerformance,
+                'performance_rating_out_of_5' => $ratingOutOfFive,
+            ],
+        ], 200);
     }
 
     public function getUserFeedbackDetails($id)
@@ -192,9 +201,13 @@ class PerformancePageController extends Controller
         });
 
         return response()->json([
-            'requested_feedbacks' => $requestedFeedbacks,
-            'received_feedbacks' => $feedbackDetails,
-        ]);
+            'status' => 'Success',
+            'message' => 'Feedback details fetched successfully.',
+            'data' => [
+                'requested_feedbacks' => $requestedFeedbacks,
+                'received_feedbacks' => $feedbackDetails,
+            ],
+        ], 200);
     }
 
     public function addFeedback(Request $request)
@@ -236,7 +249,8 @@ class PerformancePageController extends Controller
 
         // Step 4: Return success response
         return response()->json([
-            'message' => 'Feedback created successfully'
+            'message' => 'Feedback created successfully',
+            'status' => 'Success'
         ], 201);
     }
 
@@ -286,7 +300,7 @@ class PerformancePageController extends Controller
         $feedback->comments = $request->comments;
         $feedback->save();
 
-        return response()->json(['message' => 'Feedback updated successfully'], 200);
+        return response()->json(['message' => 'Feedback updated successfully', 'status' => 'Success'], 200);
     }
 
     public function addFeedbackReply(Request $request)
@@ -330,7 +344,8 @@ class PerformancePageController extends Controller
 
         // Step 4: Return success
         return response()->json([
-            'message' => 'Reply added successfully.'
+            'message' => 'Reply added successfully.',
+            'status' => 'Success'
         ], 201);
     }
 
@@ -347,8 +362,10 @@ class PerformancePageController extends Controller
         $heirarchies = Heirarchies::where('admin_user_id', $webUser->admin_user_id)->get();
 
         return response()->json([
-            'heirarchies' => $heirarchies
-        ]);
+            'message' => 'Heirarchies fetched successfully.',
+            'status' => 'Success',
+            'data' => $heirarchies
+        ], 200);
     }
 
 }

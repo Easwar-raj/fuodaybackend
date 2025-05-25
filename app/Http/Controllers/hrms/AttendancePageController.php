@@ -227,7 +227,7 @@ class AttendancePageController extends Controller
             'status' => 'Present', // Default status
         ]);
 
-        return response()->json(['message' => 'Attendance added successfully.'], 200);
+        return response()->json(['message' => 'Attendance added successfully.', 'status' => 'Success'], 200);
     }
 
     public function updateAttendance(Request $request)
@@ -262,6 +262,6 @@ class AttendancePageController extends Controller
         $attendance->worked_hours = $workedHours;
         $attendance->save();
 
-        return response()->json(['message' => 'Checkout time updated successfully.'], 200);
+        return response()->json(['message' => 'Checkout time updated successfully.', 'status' => 'Success'], 200);
     }
 }

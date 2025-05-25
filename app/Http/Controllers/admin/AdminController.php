@@ -24,7 +24,7 @@ class AdminController extends Controller
 
         // Check credentials
         if ($request->email === $this->adminEmail && $request->password === $this->adminPassword) {
-            return response()->json(['message' => 'Login successful', 'status' => 200]);
+            return response()->json(['message' => 'Login successful', 'status' => 'Success'], 200);
         }
 
         return response()->json(['message' => 'Invalid credentials', 'status' => 401], 401);
