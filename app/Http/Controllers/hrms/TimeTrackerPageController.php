@@ -63,7 +63,7 @@ class TimeTrackerPageController extends Controller
                     'date' => Carbon::parse($date)->format('l, F d, Y'),
                     'first_login' => $first->checkin,
                     'last_logout' => $last->checkout,
-                    'total_hours_logged_in' => $totalDuration,
+                    'total_hours' => $totalDuration,
                 ];
             })
             ->values(); // reset keys
