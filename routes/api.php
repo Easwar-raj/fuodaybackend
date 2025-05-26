@@ -116,6 +116,9 @@ Route::prefix('hrms')->group(function () {
         Route::prefix('profile')->group(function () {
             Route::get('/getprofile/{id}', [ProfilePageController::class, 'getProfile']);
             Route::post('/updateemployeeprofile', [ProfilePageController::class, 'updateEmployeeProfile']);
+            Route::post('/deleteskill', [ProfilePageController::class, 'deleteSkill']);
+            Route::post('/deleteeducation', [ProfilePageController::class, 'deleteEducation']);
+            Route::post('/deleteexperience', [ProfilePageController::class, 'deleteExperience']);
             Route::post('/updateskills', [ProfilePageController::class, 'updateOrCreateSkill']);
             Route::post('/updateeducation', [ProfilePageController::class, 'updateOrCreateEducation']);
             Route::post('/updateexperience', [ProfilePageController::class, 'updateOrCreateExperience']);

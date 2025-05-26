@@ -185,6 +185,31 @@ class ProfilePageController extends Controller
         ], 200);
     }
 
+    public function deleteSkill(Request $request)
+    {
+
+        $validated = $request->validate([
+            'web_user_id' => 'required|exists:web_users,id',
+            'id' => 'required|exists:skills,id',
+        ]);
+
+        $webUser = WebUser::find($request->web_user_id);
+
+        if (!$webUser || !$validated) {
+            return response()->json(['message' => 'Invalid details'], 400);
+        }
+
+        $skill = Skills::find($request->id);
+
+        if (!$skill) {
+            return response()->json(['message' => 'Skill not found', 'status' => 'error'], 404);
+        }
+
+        $skill->delete();
+
+        return response()->json(['message' => 'Skill deleted successfully']);
+    }
+
     public function updateOrCreateEducation(Request $request)
     {
         // Validate input
@@ -221,6 +246,31 @@ class ProfilePageController extends Controller
             'message' => 'Education record updated or created successfully.',
             'status' => 'Success',
         ], 200);
+    }
+
+    public function deleteEducation(Request $request)
+    {
+
+        $validated = $request->validate([
+            'web_user_id' => 'required|exists:web_users,id',
+            'id' => 'required|exists:education,id',
+        ]);
+
+        $webUser = WebUser::find($request->web_user_id);
+
+        if (!$webUser || !$validated) {
+            return response()->json(['message' => 'Invalid details'], 400);
+        }
+
+        $education = Education::find($request->id);
+
+        if (!$education) {
+            return response()->json(['message' => 'Education not found', 'status' => 'error'], 404);
+        }
+
+        $education->delete();
+
+        return response()->json(['message' => 'Education deleted successfully']);
     }
 
     public function updateOrCreateExperience(Request $request)
@@ -266,6 +316,31 @@ class ProfilePageController extends Controller
             'message' => 'Experience record updated or created successfully.',
             'status'  => 'Success',
         ], 200);
+    }
+
+    public function deleteExperience(Request $request)
+    {
+
+        $validated = $request->validate([
+            'web_user_id' => 'required|exists:web_users,id',
+            'id' => 'required|exists:experiences,id',
+        ]);
+
+        $webUser = WebUser::find($request->web_user_id);
+
+        if (!$webUser || !$validated) {
+            return response()->json(['message' => 'Invalid details'], 400);
+        }
+
+        $experience = Experience::find($request->id);
+
+        if (!$experience) {
+            return response()->json(['message' => 'Experience not found', 'status' => 'error'], 404);
+        }
+
+        $experience->delete();
+
+        return response()->json(['message' => 'Experience deleted successfully']);
     }
 
     public function updateOnboardingDocuments(Request $request)

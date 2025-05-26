@@ -467,7 +467,7 @@ class WebpageUserController extends Controller
                 'employeeDetails' => function ($query) {
                     $query->select('web_user_id', 'profile_photo', 'designation');
                 },
-                'adminUser:id,logo,company_name'
+                'adminUser:id,logo,brand_logo,company_name'
             ])
             ->first();
 
