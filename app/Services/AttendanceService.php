@@ -3,6 +3,13 @@
 namespace App\Services;
 
 use App\Models\Attendance;
+use App\Models\Holidays;
+use App\Models\LeaveRequest;
+use App\Models\Payroll;
+use App\Models\Payslip;
+use App\Models\Policies;
+use App\Models\Schedule;
+use App\Models\WebUser;
 use Carbon\Carbon;
 
 class AttendanceService
@@ -14,7 +21,7 @@ class AttendanceService
         $attendances = Attendance::whereDate('date', $today)->get();
 
         // === Fetch Policies ===
-        $policies = Policy::whereIn('title', [
+        $policies = Policies::whereIn('title', [
             "What is your organization's general shift timing?",
             "What are the total weekly working hours in your organization?",
             "What is the standard work time per day in your organization?",
@@ -69,7 +76,7 @@ class AttendanceService
             if ((int)$today->format('d') === $triggerDay) {
                 foreach ($attendances as $attendance) {
                     $userId = $attendance->user_id;
-                    $webUserId = User::find($userId)->web_user_id ?? null;
+                    $webUserId = WebUser::find($userId)->web_user_id ?? null;
                     if (!$webUserId) continue;
 
                     $payroll = Payroll::where('web_user_id', $webUserId)->first();
@@ -109,7 +116,7 @@ class AttendanceService
         }
 
         // === Check if today is a company holiday ===
-        $isCompanyHoliday = Holiday::whereDate('date', $today)->exists();
+        $isCompanyHoliday = Holidays::whereDate('date', $today)->exists();
 
         foreach ($attendances as $attendance) {
             $userId = $attendance->user_id;
@@ -177,7 +184,7 @@ class AttendanceService
 
             // === If updated to LOP, update payslip
             if ($newStatus === 'LOP') {
-                $webUserId = User::find($userId)->web_user_id ?? null;
+                $webUserId = WebUser::find($userId)->web_user_id ?? null;
                 if (!$webUserId) continue;
 
                 $payroll = Payroll::where('web_user_id', $webUserId)->first();
