@@ -99,7 +99,7 @@ Route::prefix('hrms')->group(function () {
             Route::get('/getdashboard/{id}', [HomePageController::class, 'getDashboardDetails']);
             Route::get('/getschedules/{id}', [HomePageController::class, 'getSchedules']);
 
-            Route::get('/getreportees/{id}', [HomePageController::class, 'getProjectReportees']);
+            Route::get('/getreportees/{id}', [HomePageController::class, 'getAllReportees']);
             Route::get('/getprojects/{id}', [HomePageController::class, 'getHandledProjects']);
             Route::get('/getdepartments/{id}', [HomePageController::class, 'getEmployeesGroupedByDepartment']);
             Route::get('/getteam/{id}', [HomePageController::class, 'getTeamByDepartment']);

@@ -25,6 +25,7 @@ use App\Models\WebUser;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\Task;
+use Illuminate\Http\Request;
 
 class HomePageController extends Controller
 {

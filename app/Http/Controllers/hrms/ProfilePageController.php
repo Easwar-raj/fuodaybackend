@@ -121,9 +121,12 @@ class ProfilePageController extends Controller
 
         // Step 2: Update the name in web_users table
         $webUser = WebUser::find($request->web_user_id);
-        $webUser->name = "{$request->first_name} {$request->last_name}" ?? $webUser->name;
-        $webUser->save();
 
+        if ($request->first_name || $request->last_name) {
+            $webUser->name = "{$request->first_name} {$request->last_name}" ?? $webUser->name;
+            $webUser->save();
+        }
+    
         // Step 3: Update employee_details (assuming one-to-one relationship)
         $employeeDetail = EmployeeDetails::where('web_user_id', $request->web_user_id)->first();
 
