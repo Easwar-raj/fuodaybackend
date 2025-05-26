@@ -13,6 +13,7 @@ use App\Models\Projects;
 use App\Models\ProjectTeam;
 use App\Models\Task;
 use App\Models\Schedule;
+use Carbon\CarbonInterval;
 
 class TimeTrackerPageController extends Controller
 {
@@ -37,7 +38,7 @@ class TimeTrackerPageController extends Controller
         $attendances = Attendance::where('web_user_id', $id)
             ->whereBetween('date', [$startOfWeek, $endOfWeek])
             ->orderBy('date')
-            ->orderBy('checkin') // assuming you have login_time and logout_time
+            ->orderBy('checkin')
             ->get()
             ->groupBy(function ($attendance) {
                 return Carbon::parse($attendance->date)->toDateString(); // group by date
@@ -46,14 +47,26 @@ class TimeTrackerPageController extends Controller
                 $first = $dayAttendances->first();
                 $last = $dayAttendances->last();
 
+                $totalSeconds = $dayAttendances->reduce(function ($carry, $record) {
+                    if ($record->checkin && $record->checkout) {
+                        $checkin = Carbon::parse($record->checkin);
+                        $checkout = Carbon::parse($record->checkout);
+                        return $carry + $checkout->diffInSeconds($checkin);
+                    }
+                    return $carry;
+                }, 0);
+
+                // Format total time as H:i:s
+                $totalDuration = CarbonInterval::seconds($totalSeconds)->cascade()->format('%H:%I:%S');
+
                 return (object)[
                     'date' => Carbon::parse($date)->format('l, F d, Y'),
                     'first_login' => $first->checkin,
                     'last_logout' => $last->checkout,
-                    'entries' => $dayAttendances, // optional: keep all raw entries if needed
+                    'total_hours_logged_in' => $totalDuration,
                 ];
             })
-            ->values(); // reset keys for clean array
+            ->values(); // reset keys
 
         // Step 4: Get project IDs from project_teams
         $projectIds = ProjectTeam::where('web_user_id', $id)->pluck('project_id')->unique();

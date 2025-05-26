@@ -11,6 +11,7 @@ use App\Models\Payslip;
 use App\Models\WebUser;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use NumberToWords\NumberToWords;
 
 class PayrollPageController extends Controller
 {
@@ -104,7 +105,13 @@ class PayrollPageController extends Controller
 
         // Step 4: Get Onboarding Details
         $onboarding = Onboarding::where('web_user_id', $id)->first();
+        $numberToWords = new NumberToWords();
+        $numberTransformer = $numberToWords->getNumberTransformer('en');
 
+        $totalSalary = $payslip->total_salary;
+        $salaryInWords = $totalSalary !== null
+            ? ucfirst($numberTransformer->toWords((int) $totalSalary)) . ' only'
+            : null;
         // Step 5: Format Response
         return response()->json([
             'status' => 'Success',
@@ -119,6 +126,7 @@ class PayrollPageController extends Controller
                     'gross'            => $payslip->gross,
                     'total_deductions' => $payslip->total_deductions,
                     'total_salary'     => $payslip->total_salary,
+                    'total_salary_word' => $salaryInWords,
                     'status'           => $payslip->status,
                     'date'             => optional($payslip->date)->format('Y-m-d'),
                 ],

@@ -140,6 +140,7 @@ Route::prefix('hrms')->group(function () {
         });
         Route::prefix('hr')->group(function () {
             Route::get('/gethr/{id}', [HrPageController::class, 'getHr']);
+            Route::get('/getpendingleaves/{id}', [HrPageController::class, 'getPendingLeaveRequests']);
         });
         Route::prefix('payroll')->group(function () {
             Route::get('/getpayroll/{id}', [PayrollPageController::class, 'getPayrollDetails']);

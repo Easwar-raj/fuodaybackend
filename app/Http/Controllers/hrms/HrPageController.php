@@ -145,4 +145,28 @@ class HrPageController extends Controller
             ],
         ], 200);
     }
+
+    public function getPendingLeaveRequests($id)
+    {
+        // Step 1: Get the admin_user_id of this web user
+        $webUser = WebUser::where('id', $id);
+
+        if (!$webUser->admin_user_id || $webUser->role !== 'hr') {
+            return response()->json(['message' => 'Invalid details'], 403);
+        }
+
+        // Step 2: Get all web user IDs under this admin
+        $webUserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
+
+        // Step 3: Get pending leave requests for these web users
+        $pendingLeaves = LeaveRequest::whereIn('web_user_id', $webUserIds)
+            ->where('status', 'pending')
+            ->get();
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Pending leaves retrieved successfully',
+            'data' =>  $pendingLeaves
+        ]);
+    }
 }
