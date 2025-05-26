@@ -14,6 +14,7 @@ use App\Http\Controllers\hrms\ProfilePageController;
 use App\Http\Controllers\WebpageUserController;
 use App\Http\Controllers\hrms\SupportPageController;
 use App\Http\Controllers\hrms\TimeTrackerPageController;
+use App\Http\Controllers\hrms\EnqeriesController;
 
 /*
 |--------------------------------------------------------------------------
