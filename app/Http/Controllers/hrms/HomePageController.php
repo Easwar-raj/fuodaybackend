@@ -390,7 +390,7 @@ class HomePageController extends Controller
             ->map(function ($user) {
                 return [
                     'id' => $user->id,
-                    'name' => $user->full_name,
+                    'name' => $user->name,
                     'designation' => $user->employeeDetails->designation,
                     'profile' => $user->employeeDetails->profile_photo,
                     'department' => $user->employeeDetails->department,
