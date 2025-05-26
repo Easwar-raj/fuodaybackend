@@ -126,7 +126,7 @@ class ProfilePageController extends Controller
             $webUser->name = "{$request->first_name} {$request->last_name}" ?? $webUser->name;
             $webUser->save();
         }
-    
+
         // Step 3: Update employee_details (assuming one-to-one relationship)
         $employeeDetail = EmployeeDetails::where('web_user_id', $request->web_user_id)->first();
 
@@ -144,11 +144,7 @@ class ProfilePageController extends Controller
 
         return response()->json([
             'message' => 'Profile updated successfully.',
-            'status' => 'Success',
-            'data' => [
-                'user' => $webUser,
-                'employee_details' => $employeeDetail
-            ]
+            'status' => 'Success'
         ], 200);
     }
 

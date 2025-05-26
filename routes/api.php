@@ -126,6 +126,7 @@ Route::prefix('hrms')->group(function () {
         });
         Route::prefix('attendance')->group(function () {
             Route::get('/getattendances/{id}', [AttendancePageController::class, 'getAttendance']);
+            Route::get('/getattendancebyrole/{id}', [AttendancePageController::class, 'getAttendanceByRole']);
             Route::post('/addattendance', [AttendancePageController::class, 'addAttendance']);
             Route::post('/updateattendance', [AttendancePageController::class, 'updateAttendance']);
         });
@@ -161,6 +162,10 @@ Route::prefix('hrms')->group(function () {
             Route::get('/gettickets/{id}', [SupportPageController::class, 'getAllTicketsByStatus']);
             Route::post('/addticket', [SupportPageController::class, 'addTicket']);
             Route::post('/updateticket/{ticketId}', [SupportPageController::class, 'updateTicket']);
+        });
+        Route::prefix('enquiry')->group(function () {
+            Route::post('/addenquiry', [EnquiriesController::class, 'addInquiry']);
+            Route::get('/getenquiries', [EnquiriesController::class, 'getInquiry']);
         });
     });
 });

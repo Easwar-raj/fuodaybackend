@@ -264,4 +264,36 @@ class AttendancePageController extends Controller
 
         return response()->json(['message' => 'Checkout time updated successfully.', 'status' => 'Success'], 200);
     }
+
+    public function getAttendanceByRole($id)
+    {
+        $webUser = WebUser::find($id);
+
+        if (!$webUser) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $today = Carbon::today()->toDateString();
+
+        if ($webUser->role === 'employee') {
+            // Return attendance for this employee
+            $attendances = Attendance::where('web_user_id', $id)->whereDate('date', $today)->get();
+        } elseif ($webUser->role === 'hr') {
+            // Get all employees under same admin_user_id
+            $attendances = Attendance::whereIn('web_user_id', function ($query) use ($webUser) {
+                $query->select('id')
+                    ->from('web_users')
+                    ->where('admin_user_id', $webUser->admin_user_id)
+                    ->where('role', 'employee');
+            })->whereDate('date', $today)->get();
+        } else {
+            return response()->json(['message' => 'Invalid role'], 400);
+        }
+
+        return response()->json([
+            'message' => 'Attendance data retrieved successfully',
+            'status' => 'Success',
+            'data' => $attendances
+        ], 200);
+    }
 }

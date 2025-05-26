@@ -519,6 +519,11 @@ class WebpageUserController extends Controller
             $companyWord = strtolower(strtok($webUser->adminUser->company_name, ' '));
         }
 
+        if ($webUser && $webUser->adminUser) {
+            $chatLogo = "https://fuoday-s3-bucket.s3.ap-south-1.amazonaws.com/Fuoday_logo_F.png";
+            $webUser->adminUser->chat_logo = $chatLogo;
+        }
+
         return response()->json([
             'status' => 'Success',
             'message' => 'Login successful',
