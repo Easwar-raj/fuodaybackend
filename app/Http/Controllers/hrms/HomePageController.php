@@ -386,7 +386,6 @@ class HomePageController extends Controller
         // Step 2: Get all users with their employee details (excluding self)
         $users = WebUser::with('employeeDetails')
             ->where('admin_user_id', $adminUserId)
-            ->where('id', '!=', $id)
             ->get()
             ->map(function ($user) {
                 return [

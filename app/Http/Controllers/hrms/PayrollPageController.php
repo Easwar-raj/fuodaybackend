@@ -28,22 +28,30 @@ class PayrollPageController extends Controller
             ->first();
 
         // Fetch payrolls for the admin_user_id
-        $payrolls = Payroll::where('web_user_id', $id)->with('payslip')
+        $payslips = Payslip::whereHas('payroll', function ($q) use ($id) {
+                $q->where('web_user_id', $id);
+            })
+            ->with('payroll')
             ->get()
-            ->map(function ($payroll) {
-                $payslip = optional($payroll->payslip);
+            ->groupBy('month')
+            ->map(function ($groupedPayslips) {
+                // Take the first payslip in each month group
+                $payslip = $groupedPayslips->first();
+                $payroll = $payslip->payroll;
 
                 return [
-                    'payroll_id'       => $payroll->id,
-                    'designation'      => $payroll->designation,
-                    'date'             => $payslip->date ? $payslip->date->format('Y-m-d') : null,
-                    'time'             => $payslip->time ? Carbon::parse($payslip->time)->format('h:i A') : null,
-                    'total_salary'     => $payroll->monthly_salary,
+                    'payroll_id'       => $payroll?->id,
+                    'designation'      => $payroll?->designation,
+                    'date'             => $payslip->date?->format('Y-m-d'),
+                    'time'             => $payslip->time ? \Carbon\Carbon::parse($payslip->time)->format('h:i A') : null,
+                    'total_salary'     => $payroll?->monthy_salary,
                     'total_gross'      => $payslip->gross,
                     'total_deductions' => $payslip->total_deductions,
                     'status'           => $payslip->status,
                 ];
-            });
+            })
+            ->values(); // Reset keys
+
 
         return response()->json([
             'status' => 'Success',
@@ -53,7 +61,7 @@ class PayrollPageController extends Controller
                 'total_salary'      => $latestPayroll->monthly_salary ?? 0,
                 'current_month_salary' => $latestPayroll->payslip->total_salary ?? 0,
                 'total_gross'       => $latestPayroll->payslip->gross ?? 0,
-                'payrolls' => $payrolls,
+                'payrolls' => $payslips,
                 'incentives' => $incentives
             ],
         ], 200);

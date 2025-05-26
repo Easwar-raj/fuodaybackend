@@ -24,12 +24,11 @@ class EnquiriesController extends Controller
             ], 401);
         }
 
-        $enquiry = Enquiries::create($validated);
+        Enquiries::create($validated);
 
         return response()->json([
-            'success' => true,
+            'status' => 'Success',
             'message' => 'Enquiry submitted successfully.',
-            'data' => $enquiry
         ], 201);
     }
 
@@ -38,7 +37,8 @@ class EnquiriesController extends Controller
         $enquiries = Enquiries::latest()->get();
 
         return response()->json([
-            'success' => true,
+            'status' => 'Success',
+            'message' => 'Enquiry data retrieved successfully',
             'data' => $enquiries
         ]);
     }
