@@ -132,14 +132,7 @@ class PayrollPageController extends Controller
                 ],
 
                 // Grouped salary components by type
-                'salary_components' => $payrollComponents->map(function($group) {
-                    return $group->map(function($component) {
-                        return [
-                            'salary_component' => $component->salary_component,
-                            'amount'           => $component->amount,
-                        ];
-                    });
-                }),
+                'salary_components' => $payrollComponents->pluck('salary_component', 'amount')->toArray(),
 
                 'employee_details' => [
                     'name'             => $webUser->name,
