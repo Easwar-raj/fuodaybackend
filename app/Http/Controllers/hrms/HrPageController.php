@@ -169,4 +169,22 @@ class HrPageController extends Controller
             'data' =>  $pendingLeaves
         ]);
     }
+
+    function getWebUsers($id)
+    {
+        // Step 1: Find the admin_user_id for the given web_user_id
+        $webUser = WebUser::findOrFail($id);
+
+        if (!$webUser->admin_user_id || $webUser->role !== 'hr') {
+            return response()->json(['message' => 'Invalid details'], 403);
+        }
+        // Step 2: Fetch all web_users having the same admin_user_id
+        $webUsers = WebUser::where('admin_user_id', $webUser->admin_user_id)->get();
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Web users retrieved successfully',
+            'data' => $webUsers
+        ], 200);
+    }
 }

@@ -75,11 +75,11 @@ class PayrollPageController extends Controller
         $payslip = Payslip::whereHas('payroll', function($query) use ($id) {
                 $query->where('web_user_id', $id);
             })
+            ->whereMonth('date', $now->month) // ✅ Apply filter here
+            ->whereYear('date', $now->year)   // ✅ Apply filter here
             ->with('payroll')
             ->get()
             ->groupBy('month')
-            ->whereMonth('date', $now->month)
-            ->whereYear('date', $now->year)
             ->first();
         if (!$payslip) {
             $payslip = Payslip::whereHas('payroll', function($query) use ($id) {
