@@ -111,6 +111,19 @@ class PayrollPageController extends Controller
         $salaryInWords = $totalSalary !== null
             ? ucfirst($numberTransformer->toWords((int) $totalSalary)) . ' only'
             : null;
+
+        $earnings = collect($payrollComponents['Earnings'])
+            ->groupBy('salary_component')
+            ->map(fn($items) => $items->sum('amount'));
+
+        $deductions = collect($payrollComponents['Deductions'])
+            ->groupBy('salary_component')
+            ->map(fn($items) => $items->sum('amount'));
+
+        $salaryComponents = [
+            'Earnings' => $earnings->toArray(),
+            'Deductions' => $deductions->toArray(),
+        ];
         // Step 5: Format Response
         return response()->json([
             'status' => 'Success',
@@ -131,7 +144,7 @@ class PayrollPageController extends Controller
                 ],
 
                 // Grouped salary components by type
-                'salary_components' => $payrollComponents->pluck('salary_component', 'amount')->toArray(),
+                'salary_components' => $salaryComponents,
 
                 'employee_details' => [
                     'name'             => $webUser->name,
