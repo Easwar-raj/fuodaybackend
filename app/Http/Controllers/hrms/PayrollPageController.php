@@ -74,6 +74,9 @@ class PayrollPageController extends Controller
         $payslip = Payslip::whereHas('payroll', function($query) use ($id) {
                 $query->where('web_user_id', $id);
             })
+            ->with('payroll')
+            ->get()
+            ->groupBy('month')
             ->whereMonth('date', $now->month)
             ->whereYear('date', $now->year)
             ->first();
@@ -124,11 +127,6 @@ class PayrollPageController extends Controller
                 'salary_components' => $payrollComponents->map(function($group) {
                     return $group->map(function($component) {
                         return [
-                            'emp_name'         => $component->emp_name,
-                            'emp_id'           => $component->emp_id,
-                            'designation'      => $component->designation,
-                            'ctc'              => $component->ctc,
-                            'monthly_salary'   => $component->monthy_salary,
                             'salary_component' => $component->salary_component,
                             'type'             => $component->type,
                             'amount'           => $component->amount,

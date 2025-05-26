@@ -145,5 +145,4 @@ class HrPageController extends Controller
             ],
         ], 200);
     }
-
 }
