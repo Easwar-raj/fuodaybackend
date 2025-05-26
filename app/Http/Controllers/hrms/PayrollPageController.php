@@ -44,7 +44,7 @@ class PayrollPageController extends Controller
                     'designation'      => $payroll?->designation,
                     'date'             => $payslip->date?->format('Y-m-d'),
                     'time'             => $payslip->time ? \Carbon\Carbon::parse($payslip->time)->format('h:i A') : null,
-                    'total_salary'     => $payroll?->monthy_salary,
+                    'total_salary'     => $payroll?->monthly_salary,
                     'total_gross'      => $payslip->gross,
                     'total_deductions' => $payslip->total_deductions,
                     'status'           => $payslip->status,
