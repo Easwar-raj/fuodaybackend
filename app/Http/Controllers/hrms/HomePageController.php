@@ -394,7 +394,7 @@ class HomePageController extends Controller
                     'designation' => $user->employeeDetails->designation,
                     'profile' => $user->employeeDetails->profile_photo,
                     'department' => $user->employeeDetails->department,
-                    'parentId' => $user->employeeDetails->reporting_manager_id ?? null,
+                    'parentId' => (int) $user->employeeDetails->reporting_manager_id !== 0 ? (int) $user->employeeDetails->reporting_manager_id : null,
                 ];
             })
             ->values();

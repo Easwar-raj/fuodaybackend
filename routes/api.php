@@ -143,7 +143,10 @@ Route::prefix('hrms')->group(function () {
             Route::get('/getpendingleaves/{id}', [HrPageController::class, 'getPendingLeaveRequests']);
             Route::get('/getallwebusers/{id}', [HrPageController::class, 'getWebUsers']);
         });
-        
+        Route::prefix('payroll')->group(function () {
+            Route::get('/getpayroll/{id}', [PayrollPageController::class, 'getPayrollDetails']);
+            Route::get('/getoverview/{id}', [PayrollPageController::class, 'getCurrentPayrollDetails']);
+        });
         Route::prefix('performance')->group(function () {
             Route::get('/getgoals/{id}', [PerformancePageController::class, 'getUserTasks']);
             Route::post('/updatetasks', [PerformancePageController::class, 'updateTaskStatus']);
@@ -160,10 +163,6 @@ Route::prefix('hrms')->group(function () {
             Route::post('/updateticket/{ticketId}', [SupportPageController::class, 'updateTicket']);
         });
     });
-    Route::prefix('payroll')->group(function () {
-            Route::get('/getpayroll/{id}', [PayrollPageController::class, 'getPayrollDetails']);
-            Route::get('/getoverview/{id}', [PayrollPageController::class, 'getCurrentPayrollDetails']);
-        });
 });
 
 Route::post('/forgot-password', [WebpageUserController::class, 'sendResetLinkEmail'])->name('password.email');
