@@ -123,12 +123,11 @@ class PayrollPageController extends Controller
                     'date'             => optional($payslip->date)->format('Y-m-d'),
                 ],
 
-                // ✅ Grouped salary components by type
+                // Grouped salary components by type
                 'salary_components' => $payrollComponents->map(function($group) {
                     return $group->map(function($component) {
                         return [
                             'salary_component' => $component->salary_component,
-                            'type'             => $component->type,
                             'amount'           => $component->amount,
                         ];
                     });
