@@ -31,15 +31,17 @@ class PayrollPageController extends Controller
         $payrolls = Payroll::where('web_user_id', $id)->with('payslip')
             ->get()
             ->map(function ($payroll) {
+                $payslip = optional($payroll->payslip);
+
                 return [
                     'payroll_id'       => $payroll->id,
                     'designation'      => $payroll->designation,
-                    'date'             => optional($payroll->payslip->date)->format('Y-m-d'),
-                    'time'             => optional($payroll->payslip)?->time ? Carbon::parse($payroll->payslip->time)->format('h:i A') : null,
+                    'date'             => $payslip->date ? $payslip->date->format('Y-m-d') : null,
+                    'time'             => $payslip->time ? Carbon::parse($payslip->time)->format('h:i A') : null,
                     'total_salary'     => $payroll->monthly_salary,
-                    'total_gross'      => $payroll->payslip->gross,
-                    'total_deductions' => $payroll->payslip->total_deductions,
-                    'status'           => $payroll->payslip->status,
+                    'total_gross'      => $payslip->gross,
+                    'total_deductions' => $payslip->total_deductions,
+                    'status'           => $payslip->status,
                 ];
             });
 

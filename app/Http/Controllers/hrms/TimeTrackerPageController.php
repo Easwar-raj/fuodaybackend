@@ -37,7 +37,7 @@ class TimeTrackerPageController extends Controller
         $attendances = Attendance::where('web_user_id', $id)
             ->whereBetween('date', [$startOfWeek, $endOfWeek])
             ->orderBy('date')
-            ->orderBy('login_time') // assuming you have login_time and logout_time
+            ->orderBy('checkin') // assuming you have login_time and logout_time
             ->get()
             ->groupBy(function ($attendance) {
                 return Carbon::parse($attendance->date)->toDateString(); // group by date
@@ -48,8 +48,8 @@ class TimeTrackerPageController extends Controller
 
                 return (object)[
                     'date' => Carbon::parse($date)->format('l, F d, Y'),
-                    'first_login' => $first->login_time,
-                    'last_logout' => $last->logout_time,
+                    'first_login' => $first->checkin,
+                    'last_logout' => $last->checkout,
                     'entries' => $dayAttendances, // optional: keep all raw entries if needed
                 ];
             })
