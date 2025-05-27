@@ -115,7 +115,6 @@ class ProfilePageController extends Controller
             'last_name' => 'nullable|string|max:255',
             'about' => 'nullable|string',
             'dob' => 'nullable|date',
-            'personal_email' => 'nullable|email|max:255',
             'address' => 'nullable|string|max:255',
         ]);
 
@@ -138,7 +137,6 @@ class ProfilePageController extends Controller
 
         $employeeDetail->about = $request->about ?? $employeeDetail->about;
         $employeeDetail->dob = $request->dob ?? $employeeDetail->dob;
-        $employeeDetail->personal_email = $request->personal_email ?? $employeeDetail->personal_email;
         $employeeDetail->address = $request->address ?? $employeeDetail->address;
         $employeeDetail->save();
 
