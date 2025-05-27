@@ -13,6 +13,9 @@ use App\Models\Skills;
 use App\Models\Experience;
 use App\Models\Education;
 use App\Models\Onboarding;
+use Aws\S3\S3Client;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ProfilePageController extends Controller
 {
@@ -346,19 +349,17 @@ class ProfilePageController extends Controller
             'web_user_id'         => 'required|exists:web_users,id',
             'welcome_email_sent'  => 'nullable|date',
             'scheduled_date'      => 'nullable|date',
-            'photo'               => 'nullable|string',
-            'pan'                 => 'nullable|string',
-            'passbook'            => 'nullable|string',
-            'payslip'             => 'nullable|string',
-            'offer_letter'        => 'nullable|string',
+            'photo'               => 'nullable|image|mimes:jpeg,png,jpg,pdf|max:5048',
+            'pan'                 => 'nullable|image|mimes:jpeg,png,jpg,pdf|max:5048',
+            'passbook'            => 'nullable|image|mimes:jpeg,png,jpg,pdf|max:5048',
+            'payslip'             => 'nullable|image|mimes:jpeg,png,jpg,pdf|max:5048',
+            'offer_letter'        => 'nullable|image|mimes:jpeg,png,jpg,pdf|max:5048',
         ]);
 
         $webUser = WebUser::find($request->web_user_id);
 
-        if(!$validated || !$webUser) {
-            return response()->json([
-                'message' => 'Invalid data provided.'
-            ], 400);
+        if (!$webUser || !$validated) {
+            return response()->json(['message' => 'Invalid details.'], 400);
         }
 
         $onboarding = Onboarding::where('web_user_id', $request->web_user_id)->first();
@@ -370,19 +371,61 @@ class ProfilePageController extends Controller
             ], 404);
         }
 
+        $bucket = env('AWS_BUCKET');
+        $s3 = new S3Client([
+            'region' => env('AWS_DEFAULT_REGION'),
+            'version' => 'latest',
+            'credentials' => [
+                'key' => env('AWS_ACCESS_KEY_ID'),
+                'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            ],
+        ]);
+
+        $uploadFields = ['photo', 'pan', 'passbook', 'payslip', 'offer_letter'];
+        $uploadResults = [];
+
+        foreach ($uploadFields as $field) {
+            if ($request->hasFile($field)) {
+                $file = $request->file($field);
+                $extension = $file->getClientOriginalExtension();
+                $fileName = "onboarding/{$webUser->id}/{$field}." . $extension;
+
+                // Delete any existing file with the same name
+                $existingFiles = Storage::disk('s3')->files("onboarding/{$webUser->id}");
+                foreach ($existingFiles as $existingFile) {
+                    if (str_contains($existingFile, $field)) {
+                        Storage::disk('s3')->delete($existingFile);
+                    }
+                }
+
+                // Upload new file
+                $s3->putObject([
+                    'Bucket' => $bucket,
+                    'Key' => $fileName,
+                    'Body' => $file->get(),
+                    'ContentType' => $file->getMimeType(),
+                ]);
+
+                $uploadResults[$field] = 'uploaded';
+            } else {
+                $uploadResults[$field] = Str::startsWith($onboarding->$field, 'https') ? 'uploaded' : 'not uploaded';
+            }
+        }
+
         $onboarding->update([
             'welcome_email_sent' => $request->welcome_email_sent ?? $onboarding->welcome_email_sent,
             'scheduled_date'     => $request->scheduled_date ?? $onboarding->scheduled_date,
-            'photo'              => $request->photo ?? $onboarding->photo,
-            'pan'                => $request->pan ?? $onboarding->pan,
-            'passbook'           => $request->passbook ?? $onboarding->passbook,
-            'payslip'            => $request->payslip ?? $onboarding->payslip,
-            'offer_letter'       => $request->offer_letter ?? $onboarding->offer_letter,
+            'photo'              => $onboarding->photo,
+            'pan'                => $onboarding->pan,
+            'passbook'           => $onboarding->passbook,
+            'payslip'            => $onboarding->payslip,
+            'offer_letter'       => $onboarding->offer_letter,
         ]);
 
         return response()->json([
             'message' => 'Onboarding documents updated successfully.',
             'status'  => 'Success',
+            'upload_status' => $uploadResults
         ], 200);
     }
 }

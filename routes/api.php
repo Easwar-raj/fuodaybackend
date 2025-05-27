@@ -126,7 +126,12 @@ Route::prefix('hrms')->group(function () {
             Route::post('/updateexperience', [ProfilePageController::class, 'updateOrCreateExperience']);
             Route::post('/updateonboarding', [ProfilePageController::class, 'updateOnboardingDocuments']);
         });
-        
+        Route::prefix('attendance')->group(function () {
+            Route::get('/getattendances/{id}', [AttendancePageController::class, 'getAttendance']);
+            Route::get('/getattendancebyrole/{id}', [AttendancePageController::class, 'getAttendanceByRole']);
+            Route::post('/addattendance', [AttendancePageController::class, 'addAttendance']);
+            Route::post('/updateattendance', [AttendancePageController::class, 'updateAttendance']);
+        });
         Route::prefix('leave')->group(function () {
             Route::get('/getleave/{id}', [LeaveTrackerPageController::class, 'getLeaveStatus']);
             Route::post('/addleave', [LeaveTrackerPageController::class, 'addLeave']);
@@ -165,12 +170,6 @@ Route::prefix('hrms')->group(function () {
             Route::get('/getenquiries', [EnquiriesController::class, 'getInquiry']);
         });
     });
-    Route::prefix('attendance')->group(function () {
-            Route::get('/getattendances/{id}', [AttendancePageController::class, 'getAttendance']);
-            Route::get('/getattendancebyrole/{id}', [AttendancePageController::class, 'getAttendanceByRole']);
-            Route::post('/addattendance', [AttendancePageController::class, 'addAttendance']);
-            Route::post('/updateattendance', [AttendancePageController::class, 'updateAttendance']);
-        });
 });
 
 Route::post('/forgot-password', [WebpageUserController::class, 'sendResetLinkEmail'])->name('password.email');
