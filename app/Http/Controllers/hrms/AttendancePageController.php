@@ -280,12 +280,8 @@ class AttendancePageController extends Controller
             $attendances = Attendance::where('web_user_id', $id)->whereDate('date', $today)->get();
         } elseif ($webUser->role === 'hr') {
             // Get all employees under same admin_user_id
-            $attendances = Attendance::whereIn('web_user_id', function ($query) use ($webUser) {
-                $query->select('id')
-                    ->from('web_users')
-                    ->where('admin_user_id', $webUser->admin_user_id)
-                    ->where('role', 'employee');
-            })->whereDate('date', $today)->get();
+            $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
+            $attendances = Attendance::whereIn('web_user_id', $webuserIds)->whereDate('date', $today)->get();
         } else {
             return response()->json(['message' => 'Invalid role'], 400);
         }
@@ -293,7 +289,7 @@ class AttendancePageController extends Controller
         return response()->json([
             'message' => 'Attendance data retrieved successfully',
             'status' => 'Success',
-            'data' => $attendances
+            'data' => $attendances,
         ], 200);
     }
 }
