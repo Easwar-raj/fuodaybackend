@@ -20,7 +20,7 @@ jobs:
 
     - name: Deploy Laravel App to EC2
       run: |
-        ssh -o StrictHostKeyChecking=no ubuntu@13.127.64.22 << 'EOF'
+        ssh -o StrictHostKeyChecking=no ubuntu@13.235.183.64 << 'EOF'
           cd /var/www
           sudo rm -rf fuodaybackend
           git clone https://github.com/Easwar-raj/fuodaybackend.git
