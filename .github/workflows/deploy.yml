@@ -1,38 +1,49 @@
 name: Deploy Laravel to EC2
-
+ 
 on:
   push:
     branches:
-      - main  # Change if your deployment branch is different
-
+      - main
+ 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+ 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-
-    - name: Add SSH key
+ 
+    - name: Setup SSH Key
       uses: webfactory/ssh-agent@v0.9.0
       with:
         ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-
+ 
     - name: Deploy Laravel App to EC2
       run: |
         ssh -o StrictHostKeyChecking=no ubuntu@13.235.183.64 << 'EOF'
-          cd /var/www
-          sudo rm -rf fuodaybackend
+          # Set working directory with permissions
+          cd /tmp
+          rm -rf fuodaybackend
           git clone https://github.com/Easwar-raj/fuodaybackend.git
-          sudo cd fuodaybackend
-          
-          sudo echo "${{ secrets.LARAVEL_ENV }}" > .env
-
-          sudo composer update --no-interaction --prefer-dist
-          sudo composer install --no-interaction --prefer-dist
-          
-          sudo php artisan key:generate
-          
+ 
+          # Move to project directory
+          cd fuodaybackend
+ 
+          # Inject .env from GitHub Secrets
+          echo "${{ secrets.LARAVEL_ENV }}" > .env
+ 
+          # Run composer as regular user
+          composer update --no-interaction --prefer-dist --optimize-autoloader
+ 
+          # Laravel setup
+          php artisan key:generate
+          php artisan storage:link
+ 
+          # Move project to /var/www
+          sudo rm -rf /var/www/fuodaybackend
+          sudo mv ../fuodaybackend /var/www/fuodaybackend
+ 
+          # Fix permissions
           sudo chown -R www-data:www-data /var/www/fuodaybackend
           sudo chmod -R 755 /var/www/fuodaybackend/storage
           sudo chmod -R 755 /var/www/fuodaybackend/bootstrap/cache
