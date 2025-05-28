@@ -141,11 +141,7 @@ Route::prefix('hrms')->group(function () {
             Route::post('/addschedule', [TimeTrackerPageController::class, 'addShiftSchedule']);
             Route::post('/getschedules', [TimeTrackerPageController::class, 'getMonthlyShifts']);
         });
-        Route::prefix('hr')->group(function () {
-            Route::get('/gethr/{id}', [HrPageController::class, 'getHr']);
-            Route::get('/getpendingleaves/{id}', [HrPageController::class, 'getPendingLeaveRequests']);
-            Route::get('/getallwebusers/{id}', [HrPageController::class, 'getWebUsers']);
-        });
+        
         Route::prefix('payroll')->group(function () {
             Route::get('/getpayroll/{id}', [PayrollPageController::class, 'getPayrollDetails']);
             Route::get('/getoverview/{id}', [PayrollPageController::class, 'getCurrentPayrollDetails']);
@@ -165,11 +161,16 @@ Route::prefix('hrms')->group(function () {
             Route::post('/addticket', [SupportPageController::class, 'addTicket']);
             Route::post('/updateticket/{ticketId}', [SupportPageController::class, 'updateTicket']);
         });
-        Route::prefix('enquiry')->group(function () {
-            Route::post('/addenquiry', [EnquiriesController::class, 'addInquiry']);
-            Route::get('/getenquiries', [EnquiriesController::class, 'getInquiry']);
-        });
     });
+    Route::prefix('enquiry')->group(function () {
+        Route::post('/addenquiry', [EnquiriesController::class, 'addInquiry']);
+        Route::get('/getenquiries', [EnquiriesController::class, 'getInquiry']);
+    });
+    Route::prefix('hr')->group(function () {
+            Route::get('/gethr/{id}', [HrPageController::class, 'getHr']);
+            Route::get('/getpendingleaves/{id}', [HrPageController::class, 'getPendingLeaveRequests']);
+            Route::get('/getallwebusers/{id}', [HrPageController::class, 'getWebUsers']);
+        });
 });
 
 Route::post('/forgot-password', [WebpageUserController::class, 'sendResetLinkEmail'])->name('password.email');
