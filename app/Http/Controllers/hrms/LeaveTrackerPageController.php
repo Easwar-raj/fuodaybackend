@@ -165,5 +165,30 @@ class LeaveTrackerPageController extends Controller
         ], 201);
     }
 
+    public function updateLeaveStatus(Request $request)
+    {
+        $validated = $request->validate([
+            'web_user_id' => 'required|integer|exists:web_users,id',
+            'status' => 'required|in:approved,rejected',
+            'comment' => 'nullable|string',
+        ]);
 
+        $leaveRequest = LeaveRequest::find($request->web_user_id);
+
+        if (!$leaveRequest || !$validated) {
+            return response()->json([
+                'message' => 'Leave request not found.',
+                'status' => 'error',
+            ], 404);
+        }
+
+        $leaveRequest->status = $request->status;
+        $leaveRequest->comment = $request->comment ?? $leaveRequest->comment; // optional
+        $leaveRequest->save();
+
+        return response()->json([
+            'message' => 'Leave status updated successfully.',
+            'status' => 'Success',
+        ], 200);
+    }
 }
