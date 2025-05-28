@@ -168,12 +168,12 @@ class LeaveTrackerPageController extends Controller
     public function updateLeaveStatus(Request $request)
     {
         $validated = $request->validate([
-            'leave_id' => 'required|integer|exists:leave_requests,id',
+            'leave_request_id' => 'required|integer|exists:leave_requests,id',
             'status' => 'required|in:Approved,Rejected',
             'comment' => 'nullable|string',
         ]);
 
-        $leaveRequest = LeaveRequest::find($request->leave_id);
+        $leaveRequest = LeaveRequest::find($request->leave_request_id);
 
         if (!$leaveRequest || !$validated) {
             return response()->json([
