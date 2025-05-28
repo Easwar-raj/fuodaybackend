@@ -156,7 +156,7 @@ class LeaveTrackerPageController extends Controller
             'to' => $request->to,
             'days' => Carbon::parse($request->from)->diffInDays(Carbon::parse($request->to)) + 1,
             'reason' => $request->reason,
-            'status' => 'pending',
+            'status' => 'Pending',
         ]);
 
         return response()->json([
@@ -168,12 +168,12 @@ class LeaveTrackerPageController extends Controller
     public function updateLeaveStatus(Request $request)
     {
         $validated = $request->validate([
-            'web_user_id' => 'required|integer|exists:web_users,id',
+            'leave_id' => 'required|integer|exists:leave_requests,id',
             'status' => 'required|in:Approved,Rejected',
             'comment' => 'nullable|string',
         ]);
 
-        $leaveRequest = LeaveRequest::find($request->web_user_id);
+        $leaveRequest = LeaveRequest::find($request->leave_id);
 
         if (!$leaveRequest || !$validated) {
             return response()->json([
