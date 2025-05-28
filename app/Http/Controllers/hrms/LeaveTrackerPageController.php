@@ -169,7 +169,7 @@ class LeaveTrackerPageController extends Controller
     {
         $validated = $request->validate([
             'web_user_id' => 'required|integer|exists:web_users,id',
-            'status' => 'required|in:approved,rejected',
+            'status' => 'required|in:Approved,Rejected',
             'comment' => 'nullable|string',
         ]);
 
