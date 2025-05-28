@@ -24,14 +24,14 @@ jobs:
           cd /var/www
           sudo rm -rf fuodaybackend
           git clone https://github.com/Easwar-raj/fuodaybackend.git
-          cd fuodaybackend
+          sudo cd fuodaybackend
           
-          echo "${{ secrets.LARAVEL_ENV }}" > .env
+          sudo echo "${{ secrets.LARAVEL_ENV }}" > .env
 
-          composer update --no-interaction --prefer-dist
-          composer install --no-interaction --prefer-dist
+          sudo composer update --no-interaction --prefer-dist
+          sudo composer install --no-interaction --prefer-dist
           
-          php artisan key:generate
+          sudo php artisan key:generate
           
           sudo chown -R www-data:www-data /var/www/fuodaybackend
           sudo chmod -R 755 /var/www/fuodaybackend/storage
