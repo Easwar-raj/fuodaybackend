@@ -103,8 +103,6 @@ class WebpageUserController extends Controller
             'place' => $request->place,
         ];
 
-
-
         $payrollData = [
             'designation' => $request->designation,
             'basic' => $request->basic,
@@ -341,9 +339,9 @@ class WebpageUserController extends Controller
         if ($employeeData) {
             $employeeData->update([
                 'profile_photo' => $profileUrl ?? $employeeData->profile_photo, // fallback if no upload
+                'personal_contact_no' => $request->phone ?? $employeeData->personal_contact_no
             ]);
         }
-
 
         return response()->json(['status' => 'Success', 'message' => 'Web user updated successfully.'], 200);
     }

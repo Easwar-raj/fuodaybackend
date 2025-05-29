@@ -42,6 +42,7 @@ Route::prefix('admin-users')->group(function () {
         Route::post('/logout', [AdminUserController::class, 'logout']);
         Route::get('/getadmindata/{id}', [AdminUserController::class, 'getAllAdminPanelData']);
         Route::get('/getallwebusers/{id}', [AdminUserController::class, 'getAllWebUsers']);
+        Route::get('/get/abouts', [AdminUserController::class, 'getAboutByWebUserId']);
         Route::prefix('save')->group(function () {
             Route::post('/heirarchy', [AdminUserController::class, 'saveHeirarchy']);
             Route::post('/holiday', [AdminUserController::class, 'saveHoliday']);

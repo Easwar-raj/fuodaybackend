@@ -349,11 +349,11 @@ class ProfilePageController extends Controller
             'web_user_id'         => 'required|exists:web_users,id',
             'welcome_email_sent'  => 'nullable|date',
             'scheduled_date'      => 'nullable|date',
-            'photo'               => 'nullable|image|mimes:jpeg,png,jpg,pdf|max:5048',
-            'pan'                 => 'nullable|image|mimes:jpeg,png,jpg,pdf|max:5048',
-            'passbook'            => 'nullable|image|mimes:jpeg,png,jpg,pdf|max:5048',
-            'payslip'             => 'nullable|image|mimes:jpeg,png,jpg,pdf|max:5048',
-            'offer_letter'        => 'nullable|image|mimes:jpeg,png,jpg,pdf|max:5048',
+            'photo'               => 'nullable|mimes:jpeg,png,jpg,pdf|max:5048',
+            'pan'                 => 'nullable|mimes:jpeg,png,jpg,pdf|max:5048',
+            'passbook'            => 'nullable|mimes:jpeg,png,jpg,pdf|max:5048',
+            'payslip'             => 'nullable|mimes:jpeg,png,jpg,pdf|max:5048',
+            'offer_letter'        => 'nullable|mimes:jpeg,png,jpg,pdf|max:5048',
         ]);
 
         $webUser = WebUser::find($request->web_user_id);

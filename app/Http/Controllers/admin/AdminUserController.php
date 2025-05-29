@@ -538,6 +538,37 @@ class AdminUserController extends Controller
         return response()->json(['message' => 'About information updated successfully.', 'status' => 'Success'], 200);
     }
 
+    public function getAboutByWebUserId(Request $request)
+    {
+        $validated = $request->validate([
+            'web_user_id' => 'required|integer|exists:web_users,id',
+        ]);
+
+        $webUser = WebUser::find($request->web_user_id);
+
+        if (!$webUser || !$validated) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Web user not found.'
+            ], 404);
+        }
+
+        $about = About::where('admin_user_id', $webUser->admin_user_id)->first();
+
+        if (!$about) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'About data not found for this admin user.'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'About data retrieved successfully',
+            'data' => $about
+        ]);
+    }
+
     public function saveEvent(Request $request)
     {
         $validated = $request->validate([

@@ -251,11 +251,13 @@ class AttendancePageController extends Controller
 
         $checkin = Carbon::parse($attendance->checkin);
         $checkout = Carbon::parse($request->checkout);
-        $diffInMinutes = $checkin->diffInMinutes($checkout);
-        $hours = floor($diffInMinutes / 60);
-        $minutes = $diffInMinutes % 60;
-        $workedHours = sprintf('%02d:%02d hours', $hours, $minutes);
 
+        // Use diffInSeconds to get exact time difference and convert
+        $diffInSeconds = $checkin->diffInSeconds($checkout);
+        $hours = floor($diffInSeconds / 3600);
+        $minutes = floor(($diffInSeconds % 3600) / 60);
+
+        $workedHours = sprintf('%02d:%02d hours', $hours, $minutes);
 
         // Update checkout time
         $attendance->checkout = $request->checkout;
