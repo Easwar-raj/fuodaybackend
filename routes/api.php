@@ -176,3 +176,4 @@ Route::prefix('hrms')->group(function () {
 
 Route::post('/forgot-password', [WebpageUserController::class, 'sendResetLinkEmail'])->name('password.email');
 Route::post('/reset-password', [WebpageUserController::class, 'reset'])->name('password.update');
+Route::get('/verify-attendance', [PayrollPageController::class, 'runAttendanceVerification']);

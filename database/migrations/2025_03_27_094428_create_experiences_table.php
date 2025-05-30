@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('role');
             $table->string('duration');
             $table->string('responsibilities');
-            $table->date('achievements')->nullable();
+            $table->string('achievements')->nullable();
             $table->timestamps();
         });
     }

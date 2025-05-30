@@ -9,6 +9,7 @@ use App\Models\Onboarding;
 use App\Models\Payroll;
 use App\Models\Payslip;
 use App\Models\WebUser;
+use App\Services\AttendanceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use NumberToWords\NumberToWords;
@@ -162,5 +163,12 @@ class PayrollPageController extends Controller
                 ],
             ],
         ], 200);
+    }
+
+    public function runAttendanceVerification()
+    {
+        AttendanceService::verifyAttendanceStatuses();
+
+        return response()->json(['message' => 'Attendance verification completed successfully.']);
     }
 }

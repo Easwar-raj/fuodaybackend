@@ -986,7 +986,6 @@ class AdminUserController extends Controller
     {
         $validated = $request->validate([
             'admin_user_id' => 'required|exists:admin_users,id',
-            'id' => 'required|exists:abouts,id',
         ]);
 
         $adminUser = AdminUser::find($request->admin_user_id);
@@ -995,7 +994,7 @@ class AdminUserController extends Controller
             return response()->json(['message' => 'Invalid admin user'], 400);
         }
 
-        $about = About::find($request->id);
+        $about = About::where('admin_user_id', $request->admin_user_id)->get();
         if (!$about) {
             return response()->json(['message' => 'About section not found'], 404);
         }

@@ -27,7 +27,7 @@ class WebpageUserController extends Controller
             'admin_user_id' => 'required|integer|exists:admin_users,id',
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255',
+            'email' => 'required|email|exists:web_users,email',
             'role' => 'required|string|in:employee,recruiter,hr,hr_recruiter',
             'role_location' => 'required|string|max:255',
             'gender' => 'required|string|max:255',
@@ -75,6 +75,15 @@ class WebpageUserController extends Controller
                 'message' => 'Unauthorized',
                 'status' => 'error'
             ], 401);
+        }
+
+        $exists = EmployeeDetails::where('emp_id', $request->emp_id)->where('admin_user_id', $request->admin_user_id)->exists();
+
+        if ($exists) {
+            return response()->json([
+                'message' => 'The provided Employee id already exists',
+                'status' => 'error'
+            ], 404);
         }
 
         $webUserDetails = [
