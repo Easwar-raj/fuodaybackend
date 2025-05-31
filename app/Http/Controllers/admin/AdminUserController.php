@@ -1221,7 +1221,7 @@ class AdminUserController extends Controller
         // Fetch all web user
         $webUsers = WebUser::where('admin_user_id', $id)
         ->with(['employeeDetails' => function ($query) {
-            $query->select('id', 'web_user_id', 'department', 'personal_contact_no');
+            $query->select('id', 'web_user_id', 'department', 'personal_contact_no', 'profile_photo');
         }])->get();
 
         return response()->json([

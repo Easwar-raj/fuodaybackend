@@ -32,10 +32,16 @@ class SupportPageController extends Controller
             return 'unassigned'; // fallback
         });
 
+        $employeeNames = WebUser::where('admin_user_id', $adminId)->select('id', 'name')->get();
+
         return response()->json([
             'message' => 'Successfully fetched tickets',
             'status' => 'success',
             'data' => $groupedTickets,
+            // 'data' => [
+            //     'groupedTickets' => $groupedTickets,
+            //     'assignees' => $employeeNames
+            // ],
         ], 200);
     }
 

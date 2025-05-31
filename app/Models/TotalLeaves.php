@@ -17,4 +17,9 @@ class TotalLeaves extends Model
         'total',
         'period'
     ];
+
+    public function leaveRequests()
+    {
+        return $this->hasMany(LeaveRequest::class, 'type', 'type');
+    }
 }

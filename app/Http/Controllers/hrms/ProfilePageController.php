@@ -406,9 +406,9 @@ class ProfilePageController extends Controller
                     'ContentType' => $file->getMimeType(),
                 ]);
 
-                $uploadResults[$field] = 'uploaded';
+                $uploadResults[$field] = $s3->getObjectUrl($bucket, $fileName);
             } else {
-                $uploadResults[$field] = Str::startsWith($onboarding->$field, 'https') ? 'uploaded' : 'not uploaded';
+                $uploadResults[$field] = !Str::startsWith($onboarding->$field, 'https') ? $onboarding->$field : 'not uploaded';
             }
         }
 

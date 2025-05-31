@@ -21,25 +21,33 @@ class LeaveTrackerPageController extends Controller
         $adminUserId = $webUser->admin_user_id;
 
         // Step 2: Leave summary (allowed, taken, pending, remaining)
-        $leaveSummary = LeaveRequest::where('web_user_id', $id)
-            ->whereIn('status', ['approved', 'pending'])
-            ->leftJoin('total_leaves', function ($join) use ($adminUserId) {
-                $join->on('total_leaves.type', '=', 'leave_requests.type')->where('total_leaves.admin_user_id', '=', $adminUserId);
-            })
-            ->select(
-                'total_leaves.type',
-                'total_leaves.total as allowed',
-                DB::raw("SUM(CASE WHEN leave_requests.status = 'approved' THEN DATEDIFF(leave_requests.to, leave_requests.from) + 1 ELSE 0 END) as taken"),
-                DB::raw("SUM(CASE WHEN leave_requests.status = 'pending' THEN DATEDIFF(leave_requests.to, leave_requests.from) + 1 ELSE 0 END) as pending")
-            )
-            ->groupBy('total_leaves.type', 'total_leaves.total')
+        $leaveSummary = TotalLeaves::where('admin_user_id', $adminUserId)
+            ->with(['leaveRequests' => function ($query) use ($id) {
+                $query->where('web_user_id', $id)
+                    ->whereIn('status', ['approved', 'pending']);
+            }])
             ->get()
-            ->map(function ($row) {
-                $row->remaining = max($row->allowed - $row->taken, 0);
-                $row->remaining_percentage = $row->allowed > 0
-                    ? intval(($row->remaining / $row->allowed) * 100)
-                    : 0;
-                return $row;
+            ->map(function ($leave) {
+                $taken = $leave->leaveRequests
+                    ->where('status', 'approved')
+                    ->sum(function ($req) {
+                        return $req->from && $req->to ? $req->to->diffInDays($req->from) + 1 : 0;
+                    });
+
+                $pending = $leave->leaveRequests
+                    ->where('status', 'pending')
+                    ->sum(function ($req) {
+                        return $req->from && $req->to ? $req->to->diffInDays($req->from) + 1 : 0;
+                    });
+
+                return (object) [
+                    'type' => $leave->type,
+                    'allowed' => $leave->total,
+                    'taken' => $taken,
+                    'pending' => $pending,
+                    'remaining' => max($leave->total - $taken, 0),
+                    'remaining_percentage' => $leave->total > 0 ? intval((($leave->total - $taken) / $leave->total) * 100) : 0,
+                ];
             });
 
         // Step 3: Holiday list
@@ -113,6 +121,8 @@ class LeaveTrackerPageController extends Controller
         $graphRow['percentage'] = $totalAllowed > 0 ? intval(($totalTaken / $totalAllowed) * 100) . '%' : '0%';
         $graph = [$graphRow];
 
+        $leaveTypesList = TotalLeaves::where('admin_user_id', $adminUserId)->pluck('type')->unique()->values(); // optional: to reindex the array
+
         // Step 7: Final JSON response
         return response()->json([
             'status' => 'Success',
@@ -122,7 +132,8 @@ class LeaveTrackerPageController extends Controller
                 'holidays' => $holidays,
                 'leave_report' => $leaveReport,
                 'monthly_graph' => $monthlyGraph,
-                'graph' => $graph
+                'graph' => $graph,
+                'leaveT_types' => $leaveTypesList
             ],
         ], 200);
     }

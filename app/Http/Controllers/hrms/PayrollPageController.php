@@ -113,11 +113,11 @@ class PayrollPageController extends Controller
             ? ucfirst($numberTransformer->toWords((int) $totalSalary)) . ' only'
             : null;
 
-        $earnings = collect($payrollComponents['Earnings'])
+        $earnings = collect($payrollComponents['Earnings'] ?? [])
             ->groupBy('salary_component')
             ->map(fn($items) => $items->sum('amount'));
 
-        $deductions = collect($payrollComponents['Deductions'])
+        $deductions = collect($payrollComponents['Deductions'] ?? [])
             ->groupBy('salary_component')
             ->map(fn($items) => $items->sum('amount'));
 

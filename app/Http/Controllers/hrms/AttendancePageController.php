@@ -227,7 +227,7 @@ class AttendancePageController extends Controller
             'status' => 'Present', // Default status
         ]);
 
-        return response()->json(['message' => 'Attendance added successfully.', 'status' => 'Success'], 200);
+        return response()->json(['message' => 'Attendance added successfully.', 'status' => 'Success', 'data' => $request->checkin], 200);
     }
 
     public function updateAttendance(Request $request)

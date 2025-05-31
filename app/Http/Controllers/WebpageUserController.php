@@ -27,7 +27,7 @@ class WebpageUserController extends Controller
             'admin_user_id' => 'required|integer|exists:admin_users,id',
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => 'required|email|exists:web_users,email',
+            'email' => 'required|email|unique:web_users,email',
             'role' => 'required|string|in:employee,recruiter,hr,hr_recruiter',
             'role_location' => 'required|string|max:255',
             'gender' => 'required|string|max:255',
@@ -77,7 +77,11 @@ class WebpageUserController extends Controller
             ], 401);
         }
 
-        $exists = EmployeeDetails::where('emp_id', $request->emp_id)->where('admin_user_id', $request->admin_user_id)->exists();
+        $exists = EmployeeDetails::where('emp_id', $request->emp_id)
+            ->whereHas('webUser', function ($query) use ($request) {
+                $query->where('admin_user_id', $request->admin_user_id);
+            })
+            ->exists();
 
         if ($exists) {
             return response()->json([
@@ -530,9 +534,6 @@ class WebpageUserController extends Controller
             $chatLogo = "https://fuoday-s3-bucket.s3.ap-south-1.amazonaws.com/Fuoday_logo_F.png";
             $webUser->adminUser->chat_logo = $chatLogo;
             $webUser->adminUser->company_word = $companyWord;
-            if ($request->admin_user_id === 3) {
-                $webUser->adminUser->company_name = 'areg';
-            }
         }
 
         return response()->json([
