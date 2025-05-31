@@ -529,6 +529,7 @@ class WebpageUserController extends Controller
         if ($webUser && $webUser->adminUser) {
             $chatLogo = "https://fuoday-s3-bucket.s3.ap-south-1.amazonaws.com/Fuoday_logo_F.png";
             $webUser->adminUser->chat_logo = $chatLogo;
+            $webUser->adminUser->company_word = $companyWord;
         }
 
         return response()->json([
@@ -536,7 +537,6 @@ class WebpageUserController extends Controller
             'message' => 'Login successful',
             'data' => $webUser,
             'token' => $token,
-            'company_word' => $companyWord,
         ], 200);
     }
     // Logout with Sanctum

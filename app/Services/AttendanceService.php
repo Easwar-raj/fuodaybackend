@@ -19,6 +19,7 @@ class AttendanceService
         $today = Carbon::today();
         $weekday = strtolower($today->format('l'));
         $attendances = Attendance::whereDate('date', $today)->get();
+        $webUsers = WebUser::all();
 
         // === Fetch Policies ===
         $policies = Policies::whereIn('title', [
@@ -72,7 +73,7 @@ class AttendanceService
 
         if ($salaryPeriod && $salaryDateDay) {
             $startDay = (int) explode('To', $salaryPeriod)[0];
-            $triggerDay = $startDay - 1;
+            $triggerDay = $startDay;
             if ((int)$today->format('d') === $triggerDay) {
                 foreach ($attendances as $attendance) {
                     $userId = $attendance->user_id;
