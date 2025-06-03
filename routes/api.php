@@ -132,6 +132,7 @@ Route::prefix('hrms')->group(function () {
             Route::get('/getattendancebyrole/{id}', [AttendancePageController::class, 'getAttendanceByRole']);
             Route::post('/addattendance', [AttendancePageController::class, 'addAttendance']);
             Route::post('/updateattendance', [AttendancePageController::class, 'updateAttendance']);
+            Route::get('/gettoday/{id}', [AttendancePageController::class, 'getTodayAttendance']);
         });
         Route::prefix('leave')->group(function () {
             Route::get('/getleave/{id}', [LeaveTrackerPageController::class, 'getLeaveStatus']);

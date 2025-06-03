@@ -293,4 +293,37 @@ class AttendancePageController extends Controller
             'data' => $attendances,
         ], 200);
     }
+
+    public function getTodayAttendance($id)
+    {
+        $webUser = WebUser::find($id);
+
+        if (!$webUser) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $today = Carbon::today()->toDateString();
+
+        $firstattendance = Attendance::where('web_user_id', $id)
+            ->whereDate('date', $today)
+            ->orderBy('created_at', 'asc')
+            ->first();
+    
+        $lastattendance = Attendance::where('web_user_id', $id)
+            ->whereDate('date', $today)
+            ->latest()
+            ->first();
+    
+        if ($lastattendance) {
+            return response()->json([
+                'checkin' => $firstattendance->checkin,
+                'checkout' => $lastattendance->checkout,
+                'created_at' => $firstattendance->created_at->toDateTimeString()
+            ]);
+        } else {
+            return response()->json([
+                'message' => 'No attendance record found for today.'
+            ], 404);
+        }
+    }
 }
