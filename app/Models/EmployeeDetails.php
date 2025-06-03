@@ -46,8 +46,8 @@ class EmployeeDetails extends Model
     ];
 
     protected $casts = [
-        'dob' => 'date',
-        'date_of_joining' => 'date',
+        'dob' => 'date:Y-m-d',
+        'date_of_joining' => 'date:Y-m-d',
     ];
 
     public function webUser()

@@ -35,6 +35,6 @@ class Candidate extends Model
     ];
 
     protected $casts = [
-        'interview_date' => 'date',
+        'interview_date' => 'date:Y-m-d',
     ];
 }

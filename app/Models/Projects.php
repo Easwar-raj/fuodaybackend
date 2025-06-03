@@ -24,7 +24,7 @@ class Projects extends Model
     ];
 
     protected $casts = [
-        'deadline' => 'date',
+        'deadline' => 'date:Y-m-d',
     ];
 
     public function projectTeam()

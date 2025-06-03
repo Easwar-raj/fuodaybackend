@@ -35,11 +35,11 @@ class Dependants extends Model
     ];
 
     protected $casts = [
-        'father_dob' => 'date',
-        'mother_dob' => 'date',
-        'spouce_dob' => 'date',
-        'child_1_dob' => 'date',
-        'child_2_dob' => 'date',
-        'child_3_dob' => 'date',
+        'father_dob' => 'date:Y-m-d',
+        'mother_dob' => 'date:Y-m-d',
+        'spouce_dob' => 'date:Y-m-d',
+        'child_1_dob' => 'date:Y-m-d',
+        'child_2_dob' => 'date:Y-m-d',
+        'child_3_dob' => 'date:Y-m-d',
     ];
 }

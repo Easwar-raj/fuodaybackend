@@ -29,8 +29,8 @@ class Task extends Model
     ];
 
     protected $casts = [
-        'date' => 'date',
-        'deadline' => 'date'
+        'date' => 'date:Y-m-d',
+        'deadline' => 'date:Y-m-d',
     ];
 
     public function project()

@@ -14,7 +14,6 @@ use App\Models\ProjectTeam;
 use App\Models\Task;
 use App\Models\Schedule;
 use Carbon\CarbonInterval;
-
 class TimeTrackerPageController extends Controller
 {
     public function getTimeTracker($id)
@@ -32,9 +31,8 @@ class TimeTrackerPageController extends Controller
             ->get(['id', 'title', 'policy', 'description']);
 
         // Step 3: Get this week's attendances
-        $startOfWeek = Carbon::now()->startOfWeek();
-        $endOfWeek = Carbon::now()->endOfWeek();
-
+        $startOfWeek = Carbon::now()->startOfWeek()->toDateString();
+        $endOfWeek = Carbon::now()->endOfWeek()->toDateString();
         $attendances = Attendance::where('web_user_id', $id)
             ->whereBetween('date', [$startOfWeek, $endOfWeek])
             ->orderBy('date')
@@ -58,16 +56,14 @@ class TimeTrackerPageController extends Controller
 
                 // Format total time as H:i:s
                 $totalDuration = CarbonInterval::seconds($totalSeconds)->cascade()->format('%H:%I:%S');
-
                 return (object)[
-                    'date' => Carbon::parse($date)->format('l, F d, Y'),
-                    'first_login' => $first->checkin,
-                    'last_logout' => $last->checkout,
+                    'date' => Carbon::parse($date)->setTimezone('Asia/Kolkata')->format('l, F d, Y'),
+                    'first_login' => $last->checkin,
+                    'last_logout' => $first->checkout,
                     'total_hours' => $totalDuration,
                 ];
             })
             ->values(); // reset keys
-
         // Step 4: Get project IDs from project_teams
         $projectIds = ProjectTeam::where('web_user_id', $id)->pluck('project_id')->unique();
 

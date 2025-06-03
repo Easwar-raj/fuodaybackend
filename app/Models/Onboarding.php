@@ -24,7 +24,7 @@ class Onboarding extends Model
     ];
 
     protected $casts = [
-        'welcome_email_sent' => 'date',
-        'scheduled_date' => 'date',
+        'welcome_email_sent' => 'date:Y-m-d',
+        'scheduled_date' => 'date:Y-m-d',
     ];
 }

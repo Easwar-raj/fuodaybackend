@@ -26,9 +26,9 @@ class LeaveRequest extends Model
     ];
 
     protected $casts = [
-        'from' => 'date',
-        'to' => 'date',
-        'date' => 'date',
+        'from' => 'date:Y-m-d',
+        'to' => 'date:Y-m-d',
+        'date' => 'date:Y-m-d',
     ];
 
 
