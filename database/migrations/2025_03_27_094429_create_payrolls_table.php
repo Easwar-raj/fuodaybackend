@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('emp_id')->nullable();
             $table->string('designation')->nullable();
             $table->string('ctc')->nullable();
-            $table->string('monthy_salary')->nullable();
+            $table->string('monthly_salary')->nullable();
             $table->string('salary_component')->nullable();
             $table->string('type')->nullable();
             $table->string('amount')->nullable();

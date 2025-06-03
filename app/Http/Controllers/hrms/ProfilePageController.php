@@ -49,7 +49,7 @@ class ProfilePageController extends Controller
                 ) AS experiences"),
                 DB::raw("(
                     SELECT JSON_ARRAYAGG(
-                        JSON_OBJECT('skill', skill, 'level', level)
+                        JSON_OBJECT('id', id, 'skill', skill, 'level', level)
                     )
                     FROM skills
                     WHERE skills.web_user_id = employee_details.web_user_id

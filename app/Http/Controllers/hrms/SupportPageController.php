@@ -37,11 +37,10 @@ class SupportPageController extends Controller
         return response()->json([
             'message' => 'Successfully fetched tickets',
             'status' => 'success',
-            'data' => $groupedTickets,
-            // 'data' => [
-            //     'groupedTickets' => $groupedTickets,
-            //     'assignees' => $employeeNames
-            // ],
+            'data' => [
+                'groupedTickets' => $groupedTickets,
+                'assignees' => $employeeNames
+            ],
         ], 200);
     }
 

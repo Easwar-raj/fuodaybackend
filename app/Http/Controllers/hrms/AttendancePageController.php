@@ -243,7 +243,6 @@ class AttendancePageController extends Controller
 
         // Find today's attendance for the given web_user_id
         $attendance = Attendance::where('web_user_id', $request->web_user_id)->where('date', $today)->orderBy('created_at', 'desc')->first();
-
         // If no attendance record found for today, return error
         if (!$attendance || $attendance->checkout) {
             return response()->json(['message' => 'Attendance record for today not found.'], 404);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AdminUser;
+use App\Models\Attendance;
 use App\Models\EmployeeDetails;
 use App\Models\SectionSelection;
 use App\Models\Payroll;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Aws\S3\S3Client;
+use Carbon\Carbon;
 
 class WebpageUserController extends Controller
 {
@@ -529,11 +531,13 @@ class WebpageUserController extends Controller
         if ($webUser->adminUser && $webUser->adminUser->company_name) {
             $companyWord = strtolower(strtok($webUser->adminUser->company_name, ' '));
         }
-
+        $today = Carbon::today()->toDateString();
+        $checkin = Attendance::where('web_user_id', $webUser->id)->where('date', $today)->orderBy('created_at', 'asc')->first();
         if ($webUser && $webUser->adminUser) {
             $chatLogo = "https://fuoday-s3-bucket.s3.ap-south-1.amazonaws.com/Fuoday_logo_F.png";
             $webUser->adminUser->chat_logo = $chatLogo;
             $webUser->adminUser->company_word = $companyWord;
+            $webUser->checkin = $checkin->checkin;
         }
 
         return response()->json([
