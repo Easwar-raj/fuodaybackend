@@ -85,7 +85,7 @@ Route::prefix('web-users')->group(function () {
         Route::post('/update/{id}', [WebpageUserController::class, 'update']); // Update user
         Route::get('/getwebuserbyid', [WebpageUserController::class, 'getWebUserById']);
         Route::delete('/{id}', [WebpageUserController::class, 'destroy']); // Delete user
-        Route::post('/web/logout', [WebpageUserController::class, 'logout']);  // Logout
+        Route::post('/logout', [WebpageUserController::class, 'logout']);  // Logout
     });
 });
 
