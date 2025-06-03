@@ -538,6 +538,9 @@ class WebpageUserController extends Controller
             $webUser->adminUser->chat_logo = $chatLogo;
             $webUser->adminUser->company_word = $companyWord;
             $webUser->checkin = $checkin->checkin;
+            if ($companyWord !== 'ar') {
+                $webUser->adminUser->logo = 'https://fuoday-s3-bucket.s3.ap-south-1.amazonaws.com/Fuoday_logo.png'; // new logo for admin ID 1
+            }
         }
 
         return response()->json([
