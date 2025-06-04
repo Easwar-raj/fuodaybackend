@@ -210,6 +210,27 @@ class PerformancePageController extends Controller
         ], 200);
     }
 
+    public function getFeedbackQuestions($id)
+    {
+        $webUser = WebUser::with('employeeDetails')->find($id);
+        $adminUser = AdminUser::find($webUser->admin_user_id);
+
+        if (!$webUser || !$adminUser) {
+            return response()->json([
+                'message' => 'Invalid data or user not found'
+            ], 400);
+        }
+
+        // Step 2: Get all feedback questions for that admin_user_id
+        $questions = FeedbackQuestions::where('admin_user_id', $adminUser->id)->get();
+
+        return response()->json([
+            'message' => 'Feedback questions retrieved successfully',
+            'status' => 'Success',
+            'data' => $questions
+        ], 200);
+    }
+
     public function addFeedback(Request $request)
     {
         // Step 1: Validate the request data

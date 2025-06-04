@@ -158,6 +158,7 @@ Route::prefix('hrms')->group(function () {
             Route::post('/updatetasks', [PerformancePageController::class, 'updateTaskStatus']);
             Route::get('/getteamperformance/{id}', [PerformancePageController::class, 'getTeamPerformance']);
             Route::get('/getfeedbacks/{id}', [PerformancePageController::class, 'getUserFeedbackDetails']);
+            Route::get('/getfeedbackquestions/{id}', [PerformancePageController::class, 'getFeedbackQuestions']);
             Route::post('/addfeedback', [PerformancePageController::class, 'addFeedback']);
             Route::post('/updatefeedback/{id}', [PerformancePageController::class, 'updateFeedback']);
             Route::post('/addfeedbackreply', [PerformancePageController::class, 'addFeedbackReply']);
