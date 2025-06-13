@@ -278,11 +278,11 @@ class AttendancePageController extends Controller
 
         if ($webUser->role === 'employee') {
             // Return attendance for this employee
-            $attendances = Attendance::where('web_user_id', $id)->whereDate('date', $today)->get();
+            $attendances = Attendance::where('web_user_id', $id)->get();
         } elseif ($webUser->role === 'hr') {
             // Get all employees under same admin_user_id
             $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
-            $attendances = Attendance::whereIn('web_user_id', $webuserIds)->whereDate('date', $today)->get();
+            $attendances = Attendance::whereIn('web_user_id', $webuserIds)->get();
         } else {
             return response()->json(['message' => 'Invalid role'], 400);
         }
