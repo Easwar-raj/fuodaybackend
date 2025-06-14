@@ -388,13 +388,15 @@ class HomePageController extends Controller
             ->where('admin_user_id', $adminUserId)
             ->get()
             ->map(function ($user) {
+                $details = $user->employeeDetails;
+
                 return [
                     'id' => $user->id,
                     'name' => $user->name,
-                    'designation' => $user->employeeDetails->designation,
-                    'profile' => $user->employeeDetails->profile_photo,
-                    'department' => $user->employeeDetails->department,
-                    'parentId' => (int) $user->employeeDetails->reporting_manager_id ?? null,
+                    'designation' => $details->designation ?? null,
+                    'profile' => $details->profile_photo ?? null,
+                    'department' => $details->department ?? null,
+                    'parentId' => isset($details->reporting_manager_id) ? (int) $details->reporting_manager_id : null,
                 ];
             })
             ->values();

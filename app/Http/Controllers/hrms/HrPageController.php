@@ -104,12 +104,13 @@ class HrPageController extends Controller
         $recentEmployees = WebUser::where('admin_user_id', $adminUserId)
             ->with(['employeeDetails:id,web_user_id,profile_photo,date_of_joining'])
             ->get(['id', 'name', 'role', 'emp_id'])
-            ->sortByDesc(fn ($user) => $user->employeeDetails->date_of_joining)
+            ->sortByDesc(fn ($user) => optional($user->employeeDetails)->date_of_joining)
             ->take(4)
             ->values()
             ->map(function ($user) {
-                if ($user->employeeDetails && $user->employeeDetails->date_of_joining) {
-                    $user->employeeDetails->date_of_joining = Carbon::parse($user->employeeDetails->date_of_joining)->format('Y-m-d');
+                $date = $user->employeeDetails->date_of_joining ?? null;
+                if ($date) {
+                    $user->employeeDetails->date_of_joining = Carbon::parse($date)->format('Y-m-d');
                 }
                 return $user;
             });
