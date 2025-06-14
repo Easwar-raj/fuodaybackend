@@ -24,18 +24,18 @@ class LeaveTrackerPageController extends Controller
         $leaveSummary = TotalLeaves::where('admin_user_id', $adminUserId)
             ->with(['leaveRequests' => function ($query) use ($id) {
                 $query->where('web_user_id', $id)
-                    ->whereIn('status', ['approved', 'pending']);
+                    ->whereIn('status', ['Approved', 'Pending']);
             }])
             ->get()
             ->map(function ($leave) {
                 $taken = $leave->leaveRequests
-                    ->where('status', 'approved')
+                    ->where('status', 'Approved')
                     ->sum(function ($req) {
                         return $req->from && $req->to ? $req->to->diffInDays($req->from) + 1 : 0;
                     });
 
                 $pending = $leave->leaveRequests
-                    ->where('status', 'pending')
+                    ->where('status', 'Pending')
                     ->sum(function ($req) {
                         return $req->from && $req->to ? $req->to->diffInDays($req->from) + 1 : 0;
                     });
