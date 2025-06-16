@@ -4,6 +4,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\admin\AdminUserController;
 use App\Http\Controllers\admin\AdminController;
+use App\Http\Controllers\ats\CandidatePageController;
+use App\Http\Controllers\ats\HomePageController as AtsHomePageController;
+use App\Http\Controllers\ats\TrackerPageController;
 use App\Http\Controllers\EnquiriesController;
 use App\Http\Controllers\hrms\AttendancePageController;
 use App\Http\Controllers\hrms\HomePageController;
@@ -173,6 +176,21 @@ Route::prefix('hrms')->group(function () {
     Route::prefix('enquiry')->group(function () {
         Route::post('/addenquiry', [EnquiriesController::class, 'addInquiry']);
         Route::get('/getenquiries', [EnquiriesController::class, 'getInquiry']);
+    });
+});
+
+Route::prefix('ats')->group(function () {
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::prefix('home')->group(function () {
+            Route::get('/getdashboard/{id}', [AtsHomePageController::class, 'getDashboardDetails']);
+        });
+        Route::prefix('candidates')->group(function () {
+            Route::get('/getcandidates', [CandidatePageController::class, 'getCandidates']);
+            Route::post('/addcandidate', [CandidatePageController::class, 'addCandidate']);
+        });
+        Route::prefix('tracker')->group(function () {
+            Route::get('/gettracker', [TrackerPageController::class, 'getTrackerData']);
+        });
     });
 });
 

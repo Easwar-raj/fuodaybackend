@@ -37,4 +37,9 @@ class Candidate extends Model
     protected $casts = [
         'interview_date' => 'date:Y-m-d',
     ];
+
+    public function details()
+    {
+        return $this->hasOne(CandidateDetails::class, 'candidate_id');
+    }
 }
