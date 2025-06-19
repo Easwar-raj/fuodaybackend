@@ -6,6 +6,7 @@ namespace App\Http\Controllers\hrms;
 use App\Http\Controllers\Controller;
 use App\Models\AdminUser;
 use App\Models\Attendance;
+use App\Models\Audits;
 use App\Models\ProjectTeam;
 use App\Models\Task;
 use App\Models\Feedbacks;
@@ -14,6 +15,9 @@ use App\Models\EmployeeDetails;
 use App\Models\FeedbackQuestions;
 use App\Models\WebUser;
 use App\Models\Heirarchies;
+use App\Models\Payroll;
+use App\Models\Payslip;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class PerformancePageController extends Controller
@@ -389,4 +393,135 @@ class PerformancePageController extends Controller
         ], 200);
     }
 
+    public function getEnployeeAudit($id)
+    {
+        $employee = EmployeeDetails::where('web_user_id', $id)->first();
+
+        if (!$employee) {
+            return response()->json(['message' => 'Employee not found'], 404);
+        }
+
+        // Attendance Summary for the latest month
+        $lastMonth = Carbon::now()->subMonth();
+
+        $attendance = Attendance::where('web_user_id', $id)
+            ->whereMonth('date', $lastMonth->month)
+            ->whereYear('date', $lastMonth->year)
+            ->get();
+
+        $present = $attendance->where('status', 'Present')->count();
+        $leave = $attendance->where('status', 'Leave')->count();
+        $lop = $attendance->where('status', 'Lop')->count();
+
+        $payslips = Payslip::whereHas('payroll', function ($q) use ($id) {
+                $q->where('web_user_id', $id);
+            })
+            ->with('payroll')
+            ->whereMonth('date', $lastMonth->month)
+            ->whereYear('date', $lastMonth->year)
+            ->get();
+
+        return response()->json([
+            'message' => 'Employee Pre Filled Audit Data retrieved successfully',
+            'data' => [
+                'employee_name'        => $employee->emp_name,
+                'emp_id'               => $employee->emp_id,
+                'department'           => $employee->department,
+                'designation'          => $employee->designation,
+                'reporting_manager'    => $employee->reporting_manager_name,
+                'date_of_joining'      => Carbon::parse($employee->date_of_joining)->format('Y-m-d'),
+                'attendance_summary'   => [
+                    'present' => $present,
+                    'leave'   => $leave,
+                    'lop'     => $lop
+                ],
+                'payroll' => [
+                    'ctc'      => optional($payslips)->ctc ?? 0,
+                    'total_salary'  => optional($payslips)->total_salary ?? 0,
+                    'month'    => $lastMonth->format('F Y')
+                ]
+            ]
+        ]);
+    }
+
+    public function addAudit(Request $request)
+    {
+        $validated = $request->validate([
+            'web_user_id'     => 'required|exists:web_users,id',
+            'audit_month'     => 'required|string',
+            'task_highlight'  => 'nullable|string',
+            'challenges'      => 'nullable|string',
+            'support'         => 'nullable|string',
+            'self_rating'     => 'nullable|string',
+            'comment'         => 'nullable|string',
+        ]);
+
+        if (!$validated) {
+            return response()->json([
+                'message' => 'Invalid data'
+            ], 400);
+        }
+
+        $webUser = WebUser::find($request->web_user_id);
+
+        if (!$webUser || !$webUser->admin_user_id) {
+            return response()->json([
+                'message' => 'User not found.'
+            ], 404);
+        }
+
+        $audit = Audits::create([
+            'web_user_id'     => $request->web_user_id,
+            'emp_name'        => $webUser->name,
+            'emp_id'          => $webUser->emp_id,
+            'audit_month'     => $request->audit_month,
+            'task_highlight'  => $request->task_highlight,
+            'challenges'      => $request->challenges,
+            'support'         => $request->support,
+            'self_rating'     => $request->self_rating,
+            'comment'         => $request->comment,
+        ]);
+
+        return response()->json([
+            'message' => 'Audit created successfully',
+            'status' => 'Success'
+        ], 201);
+    }
+
+    public function updateAudit(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'work_justification' => 'nullable|string',
+            'manager_review' => 'nullable|string',
+            'final_remarks' => 'nullable|string',
+            'management_review' => 'nullable|string',
+            'auditor_review' => 'nullable|string',
+        ]);
+
+        if (!$validated) {
+            return response()->json([
+                'message' => 'Invalid data'
+            ], 400);
+        }
+
+        $audit = Audits::find($id);
+
+        if (!$audit) {
+            return response()->json(['message' => 'Audit record not found'], 404);
+        }
+
+        // Only update if fields are provided
+        $audit->update($request->only([
+            'work_justification',
+            'manager_review',
+            'final_remarks',
+            'management_review',
+            'auditor_review'
+        ]));
+
+        return response()->json([
+            'message' => 'Audit updated successfully',
+            'status' => 'Success'
+        ], 200);
+    }
 }

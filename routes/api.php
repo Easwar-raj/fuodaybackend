@@ -156,17 +156,7 @@ Route::prefix('hrms')->group(function () {
             Route::get('/getpayroll/{id}', [PayrollPageController::class, 'getPayrollDetails']);
             Route::get('/getoverview/{id}', [PayrollPageController::class, 'getCurrentPayrollDetails']);
         });
-        Route::prefix('performance')->group(function () {
-            Route::get('/getgoals/{id}', [PerformancePageController::class, 'getUserTasks']);
-            Route::post('/updatetasks', [PerformancePageController::class, 'updateTaskStatus']);
-            Route::get('/getteamperformance/{id}', [PerformancePageController::class, 'getTeamPerformance']);
-            Route::get('/getfeedbacks/{id}', [PerformancePageController::class, 'getUserFeedbackDetails']);
-            Route::get('/getfeedbackquestions/{id}', [PerformancePageController::class, 'getFeedbackQuestions']);
-            Route::post('/addfeedback', [PerformancePageController::class, 'addFeedback']);
-            Route::post('/updatefeedback/{id}', [PerformancePageController::class, 'updateFeedback']);
-            Route::post('/addfeedbackreply', [PerformancePageController::class, 'addFeedbackReply']);
-            Route::get('/getheirarchy/{id}', [PerformancePageController::class, 'getHeirarchies']);
-        });
+        
         Route::prefix('support')->group(function () {
             Route::get('/gettickets/{id}', [SupportPageController::class, 'getAllTicketsByStatus']);
             Route::post('/addticket', [SupportPageController::class, 'addTicket']);
@@ -177,6 +167,20 @@ Route::prefix('hrms')->group(function () {
         Route::post('/addenquiry', [EnquiriesController::class, 'addInquiry']);
         Route::get('/getenquiries', [EnquiriesController::class, 'getInquiry']);
     });
+    Route::prefix('performance')->group(function () {
+            Route::get('/getgoals/{id}', [PerformancePageController::class, 'getUserTasks']);
+            Route::post('/updatetasks', [PerformancePageController::class, 'updateTaskStatus']);
+            Route::get('/getteamperformance/{id}', [PerformancePageController::class, 'getTeamPerformance']);
+            Route::get('/getfeedbacks/{id}', [PerformancePageController::class, 'getUserFeedbackDetails']);
+            Route::get('/getfeedbackquestions/{id}', [PerformancePageController::class, 'getFeedbackQuestions']);
+            Route::post('/addfeedback', [PerformancePageController::class, 'addFeedback']);
+            Route::post('/updatefeedback/{id}', [PerformancePageController::class, 'updateFeedback']);
+            Route::post('/addfeedbackreply', [PerformancePageController::class, 'addFeedbackReply']);
+            Route::get('/getheirarchy/{id}', [PerformancePageController::class, 'getHeirarchies']);
+            Route::get('/getemployeeaudit/{id}', [PerformancePageController::class, 'getEnployeeAudit']);
+            Route::post('/addaudit', [PerformancePageController::class, 'addAudit']);
+            Route::post('/updateaudit/{id}', [PerformancePageController::class, 'updateAudit']);
+        });
 });
 
 Route::prefix('ats')->group(function () {
