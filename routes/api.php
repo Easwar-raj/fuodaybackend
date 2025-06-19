@@ -182,6 +182,7 @@ Route::prefix('hrms')->group(function () {
             Route::post('/updateaudit/{id}', [PerformancePageController::class, 'updateAudit']);
             Route::get('/getauditreport/{id}', [PerformancePageController::class, 'getAuditReport']);
             Route::get('/getauditreportingteam/{id}', [PerformancePageController::class, 'getAuditReportingTeam']);
+            Route::get('/getallauditreport/{id}', [PerformancePageController::class, 'getAllAuditReport']);
         });
 });
 

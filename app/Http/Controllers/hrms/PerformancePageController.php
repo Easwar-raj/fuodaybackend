@@ -578,4 +578,42 @@ class PerformancePageController extends Controller
             'data' => $teamWithAuditStatus
         ], 200);
     }
+
+    public function getAllAuditReport($id)
+    {
+        $webUser = WebUser::find($id);
+
+        if (!$webUser) {
+            return response()->json([
+                'message' => 'Web user not found',
+                'status' => 'Error'
+            ], 404);
+        }
+
+        $adminUser = AdminUser::find($webUser->admin_user_id);
+
+        if (!$adminUser) {
+            return response()->json([
+                'message' => 'Admin user not found',
+                'status' => 'Error'
+            ], 404);
+        }
+
+        $webuserIds = WebUser::where('admin_user_id', $adminUser->id)->pluck('id');
+
+        $audit = Audits::whereIn('web_user_id', $webuserIds)->get();
+
+        if ($audit->isEmpty()) {
+            return response()->json([
+                'message' => 'No audit records found',
+                'status' => 'Error'
+            ], 404);
+        }
+
+        return response()->json([
+            'message' => 'Audit data retrieved successfully',
+            'status' => 'Success',
+            'data' => $audit
+        ], 200);
+    }
 }
