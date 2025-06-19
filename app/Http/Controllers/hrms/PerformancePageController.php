@@ -415,7 +415,7 @@ class PerformancePageController extends Controller
 
         // Count each type
         $present = $attendance->where('status', 'Present')->count();
-        $leave = $attendance->where('status', 'Leave')->count();
+        $leave = $attendance->where('status', 'Absent')->count();
         $lop = $attendance->where('status', 'Lop')->count();
 
         // Total working days considered = total number of attendance records (assuming 1 per working day)
