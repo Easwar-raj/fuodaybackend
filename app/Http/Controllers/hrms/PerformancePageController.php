@@ -404,14 +404,25 @@ class PerformancePageController extends Controller
         // Attendance Summary for the latest month
         $lastMonth = Carbon::now()->subMonth();
 
+        // Set date range: 25th of last-before-month to 24th of last month
+        $startDate = Carbon::now()->subMonths(2)->startOfMonth()->addDays(24); // 25th of last-before-month
+        $endDate = Carbon::now()->subMonth()->startOfMonth()->addDays(23); // 24th of last month
+
+        // Get attendance records in that range
         $attendance = Attendance::where('web_user_id', $id)
-            ->whereMonth('date', $lastMonth->month)
-            ->whereYear('date', $lastMonth->year)
+            ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
             ->get();
 
+        // Count each type
         $present = $attendance->where('status', 'Present')->count();
         $leave = $attendance->where('status', 'Leave')->count();
         $lop = $attendance->where('status', 'Lop')->count();
+
+        // Total working days considered = total number of attendance records (assuming 1 per working day)
+        $totalDays = $attendance->count();
+
+        // Avoid division by zero
+        $presentPercentage = $totalDays > 0 ? round(($present / $totalDays) * 100, 2) : 0;
 
         $payslips = Payslip::whereHas('payroll', function ($q) use ($id) {
                 $q->where('web_user_id', $id);
@@ -435,11 +446,13 @@ class PerformancePageController extends Controller
                 'designation'          => $employee->designation,
                 'reporting_manager'    => $employee->reporting_manager_name,
                 'date_of_joining'      => Carbon::parse($employee->date_of_joining)->format('Y-m-d'),
+                'working_mode'         => $employee->work_module,
                 'attendance_summary'   => [
                     'present' => $present,
                     'leave'   => $leave,
                     'lop'     => $lop
                 ],
+                'attendance_percentage' => $presentPercentage,
                 'payroll' => [
                     'ctc'      => optional($payslips)->ctc ?? 0,
                     'total_salary'  => optional($payslips)->total_salary ?? 0,
@@ -453,13 +466,26 @@ class PerformancePageController extends Controller
     public function addAudit(Request $request)
     {
         $validated = $request->validate([
-            'web_user_id'     => 'required|exists:web_users,id',
-            'audit_month'     => 'required|string',
-            'task_highlight'  => 'nullable|string',
-            'challenges'      => 'nullable|string',
-            'support'         => 'nullable|string',
-            'self_rating'     => 'nullable|string',
-            'comment'         => 'nullable|string',
+            'web_user_id'      => 'required|exists:web_users,id',
+            'audit_cycle_type' => 'required|string',
+            'review_period'    => 'required|string',
+            'audit_month'      => 'required|string',
+            'self_rating'      => 'nullable|string',
+            'technical_skills_used' => 'nullable|string',
+            'communication_collaboration' => 'nullable|string',
+            'cross_functional_involvement' => 'nullable|string',
+            'task_highlight'   => 'nullable|string',
+            'personal_highlight' => 'nullable|string',
+            'areas_to_improve' => 'nullable|string',
+            'initiative_taken' => 'nullable|string',
+            'learnings_certifications' => 'nullable|string',
+            'suggestions_to_company' => 'nullable|string',
+            'previous_cycle_goals'       => 'nullable|string',
+            'goal_achievement'          => 'nullable|string',
+            'kpi_metrics'          => 'nullable|string',
+            'projects_worked'       => 'nullable|string',
+            'tasks_modules_completed'          => 'nullable|string',
+            'performance_evidences'          => 'nullable|string',
         ]);
 
         if (!$validated) {
@@ -476,16 +502,48 @@ class PerformancePageController extends Controller
             ], 404);
         }
 
-        $audit = Audits::create([
+        // Set date range: 25th of last-before-month to 24th of last month
+        $startDate = Carbon::now()->subMonths(2)->startOfMonth()->addDays(24); // 25th of last-before-month
+        $endDate = Carbon::now()->subMonth()->startOfMonth()->addDays(23); // 24th of last month
+
+        // Get attendance records in that range
+        $attendance = Attendance::where('web_user_id', $request->web_user_id)
+            ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->get();
+
+        // Count each type
+        $present = $attendance->where('status', 'Present')->count();
+
+        // Total working days considered = total number of attendance records (assuming 1 per working day)
+        $totalDays = $attendance->count();
+
+        // Avoid division by zero
+        $presentPercentage = $totalDays > 0 ? round(($present / $totalDays) * 100, 2) : 0;
+
+        Audits::create([
             'web_user_id'     => $request->web_user_id,
             'emp_name'        => $webUser->name,
             'emp_id'          => $webUser->emp_id,
+            'audit_cycle_type' => $request->audit_cycle_type,
+            'review_period' => $request->review_period,
             'audit_month'     => $request->audit_month,
-            'task_highlight'  => $request->task_highlight,
-            'challenges'      => $request->challenges,
-            'support'         => $request->support,
+            'attendance_percentage' => $presentPercentage,
             'self_rating'     => $request->self_rating,
-            'comment'         => $request->comment,
+            'technical_skills_used' => $request->technical_skills_used,
+            'communication_collaboration' => $request->communication_collaboration,
+            'cross_functional_involvement' => $request->cross_functional_involvement,
+            'task_highlight'  => $request->task_highlight,
+            'personal_highlight' => $request->personal_highlight,
+            'areas_to_improve' => $request->areas_to_improve,
+            'initiative_taken' => $request->initiative_taken,
+            'learnings_certifications' => $request->learnings_certifications,
+            'suggestions_to_company' => $request->suggestions_to_company,
+            'previous_cycle_goals'      => $request->previous_cycle_goals,
+            'goal_achievement'         => $request->goal_achievement,
+            'kpi_metrics'         => $request->kpi_metrics,
+            'projects_worked'      => $request->projects_worked,
+            'tasks_modules_completed'         => $request->tasks_modules_completed,
+            'performance_evidences'         => $request->performance_evidences,
         ]);
 
         return response()->json([
@@ -497,9 +555,14 @@ class PerformancePageController extends Controller
     public function updateAudit(Request $request, $id)
     {
         $validated = $request->validate([
-            'work_justification' => 'nullable|string',
-            'manager_review' => 'nullable|string',
-            'final_remarks' => 'nullable|string',
+            'manager_review_comments' => 'nullable|string',
+            'execution_rating' => 'nullable|string',
+            'innovation_rating' => 'nullable|string',
+            'attendance_discipline_score' => 'nullable|string',
+            'delivery_quality' => 'nullable|string',
+            'ownership_initiative' => 'nullable|string',
+            'team_growth_contribution' => 'nullable|string',
+            'promotion_action_suggested' => 'nullable|string',
             'management_review' => 'nullable|string',
             'auditor_review' => 'nullable|string',
         ]);
@@ -518,9 +581,14 @@ class PerformancePageController extends Controller
 
         // Only update if fields are provided
         $audit->update($request->only([
-            'work_justification',
-            'manager_review',
-            'final_remarks',
+            'manager_review_comments',
+            'execution_rating',
+            'innovation_rating',
+            'attendance_discipline_score',
+            'delivery_quality',
+            'ownership_initiative',
+            'team_growth_contribution',
+            'promotion_action_suggested',
             'management_review',
             'auditor_review'
         ]));
