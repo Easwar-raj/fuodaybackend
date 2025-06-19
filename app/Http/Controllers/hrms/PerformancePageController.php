@@ -421,6 +421,11 @@ class PerformancePageController extends Controller
             ->whereYear('date', $lastMonth->year)
             ->get();
 
+        $performance = Task::where('web_user_id', $id)
+            ->whereMonth('date', $lastMonth->month)
+            ->whereYear('date', $lastMonth->year)
+            ->get();
+
         return response()->json([
             'message' => 'Employee Pre Filled Audit Data retrieved successfully',
             'data' => [
@@ -439,7 +444,8 @@ class PerformancePageController extends Controller
                     'ctc'      => optional($payslips)->ctc ?? 0,
                     'total_salary'  => optional($payslips)->total_salary ?? 0,
                     'month'    => $lastMonth->format('F Y')
-                ]
+                ],
+                'performance' => $performance
             ]
         ]);
     }
@@ -522,6 +528,54 @@ class PerformancePageController extends Controller
         return response()->json([
             'message' => 'Audit updated successfully',
             'status' => 'Success'
+        ], 200);
+    }
+
+    public function getAuditReport($id)
+    {
+        $audit = Audits::where('web_user_id', $id)->first();
+
+        if (!$audit) {
+            return response()->json([
+                'message' => 'Audit record not found',
+                'status' => 'Error'
+            ], 404);
+        }
+
+        return response()->json([
+            'message' => 'Audit data retrieved successfully',
+            'status' => 'Success',
+            'data' => $audit
+        ], 200);
+    }
+
+    public function getAuditReportingTeam($id)
+    {
+        $webUser = WebUser::find($id);
+
+        if (!$webUser || !$webUser->admin_user_id) {
+            return response()->json([
+                'message' => 'User not found.'
+            ], 404);
+        }
+
+        $team = EmployeeDetails::where('reporting_manager_id', $id)->get();
+
+        $teamWithAuditStatus = $team->map(function ($member) {
+            $hasAudit = Audits::where('web_user_id', $member->web_user_id)->exists();
+
+            return [
+                'web_user_id' => $member->web_user_id,
+                'emp_name' => $member->emp_name,
+                'emp_id' => $member->emp_id,
+                'status' => $hasAudit ? 'Submitted' : 'Not Submitted',
+            ];
+        });
+
+        return response()->json([
+            'message' => 'Audit Reporting Team fetched successfully.',
+            'status' => 'Success',
+            'data' => $teamWithAuditStatus
         ], 200);
     }
 }

@@ -180,6 +180,8 @@ Route::prefix('hrms')->group(function () {
             Route::get('/getemployeeaudit/{id}', [PerformancePageController::class, 'getEnployeeAudit']);
             Route::post('/addaudit', [PerformancePageController::class, 'addAudit']);
             Route::post('/updateaudit/{id}', [PerformancePageController::class, 'updateAudit']);
+            Route::get('/getauditreport/{id}', [PerformancePageController::class, 'getAuditReport']);
+            Route::get('/getauditreportingteam/{id}', [PerformancePageController::class, 'getAuditReportingTeam']);
         });
 });
 
