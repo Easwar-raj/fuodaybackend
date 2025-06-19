@@ -42,6 +42,8 @@ class Audits extends Model
         'ownership_initiative',
         'team_growth_contribution',
         'promotion_action_suggested',
+        'final_attachments',
+        'final_remarks',
         'management_review',
         'auditor_review'
     ];

@@ -563,6 +563,8 @@ class PerformancePageController extends Controller
             'ownership_initiative' => 'nullable|string',
             'team_growth_contribution' => 'nullable|string',
             'promotion_action_suggested' => 'nullable|string',
+            'final_attachments' => 'nullable|string',
+            'final_remarks' => 'nullable|string',
             'management_review' => 'nullable|string',
             'auditor_review' => 'nullable|string',
         ]);
@@ -589,6 +591,8 @@ class PerformancePageController extends Controller
             'ownership_initiative',
             'team_growth_contribution',
             'promotion_action_suggested',
+            'final_attachments',
+            'final_remarks',
             'management_review',
             'auditor_review'
         ]));

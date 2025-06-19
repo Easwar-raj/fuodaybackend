@@ -44,6 +44,8 @@ return new class extends Migration
             $table->string('ownership_initiative')->nullable();
             $table->string('team_growth_contribution')->nullable();
             $table->string('promotion_action_suggested')->nullable();
+            $table->string('final_attachments')->nullable();
+            $table->string('final_remarks')->nullable();
             $table->string('management_review')->nullable();
             $table->string('auditor_review')->nullable();
             $table->timestamps();
