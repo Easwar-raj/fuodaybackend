@@ -482,10 +482,10 @@ class PerformancePageController extends Controller
             'suggestions_to_company' => 'nullable|string',
             'previous_cycle_goals'       => 'nullable|string',
             'goal_achievement'          => 'nullable|string',
-            'kpi_metrics'          => 'nullable|string',
+            'kpi_metrics'          => 'nullable|image|mimes:jpeg,png,jpg',
             'projects_worked'       => 'nullable|string',
             'tasks_modules_completed'          => 'nullable|string',
-            'performance_evidences'          => 'nullable|string',
+            'performance_evidences'          => 'nullable|image|mimes:jpeg,png,jpg',
         ]);
 
         if (!$validated) {
@@ -540,10 +540,10 @@ class PerformancePageController extends Controller
             'suggestions_to_company' => $request->suggestions_to_company,
             'previous_cycle_goals'      => $request->previous_cycle_goals,
             'goal_achievement'         => $request->goal_achievement,
-            'kpi_metrics'         => $request->kpi_metrics,
+            'kpi_metrics'         => '',
             'projects_worked'      => $request->projects_worked,
             'tasks_modules_completed'         => $request->tasks_modules_completed,
-            'performance_evidences'         => $request->performance_evidences,
+            'performance_evidences'         => '',
         ]);
 
         return response()->json([
@@ -563,7 +563,7 @@ class PerformancePageController extends Controller
             'ownership_initiative' => 'nullable|string',
             'team_growth_contribution' => 'nullable|string',
             'promotion_action_suggested' => 'nullable|string',
-            'final_attachments' => 'nullable|string',
+            'final_attachments' => 'nullable|image|mimes:jpeg,png,jpg',
             'final_remarks' => 'nullable|string',
             'management_review' => 'nullable|string',
             'auditor_review' => 'nullable|string',
@@ -591,7 +591,6 @@ class PerformancePageController extends Controller
             'ownership_initiative',
             'team_growth_contribution',
             'promotion_action_suggested',
-            'final_attachments',
             'final_remarks',
             'management_review',
             'auditor_review'
