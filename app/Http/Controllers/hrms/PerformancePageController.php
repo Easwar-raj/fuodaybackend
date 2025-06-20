@@ -540,10 +540,8 @@ class PerformancePageController extends Controller
             'suggestions_to_company' => $request->suggestions_to_company,
             'previous_cycle_goals'      => $request->previous_cycle_goals,
             'goal_achievement'         => $request->goal_achievement,
-            'kpi_metrics'         => '',
             'projects_worked'      => $request->projects_worked,
             'tasks_modules_completed'         => $request->tasks_modules_completed,
-            'performance_evidences'         => '',
         ]);
 
         return response()->json([
