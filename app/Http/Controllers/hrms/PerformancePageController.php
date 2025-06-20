@@ -482,10 +482,10 @@ class PerformancePageController extends Controller
             'suggestions_to_company' => 'nullable|string',
             'previous_cycle_goals'       => 'nullable|string',
             'goal_achievement'          => 'nullable|string',
-            'kpi_metrics'          => 'nullable|image|mimes:jpeg,png,jpg',
+            'kpi_metrics'          => 'nullable|string',
             'projects_worked'       => 'nullable|string',
             'tasks_modules_completed'          => 'nullable|string',
-            'performance_evidences'          => 'nullable|image|mimes:jpeg,png,jpg',
+            'performance_evidences'          => 'nullable|string',
         ]);
 
         if (!$validated) {
@@ -561,7 +561,7 @@ class PerformancePageController extends Controller
             'ownership_initiative' => 'nullable|string',
             'team_growth_contribution' => 'nullable|string',
             'promotion_action_suggested' => 'nullable|string',
-            'final_attachments' => 'nullable|image|mimes:jpeg,png,jpg',
+            'final_attachments' => 'nullable|string',
             'final_remarks' => 'nullable|string',
             'management_review' => 'nullable|string',
             'auditor_review' => 'nullable|string',
