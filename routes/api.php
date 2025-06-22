@@ -91,6 +91,7 @@ Route::prefix('web-users')->group(function () {
         Route::post('/logout', [WebpageUserController::class, 'logout']);  // Logout
         Route::get('/getemployeesbymanagers/{id}', [WebpageUserController::class, 'getEmployeesGroupedByManager']);
     });
+    Route::get('/getemployeesbyadmin/{id}', [WebpageUserController::class, 'getEmployeesByAdminUser']);
 });
 
 Route::prefix('hrms')->group(function () {
@@ -157,7 +158,18 @@ Route::prefix('hrms')->group(function () {
             Route::get('/getpayroll/{id}', [PayrollPageController::class, 'getPayrollDetails']);
             Route::get('/getoverview/{id}', [PayrollPageController::class, 'getCurrentPayrollDetails']);
         });
-        Route::prefix('performance')->group(function () {
+        
+        Route::prefix('support')->group(function () {
+            Route::get('/gettickets/{id}', [SupportPageController::class, 'getAllTicketsByStatus']);
+            Route::post('/addticket', [SupportPageController::class, 'addTicket']);
+            Route::post('/updateticket/{ticketId}', [SupportPageController::class, 'updateTicket']);
+        });
+    });
+    Route::prefix('enquiry')->group(function () {
+        Route::post('/addenquiry', [EnquiriesController::class, 'addInquiry']);
+        Route::get('/getenquiries', [EnquiriesController::class, 'getInquiry']);
+    });
+    Route::prefix('performance')->group(function () {
             Route::get('/getgoals/{id}', [PerformancePageController::class, 'getUserTasks']);
             Route::post('/updatetasks', [PerformancePageController::class, 'updateTaskStatus']);
             Route::get('/getteamperformance/{id}', [PerformancePageController::class, 'getTeamPerformance']);
@@ -174,17 +186,6 @@ Route::prefix('hrms')->group(function () {
             Route::get('/getauditreportingteam/{id}', [PerformancePageController::class, 'getAuditReportingTeam']);
             Route::get('/getallauditreport/{id}', [PerformancePageController::class, 'getAllAuditReport']);
         });
-        Route::prefix('support')->group(function () {
-            Route::get('/gettickets/{id}', [SupportPageController::class, 'getAllTicketsByStatus']);
-            Route::post('/addticket', [SupportPageController::class, 'addTicket']);
-            Route::post('/updateticket/{ticketId}', [SupportPageController::class, 'updateTicket']);
-        });
-    });
-    Route::prefix('enquiry')->group(function () {
-        Route::post('/addenquiry', [EnquiriesController::class, 'addInquiry']);
-        Route::get('/getenquiries', [EnquiriesController::class, 'getInquiry']);
-    });
-    
 });
 
 Route::prefix('ats')->group(function () {

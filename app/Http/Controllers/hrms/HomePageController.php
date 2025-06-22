@@ -138,8 +138,8 @@ class HomePageController extends Controller
             'status' => 'Success',
             'data' => [
                 'schedules' => $schedules,
-                'assigned_to_me' => $assignedTo,
-                'assigned_by_me' => $assignedBy,
+                'assigned' => $assignedTo,
+                'pending' => $assignedBy,
                 'projects' => $projects,
             ]
         ], 200);

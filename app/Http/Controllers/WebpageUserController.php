@@ -627,6 +627,26 @@ class WebpageUserController extends Controller
         ], 200);
     }
 
+    public function getEmployeesByAdminUser($id)
+    {
+        // Step 1: Get the admin_user_id of the provided web_user_id
+        $webUser = WebUser::findOrFail($id);
+        $adminUserId = $webUser->admin_user_id;
+
+        // Step 2: Fetch all employees under the same admin_user_id
+        $employees = EmployeeDetails::whereHas('webUser', function ($query) use ($adminUserId) {
+            $query->where('admin_user_id', $adminUserId);
+        })
+        ->select('web_user_id', 'emp_name', 'emp_id')
+        ->get();
+
+        return response()->json([
+            'message' => 'Employees fetched successfully.',
+            'status'  => 'Success',
+            'data'    => $employees
+        ], 200);
+    }
+
     // Send the reset password link to the user's email
     public function sendResetLinkEmail(Request $request)
     {
