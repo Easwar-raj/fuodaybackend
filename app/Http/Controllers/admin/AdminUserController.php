@@ -572,7 +572,8 @@ class AdminUserController extends Controller
     public function saveEvent(Request $request)
     {
         $validated = $request->validate([
-            'admin_user_id' => 'required|exists:admin_users,id',
+            'admin_user_id' => 'nullable|exists:admin_users,id',
+            'web_user_id' => 'nullable|exists:web_users,id',
             'event' => 'nullable|string',
             'title' => 'required|string',
             'date' => 'required|date',
@@ -581,14 +582,21 @@ class AdminUserController extends Controller
             'id' => 'required_if:action,update|exists:events,id'
         ]);
 
-        $adminUser = AdminUser::find($request->admin_user_id);
-        if (!$adminUser) {
-            return response()->json(['message' => 'Invalid admin user'], 400);
+        if($request->admin_user_id) {
+            $adminUser = AdminUser::find($request->admin_user_id);
+        }
+        else if ($request->web_user_id) {
+            $webuser = WebUser::find($request->web_user_id);
+            $adminUser = AdminUser::find($webuser->admin_user_id);
+        }
+        
+        if (!$adminUser || !$validated) {
+            return response()->json(['message' => 'Invalid details'], 400);
         }
 
         if ($request->action === 'create') {
             Event::create([
-                'admin_user_id' => $request->admin_user_id,
+                'admin_user_id' => $adminUser->id,
                 'company_name' => $adminUser->company_name,
                 'event' => $request->event ?? null,
                 'title' => $request->title,

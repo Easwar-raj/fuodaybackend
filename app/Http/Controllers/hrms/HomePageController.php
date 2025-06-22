@@ -138,8 +138,8 @@ class HomePageController extends Controller
             'status' => 'Success',
             'data' => [
                 'schedules' => $schedules,
-                'assigned' => $assignedTo,
-                'pending' => $assignedBy,
+                'pending' => $assignedTo,
+                'assigned' => $assignedBy,
                 'projects' => $projects,
             ]
         ], 200);
@@ -641,6 +641,23 @@ class HomePageController extends Controller
                 'description' => $description,
                 'team' => $groupedByDepartment,
             ],
+        ], 200);
+    }
+
+    public function getAnnouncements($id, $type='Announcement')
+    {
+        // Step 1: Get admin_user_id for the given web_user_id
+        $adminUserId = WebUser::where('id', $id)->value('admin_user_id');
+
+        $announcements = Event::where('admin_user_id', $adminUserId)
+            ->where('event', $type)
+            ->orderByDesc('created_at')
+            ->get(['title', 'description', 'date']);
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Announcements fetched successfully',
+            'data' => $announcements,
         ], 200);
     }
 
