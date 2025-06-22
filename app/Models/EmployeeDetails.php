@@ -54,4 +54,10 @@ class EmployeeDetails extends Model
     {
         return $this->belongsTo(WebUser::class, 'web_user_id');
     }
+
+    public function reportingManager()
+    {
+        return $this->belongsTo(WebUser::class, 'reporting_manager_id');
+    }
+
 }

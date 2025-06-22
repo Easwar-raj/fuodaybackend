@@ -560,7 +560,8 @@ class PerformancePageController extends Controller
             'team_growth_contribution' => 'nullable|string',
             'promotion_action_suggested' => 'nullable|string',
             'final_remarks' => 'nullable|string',
-            'management_review' => 'nullable|string',
+            'management_assign' => 'nullable|string',
+            'management_remarks' => 'nullable|string',
             'auditor_review' => 'nullable|string',
         ]);
 
@@ -576,8 +577,17 @@ class PerformancePageController extends Controller
             return response()->json(['message' => 'Audit record not found'], 404);
         }
 
+        $managementAssign  = $request->input('management_assign');
+        $managementRemarks = $request->input('management_remarks');
+
+        $managementReview = null;
+
+        if ($managementAssign || $managementRemarks) {
+            $managementReview = trim(($managementAssign ?? '') . '%' . ($managementRemarks ?? ''), '%');
+        }
+
         // Only update if fields are provided
-        $audit->update($request->only([
+        $updatedData = $request->only([
             'manager_review_comments',
             'execution_rating',
             'innovation_rating',
@@ -587,9 +597,14 @@ class PerformancePageController extends Controller
             'team_growth_contribution',
             'promotion_action_suggested',
             'final_remarks',
-            'management_review',
             'auditor_review'
-        ]));
+        ]);
+
+        if ($managementReview !== null) {
+            $updatedData['management_review'] = $managementReview;
+        }
+
+        $audit->update($updatedData);
 
         return response()->json([
             'message' => 'Audit updated successfully',

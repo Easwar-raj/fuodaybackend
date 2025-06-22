@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AdminUser;
 use App\Models\Attendance;
+use App\Models\Audits;
 use App\Models\EmployeeDetails;
 use App\Models\SectionSelection;
 use App\Models\Payroll;
@@ -478,7 +479,7 @@ class WebpageUserController extends Controller
         $webUser = WebUser::where('email', $request->input('email'))
             ->with([
                 'employeeDetails' => function ($query) {
-                    $query->select('web_user_id', 'profile_photo', 'designation');
+                    $query->select('web_user_id', 'profile_photo', 'designation', 'department');
                 },
                 'adminUser:id,logo,brand_logo,company_name'
             ])
@@ -581,6 +582,48 @@ class WebpageUserController extends Controller
             'status' => 'Success',
             'message' => 'List of all created users.',
             'data' => $webUsers,
+        ], 200);
+    }
+
+    public function getEmployeesGroupedByManager($id)
+    {
+        // Step 1: Get the admin_user_id for the given web_user_id
+        $webUser = WebUser::findOrFail($id);
+        $adminUserId = $webUser->admin_user_id;
+
+        // Step 2: Get all employees under the same admin_user_id
+        $employees = EmployeeDetails::whereHas('webUser', function ($query) use ($adminUserId) {
+                $query->where('admin_user_id', $adminUserId);
+            })
+            ->with(['webUser', 'reportingManager'])
+            ->get()
+            ->groupBy('reporting_manager_id');
+
+        foreach ($employees as $managerId => $group) {
+            $manager = WebUser::find($managerId);
+            $result[] = [
+                'manager_id'   => $managerId,
+                'manager_name' => $manager ? $manager->name : 'Unassigned',
+                'employees'    => $group->map(function ($emp) {
+                    $hasAudit = Audits::where('web_user_id', $emp->id)->exists();
+                    return [
+                        'id'            => $emp->id,
+                        'emp_name'      => $emp->emp_name,
+                        'emp_id'        => $emp->emp_id,
+                        'designation'   => $emp->designation,
+                        'department'    => $emp->department,
+                        'doj'           => $emp->date_of_joining?->format('Y-m-d'),
+                        'profile_photo' => $emp->profile_photo,
+                        'status' => $hasAudit ? 'Submitted' : 'Not Submitted',
+                    ];
+                })->values(),
+            ];
+        }
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'List of all team members with audit status',
+            'data' => $result,
         ], 200);
     }
 
