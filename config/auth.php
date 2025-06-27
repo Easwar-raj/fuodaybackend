@@ -40,6 +40,10 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+        'api' => [
+            'driver' => 'sanctum', // Changed from 'token' to 'sanctum'
+            'provider' => 'users',  // Changed from 'admin_users' to 'users' if using WebUser model
+        ],
     ],
 
     /*
@@ -62,13 +66,12 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\User::class,
+            'model' => App\Models\WebUser::class, // Make sure this points to your WebUser model
         ],
-
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+        'admin_users' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\AdminUser::class,
+        ],
     ],
 
     /*
@@ -99,28 +102,6 @@ return [
         ],
     ],
 
-    'guards' => [
-    'web' => [
-        'driver' => 'session',
-        'provider' => 'users',
-    ],
-    'api' => [
-        'driver' => 'token',
-        'provider' => 'admin_users',
-    ],
-],
-
-'providers' => [
-    'users' => [
-        'driver' => 'eloquent',
-        'model' => App\Models\User::class,
-    ],
-    'admin_users' => [
-        'driver' => 'eloquent',
-        'model' => App\Models\AdminUser::class,
-    ],
-],
-
     /*
     |--------------------------------------------------------------------------
     | Password Confirmation Timeout
@@ -133,5 +114,4 @@ return [
     */
 
     'password_timeout' => 10800,
-
 ];

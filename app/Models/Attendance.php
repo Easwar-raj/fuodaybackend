@@ -25,4 +25,10 @@ class Attendance extends Model
     protected $casts = [
         'date' => 'date:Y-m-d',
     ];
+
+public function employee()
+{
+    return $this->belongsTo(WebUser::class, 'web_user_id');
+}
+
 }

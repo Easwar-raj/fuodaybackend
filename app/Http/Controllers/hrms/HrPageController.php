@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\hrms;
 
-
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\JobOpening;
@@ -10,20 +9,29 @@ use App\Models\LeaveRequest;
 use App\Models\Projects;
 use App\Models\WebUser;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Excel as ExcelFormat;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class HrPageController extends Controller
 {
+
+
     public function getHr($id)
     {
         // Step 1: Get the admin_user_id from the given web_user_id
         $webUser = WebUser::findOrFail($id);
         $adminUserId = $webUser->admin_user_id;
 
-        // Step 2: Proceed to query everything by that admin_user_id
+        // Step 2: Get all web user IDs under this admin (avoiding duplicate query)
+        $webUserIds = WebUser::where('admin_user_id', $adminUserId)->pluck('id');
 
         // Total Employees
-        $totalEmployees = WebUser::where('admin_user_id', $adminUserId)->count();
+        $totalEmployees = $webUserIds->count();
         $lastWeekCount = WebUser::where('admin_user_id', $adminUserId)
             ->whereBetween('created_at', [now()->startOfWeek()->subWeek(), now()->endOfWeek()->subWeek()])
             ->count();
@@ -31,10 +39,6 @@ class HrPageController extends Controller
             ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
             ->count();
         $employeeChange = $lastWeekCount > 0 ? (($thisWeekCount - $lastWeekCount) / $lastWeekCount) * 100 : 100;
-
-        $webUser = WebUser::findOrFail($id);
-        $adminUserId = $webUser->admin_user_id;
-        $webUserIds = WebUser::where('admin_user_id', $adminUserId)->pluck('id');
 
         // Total Leave Requests
         $totalLeaveRequests = LeaveRequest::whereIn('web_user_id', $webUserIds)->count();
@@ -171,7 +175,7 @@ class HrPageController extends Controller
         ]);
     }
 
-    function getWebUsers($id)
+    public function getWebUsers($id)
     {
         // Step 1: Find the admin_user_id for the given web_user_id
         $webUser = WebUser::findOrFail($id);
@@ -188,4 +192,158 @@ class HrPageController extends Controller
             'data' => $webUsers
         ], 200);
     }
+
+    /**
+     * Download filtered employee details as CSV
+     * Note: This queries the employee_details table directly
+     * Consider adding admin_user_id filtering for security
+     */
+    
+public function downloadEmployees(Request $request): \Symfony\Component\HttpFoundation\Response|\Illuminate\Http\JsonResponse
+
+{
+    try {
+        $format = $request->query('format', 'xlsx'); // default to xlsx
+
+        $query = DB::table('employee_details');
+
+        if ($request->has('emp_id') && $request->filled('emp_id')) {
+            $query->where('emp_id', $request->query('emp_id'));
+        }
+
+        if ($request->has('emp_name') && $request->filled('emp_name')) {
+            $query->where('emp_name', 'LIKE', '%' . $request->query('emp_name') . '%');
+        }
+
+        $employees = $query->get();
+
+        if ($employees->isEmpty()) {
+            return response()->json(['message' => 'No matching employees found.'], 404);
+        }
+
+        //  Excel Format
+        if ($format === 'xlsx') {
+            $excelData = collect([]);
+            $excelData->push([
+                'ID', 'Emp Name', 'Emp ID', 'Gender', 'Place', 'Designation', 'Department', 'Employment Type', 'About', 'Role Location',
+                'Work Mode', 'DOB', 'Address', 'Date of Joining', 'Reporting Manager ID', 'Reporting Manager Name',
+                'Aadhaar No', 'PAN No', 'Blood Group', 'Personal Contact', 'Emergency Contact',
+                'Official Contact', 'Official Email', 'Permanent Address', 'Bank Name', 'Account No', 'IFSC',
+                'PF Account No', 'UAN', 'ESI No', 'Created At', 'Updated At'
+            ]);
+
+            foreach ($employees as $emp) {
+                $excelData->push([
+                    $emp->id ?? '', $emp->emp_name ?? '', $emp->emp_id ?? '', $emp->gender ?? '', $emp->place ?? '',
+                    $emp->designation ?? '', $emp->department ?? '', $emp->employment_type ?? '', $emp->about ?? '',
+                    $emp->role_location ?? '', $emp->work_mode ?? '', $emp->dob ?? '', $emp->address ?? '',
+                    $emp->date_of_joining ?? '', $emp->reporting_manager_id ?? '', $emp->reporting_manager_name ?? '',
+                    $emp->aadhaar_no ?? '', $emp->pan_no ?? '', $emp->blood_group ?? '', $emp->personal_contact_no ?? '',
+                    $emp->emergency_contact_no ?? '', $emp->official_contact_no ?? '', $emp->official_email ?? '',
+                    $emp->permanent_address ?? '', $emp->bank_name ?? '', $emp->account_no ?? '', $emp->ifsc ?? '',
+                    $emp->pf_account_no ?? '', $emp->uan ?? '', $emp->esi_no ?? '', $emp->created_at ?? '', $emp->updated_at ?? '',
+                ]);
+            }
+
+            return Excel::download(new class($excelData) implements \Maatwebsite\Excel\Concerns\FromCollection {
+                private $data;
+                public function __construct($data) { $this->data = $data; }
+                public function collection(): Collection { return $this->data; }
+            }, 'employee_details.xlsx', ExcelFormat::XLSX);
+        }
+
+        // PDF Format
+        if ($format === 'pdf') {
+    $pdf = Pdf::loadView('pdf.employee_list', ['employees' => $employees]);
+    return $pdf->download('employee_details.pdf');
+        }
+
+        // Invalid format
+        return response()->json(['error' => 'Invalid format. Use ?format=pdf or ?format=xlsx'], 400);
+
+    } catch (\Exception $e) {
+        return response()->json(['error' => 'Server Error: ' . $e->getMessage()], 500);
+    }
+}
+
+public function getAllLeaveRequestsByStatus($status)
+{
+    $validStatuses = ['pending', 'approved', 'rejected'];
+    $status = strtolower($status);
+
+    if (!in_array($status, $validStatuses)) {
+        return response()->json(['message' => 'Invalid status value'], 400);
+    }
+
+    $leaveRequests = LeaveRequest::with(['webUser:id,id,name,emp_id'])
+        ->where('status', $status)
+        ->orderByDesc('created_at')
+        ->get()
+        ->map(function ($leave) {
+            return [
+                'id' => $leave->id,
+                'web_user_id' => $leave->web_user_id,
+                'date' => $leave->date,
+                'type' => $leave->type,
+                'from' => $leave->from,
+                'reason' => $leave->reason,
+                'to' => $leave->to,
+                'name' => $leave->webUser->name ?? null,
+                'status' => $leave->status,
+            ];
+        });
+    return response()->json([
+        'status' => 'Success',
+        'message' => ucfirst($status) . ' leave requests retrieved successfully',
+        'data' => $leaveRequests
+    ]);
+}
+
+public function getAllEmployeeAttendance(Request $request)
+{
+    // Step 1: Get all attendance records, joining with web_users
+    $query = Attendance::with(['employee' => function ($q) {
+        $q->select('id', 'name', 'emp_id'); // Keep only needed fields
+    }]);
+
+    // Step 2: Apply optional filters
+    if ($request->has('name')) {
+        $query->whereHas('employee', function ($q) use ($request) {
+            $q->where('name', 'like', '%' . $request->name . '%');
+        });
+    }
+
+    if ($request->has('month')) {
+        $query->whereMonth('date', $request->month);
+    }
+
+    if ($request->has('year')) {
+        $query->whereYear('date', $request->year);
+    }
+
+    // Step 3: Get results
+    $attendances = $query->orderBy('date', 'desc')->get();
+
+    // Step 4: Format
+    $data = $attendances->map(function ($att) {
+        return [
+            'name' => $att->employee->name ?? 'N/A',
+            'emp_id' => $att->emp_id ?? 'N/A',
+            'date' => $att->date->format('Y-m-d'),
+            'checkin' => $att->checkin,
+            'checkout' => $att->checkout,
+            'worked_hours' => $att->worked_hours,
+            'status' => $att->status,
+        ];
+    });
+
+    return response()->json([
+        'status' => 'Success',
+        'message' => 'All employee attendance data retrieved successfully.',
+        'data' => $data,
+    ]);
+}
+
+
+
 }

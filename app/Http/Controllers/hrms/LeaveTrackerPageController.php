@@ -168,6 +168,7 @@ class LeaveTrackerPageController extends Controller
             'days' => Carbon::parse($request->from)->diffInDays(Carbon::parse($request->to)) + 1,
             'reason' => $request->reason,
             'status' => 'Pending',
+            
         ]);
 
         return response()->json([
@@ -202,4 +203,95 @@ class LeaveTrackerPageController extends Controller
             'status' => 'Success',
         ], 200);
     }
+
+// public function regulateLeave(Request $request)
+// {
+//     $validated = $request->validate([
+//         'id' => 'required|exists:leave_requests,id',
+//         'web_user_id' => 'required|exists:web_users,id',
+//         'type' => 'required|string',
+//         'from' => 'required|date',
+//         'to' => 'required|date|after_or_equal:from',
+//         'reason' => 'required|string',
+//         'regulation_date' => 'required|date',
+//     ]);
+
+//     $webUser = WebUser::find($request->web_user_id);
+//     $leave = LeaveRequest::find($request->id);
+
+//     if (!$webUser || !$leave) {
+//         return response()->json([
+//             'message' => 'User or Leave not found.'
+//         ], 404);
+//     }
+
+//     // updates
+//     $leave->emp_id = $webUser->emp_id;
+//     $leave->department = $webUser->department;
+//     $leave->type = $request->type;
+//     $leave->from = $request->from;
+//     $leave->to = $request->to;
+//     $leave->reason = $request->reason;
+//     $leave->regulation_date = $request->regulation_date;
+//     $leave->days = \Carbon\Carbon::parse($request->from)->diffInDays($request->to) + 1;
+
+//     $leave->save();
+//     return response()->json([
+//         'message' => 'Leave updated successfully.',
+//         'status' => 'Success',
+//         'updated_fields' => [
+//             'emp_id' => $leave->emp_id,
+//             'department' => $leave->department,
+//             'type' => $leave->type,
+//             'from' => $leave->from,
+//             'to' => $leave->to,
+//             'reason' => $leave->reason,
+//             'regulation_date' => $leave->regulation_date,
+//             'days' => $leave->days
+//         ]
+//     ]);
+// }
+
+
+
+public function regulateLeave(Request $request)
+{
+   $request->validate([
+    'id' => 'required|exists:leave_requests,id',
+    'web_user_id' => 'required|exists:web_users,id',
+    'type' => 'required|string',
+    'from' => 'required|date',
+    'to' => 'required|date|after_or_equal:from',
+    'reason' => 'required|string',
+    'regulation_date' => 'required|date',
+]);
+
+
+    $webUser = auth()->user(); // current user
+    $leave = LeaveRequest::find($request->id);
+
+    if (!$webUser || !$leave) {
+        return response()->json(['message' => 'User or Leave not found.'], 404);
+    }
+
+    $leave->emp_id = $webUser->emp_id;
+    $leave->department = $webUser->department;
+    $leave->type = $request->type;
+    $leave->from = $request->from;
+    $leave->to = $request->to;
+    $leave->reason = $request->reason;
+    $leave->regulation_date = $request->regulation_date;
+    $leave->days = Carbon::parse($request->from)->diffInDays($request->to) + 1;
+
+    $leave->save();
+
+    return response()->json([
+        'message' => 'Leave updated successfully.',
+        'status' => 'Success'
+    ]);
+}
+
+
+
+
 }

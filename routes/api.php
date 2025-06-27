@@ -94,6 +94,7 @@ Route::prefix('web-users')->group(function () {
     Route::get('/getemployeesbyadmin/{id}', [WebpageUserController::class, 'getEmployeesByAdminUser']);
 });
 
+
 Route::prefix('hrms')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('home')->group(function () {
@@ -139,11 +140,25 @@ Route::prefix('hrms')->group(function () {
             Route::post('/addattendance', [AttendancePageController::class, 'addAttendance']);
             Route::post('/updateattendance', [AttendancePageController::class, 'updateAttendance']);
             Route::get('/gettoday/{id}', [AttendancePageController::class, 'getTodayAttendance']);
+            Route::get('/late-arrivals/{id}', [AttendancePageController::class, 'calculateLateArrivals']);
+            Route::get('/late-arrivals-by-role/{id}', [AttendancePageController::class, 'getLateArrivalsByRole']);
+            Route::get('/late-arrivals-all', [AttendancepageController::class, 'getAllLateArrivals']);
+            Route::get('/early-arrivals/{id}', [AttendancepageController::class, 'calculateEarlyArrivals']);
+            Route::get('/early-arrivals', [AttendancepageController::class, 'getAllEarlyArrivals']);
+            Route::get('/all-employee-attendance', [AttendancePageController::class,'getAllEmployeeAttendance']);
+            Route::get('/punctual-arrivals/{id}', [AttendancePageController::class, 'calculatePunctualArrivals']);
+            Route::get('/punctual-arrivals-all', [AttendancePageController::class, 'getAllPunctualArrivals']);
+            Route::get('/absent-days/{id}', [AttendancePageController::class, 'calculateAbsentDays']);
+
+
         });
         Route::prefix('leave')->group(function () {
             Route::get('/getleave/{id}', [LeaveTrackerPageController::class, 'getLeaveStatus']);
             Route::post('/addleave', [LeaveTrackerPageController::class, 'addLeave']);
             Route::post('/updateleave', [LeaveTrackerPageController::class, 'updateLeaveStatus']);
+            Route::post('/regulate', [LeaveTrackerPageController::class, 'regulateLeave']);
+           
+
         });
         Route::prefix('timetracker')->group(function () {
             Route::get('/gettracker/{id}', [TimeTrackerPageController::class, 'gettimetracker']);
@@ -154,6 +169,9 @@ Route::prefix('hrms')->group(function () {
             Route::get('/gethr/{id}', [HrPageController::class, 'getHr']);
             Route::get('/getpendingleaves/{id}', [HrPageController::class, 'getPendingLeaveRequests']);
             Route::get('/getallwebusers/{id}', [HrPageController::class, 'getWebUsers']);
+            Route::get('/employees/download', [HrPageController::class, 'downloadEmployees']);
+            Route::get('/getallleavesbystatus/{status}', [HrPageController::class, 'getAllLeaveRequestsByStatus']);
+            Route::get('/all-attendance', [HrPageController::class, 'getAllEmployeeAttendance']);
         });
         Route::prefix('payroll')->group(function () {
             Route::get('/getpayroll/{id}', [PayrollPageController::class, 'getPayrollDetails']);
