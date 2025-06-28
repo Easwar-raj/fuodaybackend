@@ -31,7 +31,7 @@ class WebUser extends Authenticatable
 
     public function payroll()
     {
-        return $this->hasOne(Payroll::class, 'web_user_id');
+        return $this->hasMany(Payroll::class, 'web_user_id');
     }
 
     public function adminUser()

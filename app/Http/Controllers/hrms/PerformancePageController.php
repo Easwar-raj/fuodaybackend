@@ -644,6 +644,9 @@ class PerformancePageController extends Controller
 
         $teamWithAuditStatus = $team->map(function ($member) {
             $hasAudit = Audits::where('web_user_id', $member->web_user_id)->exists();
+            if ($hasAudit) {
+                $audit = Audits::where('web_user_id', $member->web_user_id)->first();
+            }
 
             return [
                 'web_user_id' => $member->web_user_id,
