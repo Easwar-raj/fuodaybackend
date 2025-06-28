@@ -85,15 +85,17 @@ Route::prefix('web-users')->group(function () {
         Route::get('/', [WebpageUserController::class, 'getAllUsers']); // Get all users
         Route::post('/save', [WebpageUserController::class, 'saveWebUser']); // Create a new web user
         Route::post('/all', [WebpageUserController::class, 'index']); // Get all users with optional filtering by role
-        Route::post('/update/{id}', [WebpageUserController::class, 'update']); // Update user
-        Route::get('/getwebuserbyid', [WebpageUserController::class, 'getWebUserById']);
+
+
         Route::delete('/{id}', [WebpageUserController::class, 'destroy']); // Delete user
         Route::post('/logout', [WebpageUserController::class, 'logout']);  // Logout
         Route::get('/getemployeesbymanagers/{id}', [WebpageUserController::class, 'getEmployeesGroupedByManager']);
+        Route::post('/payroll/update/{id}', [WebpageUserController::class, 'updatePayrollDetails']);
     });
     Route::get('/getemployeesbyadmin/{id}', [WebpageUserController::class, 'getEmployeesByAdminUser']);
+    Route::get('/getwebuserbyid/{id}', [WebpageUserController::class, 'getWebUserById']);
+    Route::post('/update/{id}', [WebpageUserController::class, 'update']); // Update user
 });
-
 
 Route::prefix('hrms')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
@@ -157,7 +159,7 @@ Route::prefix('hrms')->group(function () {
             Route::post('/addleave', [LeaveTrackerPageController::class, 'addLeave']);
             Route::post('/updateleave', [LeaveTrackerPageController::class, 'updateLeaveStatus']);
             Route::post('/regulate', [LeaveTrackerPageController::class, 'regulateLeave']);
-           
+
 
         });
         Route::prefix('timetracker')->group(function () {
@@ -176,6 +178,8 @@ Route::prefix('hrms')->group(function () {
         Route::prefix('payroll')->group(function () {
             Route::get('/getpayroll/{id}', [PayrollPageController::class, 'getPayrollDetails']);
             Route::get('/getoverview/{id}', [PayrollPageController::class, 'getCurrentPayrollDetails']);
+            Route::post('/downloadpayslip/{id}', [PayrollPageController::class, 'downloadPayslip']);
+            Route::post('/getpayroll/{id}', [PayrollPageController::class, 'getPayroll']);
         });
         Route::prefix('performance')->group(function () {
             Route::get('/getgoals/{id}', [PerformancePageController::class, 'getUserTasks']);

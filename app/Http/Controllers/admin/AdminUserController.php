@@ -589,7 +589,7 @@ class AdminUserController extends Controller
             $webuser = WebUser::find($request->web_user_id);
             $adminUser = AdminUser::find($webuser->admin_user_id);
         }
-        
+
         if (!$adminUser || !$validated) {
             return response()->json(['message' => 'Invalid details'], 400);
         }
@@ -1227,10 +1227,12 @@ class AdminUserController extends Controller
         }
 
         // Fetch all web user
-        $webUsers = WebUser::where('admin_user_id', $id)
-        ->with(['employeeDetails' => function ($query) {
-            $query->select('id', 'web_user_id', 'department', 'personal_contact_no', 'profile_photo');
-        }])->get();
+        $webUsers = WebUser::with([
+            'employeeDetails:id,web_user_id,emp_name,emp_id,profile_photo,role_location,designation,department,employment_type,work_module,date_of_joining,reporting_manager_id,reporting_manager_name',
+            'payroll:id,web_user_id,emp_name,emp_id,designation,ctc,monthly_salary,salary_component,type,amount'
+        ])
+        ->where('admin_user_id', $id)
+        ->get();
 
         return response()->json([
             'status' => 'Success',
