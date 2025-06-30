@@ -192,119 +192,113 @@ class HrPageController extends Controller
             'data' => $webUsers
         ], 200);
     }
-
-    /**
-     * Download filtered employee details as CSV
-     * Note: This queries the employee_details table directly
-     * Consider adding admin_user_id filtering for security
-     */
     
-public function downloadEmployees(Request $request): \Symfony\Component\HttpFoundation\Response|\Illuminate\Http\JsonResponse
+    public function downloadEmployees(Request $request): \Symfony\Component\HttpFoundation\Response|\Illuminate\Http\JsonResponse
 
-{
-    try {
-        $format = $request->query('format', 'xlsx'); // default to xlsx
+    {
+        try {
+            $format = $request->query('format', 'xlsx'); // default to xlsx
 
-        $query = DB::table('employee_details');
+            $query = DB::table('employee_details');
 
-        if ($request->has('emp_id') && $request->filled('emp_id')) {
-            $query->where('emp_id', $request->query('emp_id'));
-        }
-
-        if ($request->has('emp_name') && $request->filled('emp_name')) {
-            $query->where('emp_name', 'LIKE', '%' . $request->query('emp_name') . '%');
-        }
-
-        $employees = $query->get();
-
-        if ($employees->isEmpty()) {
-            return response()->json(['message' => 'No matching employees found.'], 404);
-        }
-
-        //  Excel Format
-        if ($format === 'xlsx') {
-            $excelData = collect([]);
-            $excelData->push([
-                'ID', 'Emp Name', 'Emp ID', 'Gender', 'Place', 'Designation', 'Department', 'Employment Type', 'About', 'Role Location',
-                'Work Mode', 'DOB', 'Address', 'Date of Joining', 'Reporting Manager ID', 'Reporting Manager Name',
-                'Aadhaar No', 'PAN No', 'Blood Group', 'Personal Contact', 'Emergency Contact',
-                'Official Contact', 'Official Email', 'Permanent Address', 'Bank Name', 'Account No', 'IFSC',
-                'PF Account No', 'UAN', 'ESI No', 'Created At', 'Updated At'
-            ]);
-
-            foreach ($employees as $emp) {
-                $excelData->push([
-                    $emp->id ?? '', $emp->emp_name ?? '', $emp->emp_id ?? '', $emp->gender ?? '', $emp->place ?? '',
-                    $emp->designation ?? '', $emp->department ?? '', $emp->employment_type ?? '', $emp->about ?? '',
-                    $emp->role_location ?? '', $emp->work_mode ?? '', $emp->dob ?? '', $emp->address ?? '',
-                    $emp->date_of_joining ?? '', $emp->reporting_manager_id ?? '', $emp->reporting_manager_name ?? '',
-                    $emp->aadhaar_no ?? '', $emp->pan_no ?? '', $emp->blood_group ?? '', $emp->personal_contact_no ?? '',
-                    $emp->emergency_contact_no ?? '', $emp->official_contact_no ?? '', $emp->official_email ?? '',
-                    $emp->permanent_address ?? '', $emp->bank_name ?? '', $emp->account_no ?? '', $emp->ifsc ?? '',
-                    $emp->pf_account_no ?? '', $emp->uan ?? '', $emp->esi_no ?? '', $emp->created_at ?? '', $emp->updated_at ?? '',
-                ]);
+            if ($request->has('emp_id') && $request->filled('emp_id')) {
+                $query->where('emp_id', $request->query('emp_id'));
             }
 
-            return Excel::download(new class($excelData) implements \Maatwebsite\Excel\Concerns\FromCollection {
-                private $data;
-                public function __construct($data) { $this->data = $data; }
-                public function collection(): Collection { return $this->data; }
-            }, 'employee_details.xlsx', ExcelFormat::XLSX);
+            if ($request->has('emp_name') && $request->filled('emp_name')) {
+                $query->where('emp_name', 'LIKE', '%' . $request->query('emp_name') . '%');
+            }
+
+            $employees = $query->get();
+
+            if ($employees->isEmpty()) {
+                return response()->json(['message' => 'No matching employees found.'], 404);
+            }
+
+            //  Excel Format
+            if ($format === 'xlsx') {
+                $excelData = collect([]);
+                $excelData->push([
+                    'ID', 'Emp Name', 'Emp ID', 'Gender', 'Place', 'Designation', 'Department', 'Employment Type', 'About', 'Role Location',
+                    'Work Mode', 'DOB', 'Address', 'Date of Joining', 'Reporting Manager ID', 'Reporting Manager Name',
+                    'Aadhaar No', 'PAN No', 'Blood Group', 'Personal Contact', 'Emergency Contact',
+                    'Official Contact', 'Official Email', 'Permanent Address', 'Bank Name', 'Account No', 'IFSC',
+                    'PF Account No', 'UAN', 'ESI No', 'Created At', 'Updated At'
+                ]);
+
+                foreach ($employees as $emp) {
+                    $excelData->push([
+                        $emp->id ?? '', $emp->emp_name ?? '', $emp->emp_id ?? '', $emp->gender ?? '', $emp->place ?? '',
+                        $emp->designation ?? '', $emp->department ?? '', $emp->employment_type ?? '', $emp->about ?? '',
+                        $emp->role_location ?? '', $emp->work_mode ?? '', $emp->dob ?? '', $emp->address ?? '',
+                        $emp->date_of_joining ?? '', $emp->reporting_manager_id ?? '', $emp->reporting_manager_name ?? '',
+                        $emp->aadhaar_no ?? '', $emp->pan_no ?? '', $emp->blood_group ?? '', $emp->personal_contact_no ?? '',
+                        $emp->emergency_contact_no ?? '', $emp->official_contact_no ?? '', $emp->official_email ?? '',
+                        $emp->permanent_address ?? '', $emp->bank_name ?? '', $emp->account_no ?? '', $emp->ifsc ?? '',
+                        $emp->pf_account_no ?? '', $emp->uan ?? '', $emp->esi_no ?? '', $emp->created_at ?? '', $emp->updated_at ?? '',
+                    ]);
+                }
+
+                return Excel::download(new class($excelData) implements \Maatwebsite\Excel\Concerns\FromCollection {
+                    private $data;
+                    public function __construct($data) { $this->data = $data; }
+                    public function collection(): Collection { return $this->data; }
+                }, 'employee_details.xlsx', ExcelFormat::XLSX);
+            }
+
+            // PDF Format
+            if ($format === 'pdf') {
+                $pdf = Pdf::loadView('pdf.employee_list', ['employees' => $employees]);
+                return $pdf->download('employee_details.pdf');
+            }
+
+            // Invalid format
+            return response()->json(['error' => 'Invalid format. Use ?format=pdf or ?format=xlsx'], 400);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Server Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function getAllLeaveRequestsByStatus($status)
+    {
+
+        $user = Auth::user();
+        $webUser = WebUser::find($user->id);
+        $employeeIds = WebUser::where('admin_user_id', $webUser->admin_user_id)
+            ->where('role', 'employee')
+            ->pluck('id');
+        $validStatuses = ['pending', 'approved', 'rejected'];
+        $status = strtolower($status);
+
+        if (!in_array($status, $validStatuses)) {
+            return response()->json(['message' => 'Invalid status value'], 400);
         }
 
-        // PDF Format
-        if ($format === 'pdf') {
-            $pdf = Pdf::loadView('pdf.employee_list', ['employees' => $employees]);
-            return $pdf->download('employee_details.pdf');
-        }
-
-        // Invalid format
-        return response()->json(['error' => 'Invalid format. Use ?format=pdf or ?format=xlsx'], 400);
-
-    } catch (\Exception $e) {
-        return response()->json(['error' => 'Server Error: ' . $e->getMessage()], 500);
+        $leaveRequests = LeaveRequest::with(['webUser:id,id,name,emp_id'])
+            ->whereIn('web_user_id', $employeeIds)
+            ->where('status', $status)
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function ($leave) {
+                return [
+                    'id' => $leave->id,
+                    'web_user_id' => $leave->web_user_id,
+                    'date' => $leave->date,
+                    'type' => $leave->type,
+                    'from' => $leave->from,
+                    'reason' => $leave->reason,
+                    'to' => $leave->to,
+                    'name' => $leave->webUser->name ?? null,
+                    'status' => $leave->status,
+                ];
+            });
+        return response()->json([
+            'status' => 'Success',
+            'message' => ucfirst($status) . ' leave requests retrieved successfully',
+            'data' => $leaveRequests
+        ]);
     }
-}
-
-public function getAllLeaveRequestsByStatus($status)
-{
-
-    $user = Auth::user();
-    $webUser = WebUser::find($user->id);
-    $employeeIds = WebUser::where('admin_user_id', $webUser->admin_user_id)
-        ->where('role', 'employee')
-        ->pluck('id');
-    $validStatuses = ['pending', 'approved', 'rejected'];
-    $status = strtolower($status);
-
-    if (!in_array($status, $validStatuses)) {
-        return response()->json(['message' => 'Invalid status value'], 400);
-    }
-
-    $leaveRequests = LeaveRequest::with(['webUser:id,id,name,emp_id'])
-        ->whereIn('web_user_id', $employeeIds)
-        ->where('status', $status)
-        ->orderByDesc('created_at')
-        ->get()
-        ->map(function ($leave) {
-            return [
-                'id' => $leave->id,
-                'web_user_id' => $leave->web_user_id,
-                'date' => $leave->date,
-                'type' => $leave->type,
-                'from' => $leave->from,
-                'reason' => $leave->reason,
-                'to' => $leave->to,
-                'name' => $leave->webUser->name ?? null,
-                'status' => $leave->status,
-            ];
-        });
-    return response()->json([
-        'status' => 'Success',
-        'message' => ucfirst($status) . ' leave requests retrieved successfully',
-        'data' => $leaveRequests
-    ]);
-}
 
     public function getAllEmployeeAttendance(Request $request)
     {
@@ -354,6 +348,168 @@ public function getAllLeaveRequestsByStatus($status)
             'status' => 'Success',
             'message' => 'All employee attendance data retrieved successfully.',
             'data' => $data,
+        ]);
+    }
+
+    public function getAllEmployeePayrollSummaries()
+    {
+        $user = Auth::user();
+        $webUser = WebUser::find($user->id);
+        $employees = WebUser::with('employeeDetails')->where('admin_user_id', $webUser->admin_user_id)->get();
+
+        $summaries = $employees->map(function ($user) {
+            $userId = $user->id;
+
+            // Total incentives
+            $incentives = Incentives::where('web_user_id', $userId)->sum('amount');
+
+            // Latest payroll with payslip
+            $latestPayroll = Payroll::where('web_user_id', $userId)
+                ->whereHas('payslip')
+                ->with('payslip')
+                ->get()
+                ->sortByDesc(function ($payroll) {
+                    return $payroll->payslip->date ?? now()->subYears(10);
+                })
+                ->first();
+
+            $payslip = $latestPayroll?->payslip;
+
+            $totalSalary = $payslip->total_salary ?? 0;
+            $salaryInWords = $this->convertNumberToWords($totalSalary);
+
+            // Get salary components grouped by type
+            $components = Payroll::where('web_user_id', $userId)
+                ->whereNotNull('salary_component')
+                ->whereNotNull('type')
+                ->get()
+                ->groupBy('type')
+                ->map(function ($items) {
+                    return $items->map(function ($item) {
+                        return [
+                            'component' => $item->salary_component,
+                            'amount'    => $item->amount,
+                        ];
+                    })->values();
+                });
+
+            return [
+                'emp_id'              => $user->emp_id,
+                'name'                => $user->name,
+                'designation'         => $user->employeeDetails->designation ?? null,
+                'date_of_joining'     => $user->employeeDetails->date_of_joining ?? null,
+                'year'                => now()->year,
+                'pf_account_no'       => $user->employeeDetails->pf_account_no ?? null,
+                'uan'                 => $user->employeeDetails->uan ?? null,
+                'esi_no'              => $user->employeeDetails->esi_no ?? null,
+                'bank_account_no'     => $user->employeeDetails->bank_account_no ?? null,
+                'total_ctc'           => $latestPayroll->ctc ?? 0,
+                'monthly_salary'      => $latestPayroll->monthly_salary ?? 0,
+                'latest_payslip_date' => optional($payslip?->date)->format('Y-m-d'),
+                'total_paid_days'     => $payslip->total_paid_days ?? 0,
+                'lop'                 => $payslip->lop ?? 0,
+                'gross'               => $payslip->gross ?? 0,
+                'total_deductions'    => $payslip->total_deductions ?? 0,
+                'total_salary'        => $totalSalary,
+                'total_salary_word'   => $salaryInWords,
+                'status'              => $payslip->status ?? 'N/A',
+                'incentives'          => $incentives,
+                'salary_components'   => [
+                    'earnings'   => $components->get('Earnings') ?? [],
+                    'deductions' => $components->get('Deductions') ?? [],
+                ],
+            ];
+        });
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'All employee payroll summaries fetched successfully.',
+            'data' => $summaries,
+        ]);
+    }
+
+    //
+    private function convertNumberToWords($number)
+    {
+        $f = new \NumberFormatter("en", \NumberFormatter::SPELLOUT);
+        return ucfirst($f->format($number)) . ' only';
+    }
+
+    //
+
+    public function getEmployeePayrollSummaryById($id)
+    {
+        $user = WebUser::with('employeeDetails')->find($id);
+
+        if (!$user) {
+            return response()->json([
+                'status' => 'Error',
+                'message' => 'Employee not found.',
+            ], 404);
+        }
+
+        $incentives = Incentives::where('web_user_id', $id)->sum('amount');
+
+        $latestPayroll = Payroll::where('web_user_id', $id)
+            ->whereHas('payslip')
+            ->with('payslip')
+            ->get()
+            ->sortByDesc(function ($payroll) {
+                return $payroll->payslip->date ?? now()->subYears(10);
+            })
+            ->first();
+
+        $payslip = $latestPayroll?->payslip;
+
+        $totalSalary = $payslip->total_salary ?? 0;
+        $salaryInWords = $this->convertNumberToWords($totalSalary);
+
+        // Get salary components grouped by type
+        $components = Payroll::where('web_user_id', $id)
+            ->whereNotNull('salary_component')
+            ->whereNotNull('type')
+            ->get()
+            ->groupBy('type')
+            ->map(function ($items) {
+                return $items->map(function ($item) {
+                    return [
+                        'component' => $item->salary_component,
+                        'amount'    => $item->amount,
+                    ];
+                })->values();
+            });
+
+        $summary = [
+            'emp_id'              => $user->emp_id,
+            'name'                => $user->name,
+            'designation'         => $user->employeeDetails->designation ?? null,
+            'date_of_joining'     => $user->employeeDetails->date_of_joining ?? null,
+            'year'                => now()->year,
+            'pf_account_no'       => $user->employeeDetails->pf_account_no ?? null,
+            'uan'                 => $user->employeeDetails->uan ?? null,
+            'esi_no'              => $user->employeeDetails->esi_no ?? null,
+            'bank_account_no'     => $user->employeeDetails->bank_account_no ?? null,
+            'total_ctc'           => $latestPayroll->ctc ?? 0,
+            'monthly_salary'      => $latestPayroll->monthly_salary ?? 0,
+            'latest_payslip_date' => optional($payslip?->date)->format('Y-m-d'),
+            'total_paid_days'     => $payslip->total_paid_days ?? 0,
+            'lop'                 => $payslip->lop ?? 0,
+            'gross'               => $payslip->gross ?? 0,
+            'total_deductions'    => $payslip->total_deductions ?? 0,
+            'total_salary'        => $totalSalary,
+            'total_salary_word'   => $salaryInWords,
+            'status'              => $payslip->status ?? 'N/A',
+            'incentives'          => $incentives,
+            'salary_components'   => [
+                'earnings'   => $components->get('Earnings') ?? [],
+                'deductions' => $components->get('Deductions') ?? [],
+            ],
+        ];
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Employee payroll summary fetched successfully.',
+            'data' => $summary,
         ]);
     }
 }
