@@ -10,6 +10,7 @@ use App\Models\WebUser;
 use App\Models\EmployeeDetails;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log; // Add this import
+use Illuminate\Support\Facades\Auth;
 
 
 class AttendancePageController extends Controller
@@ -268,7 +269,7 @@ class AttendancePageController extends Controller
         ], 200);
     }
 
-        public function updateAttendance(Request $request)
+    public function updateAttendance(Request $request)
     {
         $request->validate([
             'web_user_id' => 'required|exists:web_users,id'
@@ -477,101 +478,104 @@ public function calculateLateArrivals($id)
 }
 
 
-public function getLateArrivalsByRole($id)
-{
-    try {
-        $webUser = WebUser::find($id);
-        
-        if (!$webUser) {
-            return response()->json(['message' => 'User not found'], 404);
-        }
+    public function getLateArrivalsByRole($id)
+    {
+        try {
+            $webUser = WebUser::find($id);
+            
+            if (!$webUser) {
+                return response()->json(['message' => 'User not found'], 404);
+            }
 
-        $standardStartTime = '09:00:00';
-        
-        if ($webUser->role === 'employee') {
-            // Return late arrivals for this employee only
-            return $this->calculateLateArrivals($id);
+            $standardStartTime = '09:00:00';
             
-        } elseif ($webUser->role === 'hr') {
-            // Get all employees under same admin_user_id
-            $employeeIds = WebUser::where('admin_user_id', $webUser->admin_user_id)
-                ->where('role', 'employee')
-                ->pluck('id');
-            
-            $allLateArrivals = [];
-            $totalStats = [
-                'total_employees' => $employeeIds->count(),
-                'employees_with_late_arrivals' => 0,
-                'total_late_instances' => 0,
-                'total_late_minutes' => 0
-            ];
-            
-            foreach ($employeeIds as $empId) {
-                $employee = WebUser::find($empId);
+            if ($webUser->role === 'employee') {
+                // Return late arrivals for this employee only
+                return $this->calculateLateArrivals($id);
                 
-                // Get late records with emp_name
-                $lateRecords = DB::table('attendances')
-                    ->where('web_user_id', $empId)
-                    ->whereNotNull('checkin')
-                    ->whereRaw("TIME(checkin) > ?", [$standardStartTime])
-                    ->select(['date', 'checkin', 'emp_name'])
-                    ->get();
+            } elseif ($webUser->role === 'hr') {
+                // Get all employees under same admin_user_id
+                $employeeIds = WebUser::where('admin_user_id', $webUser->admin_user_id)
+                    ->where('role', 'employee')
+                    ->pluck('id');
                 
-                if ($lateRecords->count() > 0) {
-                    $totalStats['employees_with_late_arrivals']++;
-                    $empLateMinutes = 0;
-                    $employeeName = $lateRecords->first()->emp_name ?? $employee->name;
+                $allLateArrivals = [];
+                $totalStats = [
+                    'total_employees' => $employeeIds->count(),
+                    'employees_with_late_arrivals' => 0,
+                    'total_late_instances' => 0,
+                    'total_late_minutes' => 0
+                ];
+                
+                foreach ($employeeIds as $empId) {
+                    $employee = WebUser::find($empId);
                     
-                    foreach ($lateRecords as $record) {
-                        $checkinTime = Carbon::parse($record->checkin);
-                        $standardTime = Carbon::parse($record->date . ' ' . $standardStartTime);
-                        $lateMinutes = $standardTime->diffInMinutes($checkinTime);
-                        $empLateMinutes += $lateMinutes;
+                    // Get late records with emp_name
+                    $lateRecords = DB::table('attendances')
+                        ->where('web_user_id', $empId)
+                        ->whereNotNull('checkin')
+                        ->whereRaw("TIME(checkin) > ?", [$standardStartTime])
+                        ->select(['date', 'checkin', 'emp_name'])
+                        ->get();
+                    
+                    if ($lateRecords->count() > 0) {
+                        $totalStats['employees_with_late_arrivals']++;
+                        $empLateMinutes = 0;
+                        $employeeName = $lateRecords->first()->emp_name ?? $employee->name;
+                        
+                        foreach ($lateRecords as $record) {
+                            $checkinTime = Carbon::parse($record->checkin);
+                            $standardTime = Carbon::parse($record->date . ' ' . $standardStartTime);
+                            $lateMinutes = $standardTime->diffInMinutes($checkinTime);
+                            $empLateMinutes += $lateMinutes;
+                        }
+                        
+                        $allLateArrivals[] = [
+                            'employee_id' => $empId,
+                            'employee_name' => $employeeName,
+                            'late_count' => $lateRecords->count(),
+                            'total_late_minutes' => $empLateMinutes,
+                            'average_late_minutes' => round($empLateMinutes / $lateRecords->count(), 2)
+                        ];
+                        
+                        $totalStats['total_late_instances'] += $lateRecords->count();
+                        $totalStats['total_late_minutes'] += $empLateMinutes;
                     }
-                    
-                    $allLateArrivals[] = [
-                        'employee_id' => $empId,
-                        'employee_name' => $employeeName,
-                        'late_count' => $lateRecords->count(),
-                        'total_late_minutes' => $empLateMinutes,
-                        'average_late_minutes' => round($empLateMinutes / $lateRecords->count(), 2)
-                    ];
-                    
-                    $totalStats['total_late_instances'] += $lateRecords->count();
-                    $totalStats['total_late_minutes'] += $empLateMinutes;
                 }
+                
+                return response()->json([
+                    'message' => 'Late arrivals data retrieved successfully',
+                    'status' => 'Success',
+                    'data' => [
+                        'statistics' => $totalStats,
+                        'employee_details' => $allLateArrivals
+                    ]
+                ], 200);
+                
+            } else {
+                return response()->json(['message' => 'Invalid role'], 400);
             }
             
-            return response()->json([
-                'message' => 'Late arrivals data retrieved successfully',
-                'status' => 'Success',
-                'data' => [
-                    'statistics' => $totalStats,
-                    'employee_details' => $allLateArrivals
-                ]
-            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error in getLateArrivalsByRole', [
+                'user_id' => $id,
+                'error' => $e->getMessage()
+            ]);
             
-        } else {
-            return response()->json(['message' => 'Invalid role'], 400);
+            return response()->json([
+                'message' => 'Error retrieving late arrivals data',
+                'status' => 'error',
+                'error' => $e->getMessage()
+            ], 500);
         }
-        
-    } catch (\Exception $e) {
-        Log::error('Error in getLateArrivalsByRole', [
-            'user_id' => $id,
-            'error' => $e->getMessage()
-        ]);
-        
-        return response()->json([
-            'message' => 'Error retrieving late arrivals data',
-            'status' => 'error',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
 public function getAllLateArrivals()
 {
     try {
+
+        $user = Auth::user();
+        $webUser = WebUser::find($user->id);
         $standardStartTime = '09:00:00';
 
         $allLateData = [];
@@ -583,7 +587,7 @@ public function getAllLateArrivals()
         ];
 
         // Get all employees
-        $employees = WebUser::where('role', 'employee')->get();
+        $employees = WebUser::where('admin_user_id', $webUser->admin_user_id)->where('role', 'employee')->get();
         $summaryStats['total_employees'] = $employees->count();
 
         foreach ($employees as $employee) {
