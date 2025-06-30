@@ -128,7 +128,7 @@ class HrPageController extends Controller
             ->take(3)
             ->get(['title', 'posted_at', 'no_of_openings']);
 
-        $events = Event::where('web_user_id', $id)->get();
+        $events = Event::where('admin_user_id', $adminUserId)->get();
 
         $audits = Audits::all()->filter(function ($audit) use ($id) {
             if ($audit->management_review) {
