@@ -398,7 +398,11 @@ class HrPageController extends Controller
             $payslip = $latestPayroll?->payslip;
 
             $totalSalary = $payslip->total_salary ?? 0;
-            $salaryInWords = $this->convertNumberToWords($totalSalary);
+            $numberToWords = new NumberToWords();
+            $numberTransformer = $numberToWords->getNumberTransformer('en');
+            $salaryInWords = $totalSalary !== null
+                ? ucfirst($numberTransformer->toWords((int) $totalSalary)) . ' only'
+                : null;
 
             // Get salary components grouped by type
             $components = Payroll::where('web_user_id', $userId)
@@ -451,11 +455,11 @@ class HrPageController extends Controller
     }
 
     //
-    private function convertNumberToWords($number)
-    {
-        $f = new \NumberFormatter("en", \NumberFormatter::SPELLOUT);
-        return ucfirst($f->format($number)) . ' only';
-    }
+    // private function convertNumberToWords($number)
+    // {
+    //     $f = new \NumberFormatter("en", \NumberFormatter::SPELLOUT);
+    //     return ucfirst($f->format($number)) . ' only';
+    // }
 
     //
 
@@ -484,7 +488,12 @@ class HrPageController extends Controller
         $payslip = $latestPayroll?->payslip;
 
         $totalSalary = $payslip->total_salary ?? 0;
-        $salaryInWords = $this->convertNumberToWords($totalSalary);
+
+        $numberToWords = new NumberToWords();
+        $numberTransformer = $numberToWords->getNumberTransformer('en');
+        $salaryInWords = $totalSalary !== null
+            ? ucfirst($numberTransformer->toWords((int) $totalSalary)) . ' only'
+            : null;
 
         // Get salary components grouped by type
         $components = Payroll::where('web_user_id', $id)
