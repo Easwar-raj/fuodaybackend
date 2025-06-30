@@ -19,6 +19,9 @@ use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Excel as ExcelFormat;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Incentives;
+use App\Models\Payroll;
+use App\Models\Payslip;
 
 class HrPageController extends Controller
 {
