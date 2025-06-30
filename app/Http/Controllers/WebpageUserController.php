@@ -180,7 +180,7 @@ class WebpageUserController extends Controller
                     'role' => $request->role ?? $webUser->role,
                     'emp_id' => $request->emp_id ?? $webUser->emp_id,
                     'group' => $request->group ?? $webUser->group,
-                    'password' => Hash::make($request->password) ?? $webUser->password,
+                    // 'password' => Hash::make($request->password) ?? $webUser->password,
                 ]);
 
                 $empdetails = EmployeeDetails::where('web_user_id', $webUser->id)->first();
