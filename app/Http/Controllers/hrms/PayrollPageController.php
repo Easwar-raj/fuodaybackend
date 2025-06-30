@@ -75,8 +75,9 @@ class PayrollPageController extends Controller
     public function getCurrentPayrollDetails($id)
     {
         $now = now();
-        // Step 1: Get the current month's payslip (or latest)
-        $payslip = Payslip::whereHas('payroll', function($query) use ($id) {
+
+        // Step 1: Try to fetch current month payslip with payroll
+        $payslip = Payslip::whereHas('payroll', function ($query) use ($id) {
                 $query->where('web_user_id', $id);
             })
             ->whereMonth('date', $now->month)
@@ -84,90 +85,87 @@ class PayrollPageController extends Controller
             ->with('payroll')
             ->latest('date')
             ->first();
+
+        // Fallback to latest payslip if current month is not found
         if (!$payslip) {
-            $payslip = Payslip::whereHas('payroll', function($query) use ($id) {
+            $payslip = Payslip::whereHas('payroll', function ($query) use ($id) {
                     $query->where('web_user_id', $id);
                 })
+                ->with('payroll')
                 ->orderByDesc('date')
                 ->first();
         }
-        if (!$payslip) {
-            return response()->json([
-                'message' => 'No payslip found.'
-            ], 404);
-        }
 
-        // Get latest updated salary components
-        $latestPayrollDate = Payroll::where('web_user_id', $id)->orderByDesc('updated_at')->value('updated_at'); // get latest update timestamp
-
-        $payrollComponents = Payroll::where('web_user_id', $id)->whereDate('updated_at', $latestPayrollDate)->get()->groupBy('type'); // Group by type
-
-        // Step 3: Get WebUser + EmployeeDetails
+        // Get WebUser, EmployeeDetails, AdminUser
         $webUser = WebUser::with('employeeDetails')->find($id);
         $employeeDetail = $webUser->employeeDetails;
         $adminUser = AdminUser::find($webUser->admin_user_id);
 
-        // Step 4: Get Onboarding Details
+        // Get Onboarding Details
         $onboarding = Onboarding::where('web_user_id', $id)->first();
-        $numberToWords = new NumberToWords();
-        $numberTransformer = $numberToWords->getNumberTransformer('en');
 
-        $totalSalary = $payslip->total_salary;
-        $salaryInWords = $totalSalary !== null
-            ? ucfirst($numberTransformer->toWords((int) $totalSalary)) . ' only'
-            : null;
+        // Get latest payroll components
+        $latestPayrollDate = Payroll::where('web_user_id', $id)->orderByDesc('updated_at')->value('updated_at');
+        $payrollComponents = Payroll::where('web_user_id', $id)
+            ->whereDate('updated_at', $latestPayrollDate)
+            ->get()
+            ->groupBy('type');
 
-        $earnings = collect($payrollComponents['Earnings'] ?? [])
-            ->groupBy('salary_component')
-            ->map(fn($items) => $items->sum('amount'));
-
-        $deductions = collect($payrollComponents['Deductions'] ?? [])
-            ->groupBy('salary_component')
-            ->map(fn($items) => $items->sum('amount'));
+        $earnings = collect($payrollComponents['Earnings'] ?? [])->groupBy('salary_component')->map(fn($items) => $items->sum('amount'));
+        $deductions = collect($payrollComponents['Deductions'] ?? [])->groupBy('salary_component')->map(fn($items) => $items->sum('amount'));
 
         $salaryComponents = [
-            'Earnings' => $earnings->toArray(),
+            'Earnings'   => $earnings->toArray(),
             'Deductions' => $deductions->toArray(),
         ];
-        // Step 5: Format Response
+
+        // Default values if payslip is not found
+        $basic = $earnings['Basic'] ?? 0;
+        $gross = $basic + $earnings->sum();
+        $totalDeductions = $deductions->sum();
+        $totalSalary = $gross - $totalDeductions;
+
+        $numberToWords = new NumberToWords();
+        $numberTransformer = $numberToWords->getNumberTransformer('en');
+        $salaryInWords = ucfirst($numberTransformer->toWords((int)$totalSalary)) . ' only';
+
         return response()->json([
             'status' => 'Success',
             'message' => 'Current payroll details fetched successfully.',
             'data' => [
                 'payslip' => [
-                    'month'            => optional($payslip->date)->format('F Y'),
-                    'basic'            => $payslip->basic,
-                    'overtime'         => $payslip->overtime,
-                    'total_paid_days'  => $payslip->total_paid_days,
-                    'lop'              => $payslip->lop,
-                    'gross'            => $payslip->gross,
-                    'total_deductions' => $payslip->total_deductions,
-                    'total_salary'     => $payslip->total_salary,
-                    'total_salary_word' => $salaryInWords,
-                    'status'           => $payslip->status,
-                    'date'             => optional($payslip->date)->format('Y-m-d'),
-                    'company_name'     => $adminUser->company_name,
-                    'logo'             => $adminUser->logo
+                    'month'             => optional($payslip?->date)->format('F Y') ?? $latestPayrollDate?->format('F Y'),
+                    'basic'             => $payslip?->basic ?? $basic,
+                    'overtime'          => $payslip?->overtime ?? 0,
+                    'total_paid_days'   => $payslip?->total_paid_days ?? null,
+                    'lop'               => $payslip?->lop ?? 0,
+                    'gross'             => $payslip?->gross ?? $gross,
+                    'total_deductions'  => $payslip?->total_deductions ?? $totalDeductions,
+                    'total_salary'      => $payslip?->total_salary ?? $totalSalary,
+                    'total_salary_word' => $payslip ? ucfirst($numberTransformer->toWords((int)$payslip->total_salary)) . ' only' : $salaryInWords,
+                    'status'            => $payslip?->status ?? 'unpaid',
+                    'date'              => optional($payslip?->date)->format('Y-m-d') ?? optional($latestPayrollDate)->format('Y-m-d'),
+                    'company_name'      => $adminUser->company_name,
+                    'logo'              => $adminUser->logo,
                 ],
 
-                // Grouped salary components by type
                 'salary_components' => $salaryComponents,
 
                 'employee_details' => [
-                    'name'             => $webUser->name,
-                    'designation'      => $employeeDetail->designation ?? null,
-                    'emp_id'           => $webUser->emp_id,
-                    'date_of_joining'  => $employeeDetail?->date_of_joining ? $employeeDetail->date_of_joining->format('Y-m-d') : null,
-                    'year'             => $employeeDetail?->date_of_joining ? $employeeDetail->date_of_joining->format('Y') : null,
+                    'name'            => $webUser->name,
+                    'designation'     => $employeeDetail->designation ?? null,
+                    'emp_id'          => $webUser->emp_id,
+                    'date_of_joining' => optional($employeeDetail?->date_of_joining)->format('Y-m-d'),
+                    'year'            => optional($employeeDetail?->date_of_joining)->format('Y'),
                 ],
 
                 'onboarding_details' => [
-                    'pf_account_no'     => $onboarding->pf_account_no ?? null,
-                    'uan'               => $onboarding->uan ?? null,
-                    'esi_no'            => $onboarding->esi_no ?? null,
-                    'bank_account_no'   => $onboarding->account_no ?? null,
+                    'pf_account_no'    => $onboarding->pf_account_no ?? null,
+                    'uan'              => $onboarding->uan ?? null,
+                    'esi_no'           => $onboarding->esi_no ?? null,
+                    'bank_account_no'  => $onboarding->account_no ?? null,
                 ],
-            ],
+            ]
         ], 200);
     }
 
