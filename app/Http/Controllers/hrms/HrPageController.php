@@ -268,6 +268,12 @@ public function downloadEmployees(Request $request): \Symfony\Component\HttpFoun
 
 public function getAllLeaveRequestsByStatus($status)
 {
+
+    $user = Auth::user();
+    $webUser = WebUser::find($user->id);
+    $employeeIds = WebUser::where('admin_user_id', $webUser->admin_user_id)
+        ->where('role', 'employee')
+        ->pluck('id');
     $validStatuses = ['pending', 'approved', 'rejected'];
     $status = strtolower($status);
 
@@ -276,6 +282,7 @@ public function getAllLeaveRequestsByStatus($status)
     }
 
     $leaveRequests = LeaveRequest::with(['webUser:id,id,name,emp_id'])
+        ->whereIn('web_user_id', $employeeIds)
         ->where('status', $status)
         ->orderByDesc('created_at')
         ->get()
