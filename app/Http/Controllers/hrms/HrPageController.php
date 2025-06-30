@@ -8,6 +8,8 @@ use App\Models\JobOpening;
 use App\Models\LeaveRequest;
 use App\Models\Projects;
 use App\Models\WebUser;
+use App\Models\Event;
+use App\Models\Audits;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -126,6 +128,16 @@ class HrPageController extends Controller
             ->take(3)
             ->get(['title', 'posted_at', 'no_of_openings']);
 
+        $events = Event::where('web_user_id', $id)->get();
+
+        $audits = Audits::all()->filter(function ($audit) use ($id) {
+            if ($audit->management_review) {
+                $parts = explode('%', $audit->management_review);
+                return isset($parts[0]) && (int)$parts[0] === $id;
+            }
+            return false;
+        });
+
         return response()->json([
             'message' => 'HR Dashboard Data Retrieved Successfully',
             'status' => 'Success',
@@ -137,6 +149,10 @@ class HrPageController extends Controller
                     'leaveChange' => round($leaveChange, 2),
                     'totalPermissions' => $totalPermissions,
                     'permissionChange' => round($permissionChange, 2),
+                    'totalAttendance' => $totalAttendance,
+                    'totalLateArrival' => $late,
+                    'totalEvent' => $events->count(),
+                    'totalAudits' => $audits->count()
                 ],
                 'attendanceToday' => [
                     'early' => $early,
@@ -148,6 +164,8 @@ class HrPageController extends Controller
                 'projects' => $projects,
                 'recentEmployees' => $recentEmployees,
                 'openPositions' => $openPositions,
+                'events' => $events,
+                'audits' => $audits
             ],
         ], 200);
     }
