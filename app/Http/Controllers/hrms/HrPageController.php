@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Incentives;
 use App\Models\Payroll;
 use App\Models\Payslip;
+use NumberToWords\NumberToWords;
 
 class HrPageController extends Controller
 {
