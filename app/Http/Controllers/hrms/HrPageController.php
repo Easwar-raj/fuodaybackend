@@ -254,8 +254,8 @@ public function downloadEmployees(Request $request): \Symfony\Component\HttpFoun
 
         // PDF Format
         if ($format === 'pdf') {
-    $pdf = Pdf::loadView('pdf.employee_list', ['employees' => $employees]);
-    return $pdf->download('employee_details.pdf');
+            $pdf = Pdf::loadView('pdf.employee_list', ['employees' => $employees]);
+            return $pdf->download('employee_details.pdf');
         }
 
         // Invalid format
@@ -299,51 +299,48 @@ public function getAllLeaveRequestsByStatus($status)
     ]);
 }
 
-public function getAllEmployeeAttendance(Request $request)
-{
-    // Step 1: Get all attendance records, joining with web_users
-    $query = Attendance::with(['employee' => function ($q) {
-        $q->select('id', 'name', 'emp_id'); // Keep only needed fields
-    }]);
+    public function getAllEmployeeAttendance(Request $request)
+    {
+        // Step 1: Get all attendance records, joining with web_users
+        $query = Attendance::with(['employee' => function ($q) {
+            $q->select('id', 'name', 'emp_id'); // Keep only needed fields
+        }]);
 
-    // Step 2: Apply optional filters
-    if ($request->has('name')) {
-        $query->whereHas('employee', function ($q) use ($request) {
-            $q->where('name', 'like', '%' . $request->name . '%');
+        // Step 2: Apply optional filters
+        if ($request->has('name')) {
+            $query->whereHas('employee', function ($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->name . '%');
+            });
+        }
+
+        if ($request->has('month')) {
+            $query->whereMonth('date', $request->month);
+        }
+
+        if ($request->has('year')) {
+            $query->whereYear('date', $request->year);
+        }
+
+        // Step 3: Get results
+        $attendances = $query->orderBy('date', 'desc')->get();
+
+        // Step 4: Format
+        $data = $attendances->map(function ($att) {
+            return [
+                'name' => $att->employee->name ?? 'N/A',
+                'emp_id' => $att->emp_id ?? 'N/A',
+                'date' => $att->date->format('Y-m-d'),
+                'checkin' => $att->checkin,
+                'checkout' => $att->checkout,
+                'worked_hours' => $att->worked_hours,
+                'status' => $att->status,
+            ];
         });
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'All employee attendance data retrieved successfully.',
+            'data' => $data,
+        ]);
     }
-
-    if ($request->has('month')) {
-        $query->whereMonth('date', $request->month);
-    }
-
-    if ($request->has('year')) {
-        $query->whereYear('date', $request->year);
-    }
-
-    // Step 3: Get results
-    $attendances = $query->orderBy('date', 'desc')->get();
-
-    // Step 4: Format
-    $data = $attendances->map(function ($att) {
-        return [
-            'name' => $att->employee->name ?? 'N/A',
-            'emp_id' => $att->emp_id ?? 'N/A',
-            'date' => $att->date->format('Y-m-d'),
-            'checkin' => $att->checkin,
-            'checkout' => $att->checkout,
-            'worked_hours' => $att->worked_hours,
-            'status' => $att->status,
-        ];
-    });
-
-    return response()->json([
-        'status' => 'Success',
-        'message' => 'All employee attendance data retrieved successfully.',
-        'data' => $data,
-    ]);
-}
-
-
-
 }
