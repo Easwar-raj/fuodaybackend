@@ -31,7 +31,7 @@ class TrackerPageController extends Controller
             $query->where('ats_score', $request->ats_score);
         }
 
-        // Filter on related model (location)
+        // Filter on related model (locatio
         if ($request->filled('location')) {
             $query->whereHas('details', function ($q) use ($request) {
                 $q->where('nationality', 'LIKE', "%{$request->location}%");
