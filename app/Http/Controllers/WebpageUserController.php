@@ -133,10 +133,10 @@ class WebpageUserController extends Controller
                 ]);
 
                 // Save payroll components
-                $allComponents = collect($earnings)->map(function ($comp) {
+                $allComponents = collect($request->earnings)->map(function ($comp) {
                     return array_merge($comp, ['type' => 'Earnings']);
                 })->merge(
-                    collect($deductions)->map(function ($comp) {
+                    collect($request->deductions)->map(function ($comp) {
                         return array_merge($comp, ['type' => 'Deductions']);
                     })
                 );

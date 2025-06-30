@@ -20,54 +20,55 @@ class PayrollPageController extends Controller
 {
     public function getPayrollDetails($id)
     {
+        // Fetch all payroll components for the given user
+        $payrollComponents = Payroll::where('web_user_id', $id)->get();
+
+        if ($payrollComponents->isEmpty()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No payroll data found.',
+            ], 404);
+        }
+
+        $grouped = $payrollComponents->groupBy('type');
+
+        $earnings = $grouped->get('Earnings', collect());
+        $deductions = $grouped->get('Deductions', collect());
+
+        $totalEarnings = $earnings->sum(fn($item) => (float) $item->amount);
+        $totalDeductions = $deductions->sum(fn($item) => (float) $item->amount);
+        $basic = (float) $earnings->firstWhere('salary_component', 'Basic')?->amount ?? 0;
+        $totalGross = $basic + $totalEarnings;
+
+        $latestPayroll = $payrollComponents->sortByDesc('created_at')->first();
+
+        // Simulate one current month payroll summary (since you don’t have a separate payslip or monthly grouping in schema)
+        $payrollSummary = [
+            [
+                'payroll_id'       => $latestPayroll->id,
+                'designation'      => $latestPayroll->designation,
+                'date'             => $latestPayroll->created_at->format('Y-m-d'),
+                'time'             => null,
+                'total_salary'     => (string) $latestPayroll->monthly_salary,
+                'total_gross'      => (string) $totalGross,
+                'total_deductions' => (string) $totalDeductions,
+                'status'           => 'unpaid',
+            ]
+        ];
+
         $incentives = Incentives::where('web_user_id', $id)->sum('amount');
-
-        $latestPayroll = Payroll::where('web_user_id', $id)
-            ->whereHas('payslip') // make sure it has a payslip
-            ->with('payslip')
-            ->get()
-            ->sortByDesc(function ($payroll) {
-                return $payroll->payslip->date ?? now()->subYears(10); // fallback to a very old date if null
-            })
-            ->first();
-
-        // Fetch payrolls for the admin_user_id
-        $payslips = Payslip::whereHas('payroll', function ($q) use ($id) {
-                $q->where('web_user_id', $id);
-            })
-            ->with('payroll')
-            ->get()
-            ->groupBy('month')
-            ->map(function ($groupedPayslips) {
-                // Take the first payslip in each month group
-                $payslip = $groupedPayslips->first();
-                $payroll = $payslip->payroll;
-
-                return [
-                    'payroll_id'       => $payroll?->id,
-                    'designation'      => $payroll?->designation,
-                    'date'             => $payslip->date?->format('Y-m-d'),
-                    'time'             => $payslip->time ? \Carbon\Carbon::parse($payslip->time)->format('h:i A') : null,
-                    'total_salary'     => $payroll?->monthly_salary,
-                    'total_gross'      => $payslip->gross,
-                    'total_deductions' => $payslip->total_deductions,
-                    'status'           => $payslip->status,
-                ];
-            })
-            ->values(); // Reset keys
-
 
         return response()->json([
             'status' => 'Success',
             'message' => 'Payroll details fetched successfully.',
             'data' => [
-                'total_ctc'         => $latestPayroll->ctc ?? 0,
-                'total_salary'      => $latestPayroll->monthly_salary ?? 0,
-                'current_month_salary' => $latestPayroll->payslip->total_salary ?? 0,
-                'total_gross'       => $latestPayroll->payslip->gross ?? 0,
-                'payrolls' => $payslips,
-                'incentives' => $incentives
-            ],
+                'total_ctc'             => (string) ($latestPayroll->ctc ?? 0),
+                'total_salary'          => (string) ($latestPayroll->monthly_salary ?? 0),
+                'current_month_salary'  => (string) ($latestPayroll->monthly_salary ?? 0),
+                'total_gross'           => (string) $totalGross,
+                'payrolls'              => $payrollSummary,
+                'incentives'            => (float) $incentives,
+            ]
         ], 200);
     }
 
