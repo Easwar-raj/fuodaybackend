@@ -58,13 +58,14 @@ class HrPageController extends Controller
         $leaveChange = $lastWeekLeaves > 0 ? (($thisWeekLeaves - $lastWeekLeaves) / $lastWeekLeaves) * 100 : 100;
 
         // Attendance (Permissions)
-        $totalPermissions = Attendance::whereIn('web_user_id', $webUserIds)->count();
-        $lastWeekPermissions = Attendance::whereIn('web_user_id', $webUserIds)
+        $totalPermissions = LeaveRequest::whereIn('web_user_id', $webUserIds)->where('type', 'Permission')->count();
+        $lastWeekPermissions = LeaveRequest::whereIn('web_user_id', $webUserIds)->where('type', 'Permission')
             ->whereBetween('date', [now()->startOfWeek()->subWeek(), now()->endOfWeek()->subWeek()])
             ->count();
-        $thisWeekPermissions = Attendance::whereIn('web_user_id', $webUserIds)
+        $thisWeekPermissions = LeaveRequest::whereIn('web_user_id', $webUserIds)->where('type', 'Permission')
             ->whereBetween('date', [now()->startOfWeek(), now()->endOfWeek()])
             ->count();
+        $permissions = LeaveRequest::whereIn('web_user_id', $webUserIds)->where('type', 'Permission')->get();
         $permissionChange = $lastWeekPermissions > 0 ? (($thisWeekPermissions - $lastWeekPermissions) / $lastWeekPermissions) * 100 : 100;
 
         // Attendance Today
@@ -169,7 +170,8 @@ class HrPageController extends Controller
                 'recentEmployees' => $recentEmployees,
                 'openPositions' => $openPositions,
                 'events' => $events,
-                'audits' => $audits
+                'audits' => $audits,
+                'permissions' => $permissions
             ],
         ], 200);
     }
@@ -378,7 +380,9 @@ class HrPageController extends Controller
     {
         $user = Auth::user();
         $webUser = WebUser::find($user->id);
-        $employees = WebUser::with('employeeDetails')->where('admin_user_id', $webUser->admin_user_id)->get();
+        $employees = WebUser::with('employeeDetails')
+            ->where('admin_user_id', $webUser->admin_user_id)
+            ->get();
 
         $summaries = $employees->map(function ($user) {
             $userId = $user->id;
@@ -386,26 +390,26 @@ class HrPageController extends Controller
             // Total incentives
             $incentives = Incentives::where('web_user_id', $userId)->sum('amount');
 
-            // Latest payroll with payslip
-            $latestPayroll = Payroll::where('web_user_id', $userId)
-                ->whereHas('payslip')
+            // Get all payrolls (with optional payslip)
+            $payrolls = Payroll::where('web_user_id', $userId)
                 ->with('payslip')
-                ->get()
-                ->sortByDesc(function ($payroll) {
-                    return $payroll->payslip->date ?? now()->subYears(10);
-                })
-                ->first();
+                ->get();
+
+            // Sort payrolls by payslip date or created_at if payslip is missing
+            $latestPayroll = $payrolls->sortByDesc(function ($payroll) {
+                return $payroll->payslip->date ?? $payroll->created_at;
+            })->first();
 
             $payslip = $latestPayroll?->payslip;
 
-            $totalSalary = $payslip->total_salary ?? 0;
+            $totalSalary = $payslip->total_salary ?? $latestPayroll->monthly_salary ?? 0;
             $numberToWords = new NumberToWords();
             $numberTransformer = $numberToWords->getNumberTransformer('en');
             $salaryInWords = $totalSalary !== null
                 ? ucfirst($numberTransformer->toWords((int) $totalSalary)) . ' only'
                 : null;
 
-            // Get salary components grouped by type
+            // Group salary components by type
             $components = Payroll::where('web_user_id', $userId)
                 ->whereNotNull('salary_component')
                 ->whereNotNull('type')
@@ -420,10 +424,20 @@ class HrPageController extends Controller
                     })->values();
                 });
 
+            // Compute totals from components if no payslip
+            $earnings = $components->get('Earnings') ?? collect();
+            $deductions = $components->get('Deductions') ?? collect();
+
+            $computedGross = $earnings->sum('amount');
+            $computedDeductions = $deductions->sum('amount');
+
+            $gross = $payslip->gross ?? $computedGross;
+            $totalDeductions = $payslip->total_deductions ?? $computedDeductions;
+
             return [
                 'emp_id'              => $user->emp_id,
                 'name'                => $user->name,
-                'designation'         => $user->employeeDetails->designation ?? null,
+                'designation'         => $user->employeeDetails->designation ?? $latestPayroll->designation,
                 'date_of_joining'     => $user->employeeDetails->date_of_joining ?? null,
                 'year'                => now()->year,
                 'pf_account_no'       => $user->employeeDetails->pf_account_no ?? null,
@@ -432,14 +446,14 @@ class HrPageController extends Controller
                 'bank_account_no'     => $user->employeeDetails->bank_account_no ?? null,
                 'total_ctc'           => $latestPayroll->ctc ?? 0,
                 'monthly_salary'      => $latestPayroll->monthly_salary ?? 0,
-                'latest_payslip_date' => optional($payslip?->date)->format('Y-m-d'),
+                'latest_payslip_date' => optional($payslip?->date ?? $latestPayroll?->created_at)->format('Y-m-d'),
                 'total_paid_days'     => $payslip->total_paid_days ?? 0,
                 'lop'                 => $payslip->lop ?? 0,
-                'gross'               => $payslip->gross ?? 0,
-                'total_deductions'    => $payslip->total_deductions ?? 0,
+                'gross'               => $gross ?? 0,
+                'total_deductions'    => $totalDeductions ?? 0,
                 'total_salary'        => $totalSalary,
                 'total_salary_word'   => $salaryInWords,
-                'status'              => $payslip->status ?? 'N/A',
+                'status'              => $payslip->status ?? 'No Payslip',
                 'incentives'          => $incentives,
                 'salary_components'   => [
                     'earnings'   => $components->get('Earnings') ?? [],
