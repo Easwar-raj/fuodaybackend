@@ -360,9 +360,13 @@ class AttendancePageController extends Controller
     
         if ($lastattendance) {
             return response()->json([
-                'checkin' => $firstattendance->checkin,
-                'checkout' => $lastattendance->checkout,
-                'created_at' => $firstattendance->created_at->toDateTimeString()
+                'message' => 'Attendance data retrieved successfully',
+                'status' => 'Success',
+                'data' => [
+                    'checkin' => $firstattendance->checkin,
+                    'checkout' => $lastattendance->checkout,
+                    'created_at' => $firstattendance->created_at->toDateTimeString()
+                ]
             ]);
         } else {
             return response()->json([
@@ -370,6 +374,57 @@ class AttendancePageController extends Controller
             ], 404);
         }
     }
+
+    public function getAllAttendanceWithWorkedHours($id)
+    {
+        $webUser = WebUser::find($id);
+
+        if (!$webUser) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        // Group all attendance records by date
+        $attendancesByDate = Attendance::where('web_user_id', $id)
+            ->orderBy('date')
+            ->get()
+            ->groupBy(function ($item) {
+                return Carbon::parse($item->date)->toDateString();
+            });
+
+        $data = [];
+
+        foreach ($attendancesByDate as $date => $records) {
+            $first = $records->sortBy('created_at')->first();
+            $last = $records->sortByDesc('created_at')->first();
+
+            $checkin = $first->checkin;
+            $checkout = $last->checkout;
+
+            $workedHours = null;
+
+            if ($checkin && $checkout) {
+                $in = Carbon::parse($checkin);
+                $out = Carbon::parse($checkout);
+                $diff = $in->diff($out);
+                $workedHours = $diff->format('%H:%I:%S'); // or $diff->totalMinutes if you prefer
+            }
+
+            $data[] = [
+                'date' => $date,
+                'checkin' => $checkin,
+                'checkout' => $checkout ?? '',
+                'worked_hours' => $workedHours ?? '',
+                'created_at' => $first->created_at->toDateTimeString()
+            ];
+        }
+
+        return response()->json([
+            'message' => 'Attendance data retrieved successfully',
+            'status' => 'Success',
+            'data' => $data
+        ]);
+    }
+
 
 public function calculateLateArrivals($id)
 {

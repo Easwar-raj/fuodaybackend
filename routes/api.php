@@ -142,6 +142,7 @@ Route::prefix('hrms')->group(function () {
             Route::post('/addattendance', [AttendancePageController::class, 'addAttendance']);
             Route::post('/updateattendance', [AttendancePageController::class, 'updateAttendance']);
             Route::get('/gettoday/{id}', [AttendancePageController::class, 'getTodayAttendance']);
+            Route::get('/getallattendance/{id}', [AttendancePageController::class, 'getAllAttendanceWithWorkedHours']);
             Route::get('/late-arrivals/{id}', [AttendancePageController::class, 'calculateLateArrivals']);
             Route::get('/late-arrivals-by-role/{id}', [AttendancePageController::class, 'getLateArrivalsByRole']);
             Route::get('/late-arrivals-all', [AttendancepageController::class, 'getAllLateArrivals']);
