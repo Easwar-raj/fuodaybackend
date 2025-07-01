@@ -360,13 +360,9 @@ class AttendancePageController extends Controller
     
         if ($lastattendance) {
             return response()->json([
-                'message' => 'Attendance data retrieved successfully',
-                'status' => 'Success',
-                'data' => [
-                    'checkin' => $firstattendance->checkin,
-                    'checkout' => $lastattendance->checkout,
-                    'created_at' => $firstattendance->created_at->toDateTimeString()
-                ]
+                'checkin' => $firstattendance->checkin,
+                'checkout' => $lastattendance->checkout,
+                'created_at' => $firstattendance->created_at->toDateTimeString()
             ]);
         } else {
             return response()->json([
@@ -1255,7 +1251,5 @@ public function calculateAbsentDays($id)
         ], 500);
     }
 }
-
-
 
 }
