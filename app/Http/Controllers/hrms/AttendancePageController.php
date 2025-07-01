@@ -17,7 +17,6 @@ class AttendancePageController extends Controller
 {
     public function getAttendance($id)
     {
-        
         try {
             $attendances = DB::table('attendances')
                 ->where('attendances.web_user_id', $id)
@@ -128,7 +127,7 @@ class AttendancePageController extends Controller
                         'checkin' => $checkin->format('h:i:s A'),
                         'checkout' => $checkout ? $checkout->format('h:i:s A') : null,
                         'status' => $a->status,
-                        'worked_hours' => round($workedHours, 2)
+                        'worked_hours' => $a->worked_hours
                     ];
 
                     // Initialize monthly graph

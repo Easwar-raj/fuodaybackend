@@ -330,9 +330,7 @@ class HrPageController extends Controller
 
         $user = Auth::user();
         $webUser = WebUser::find($user->id);
-        $employeeIds = WebUser::where('admin_user_id', $webUser->admin_user_id)
-            ->where('role', 'employee')
-            ->pluck('id');
+        $employeeIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
         // Step 1: Get all attendance records, joining with web_users
         $query = Attendance::with(['employee' => function ($q) {
             $q->select('id', 'name', 'emp_id'); // Keep only needed fields
