@@ -136,25 +136,7 @@ Route::prefix('hrms')->group(function () {
             Route::post('/updateexperience', [ProfilePageController::class, 'updateOrCreateExperience']);
             Route::post('/updateonboarding', [ProfilePageController::class, 'updateOnboardingDocuments']);
         });
-        Route::prefix('attendance')->group(function () {
-            Route::get('/getattendances/{id}', [AttendancePageController::class, 'getAttendance']);
-            Route::get('/getattendancebyrole/{id}', [AttendancePageController::class, 'getAttendanceByRole']);
-            Route::post('/addattendance', [AttendancePageController::class, 'addAttendance']);
-            Route::post('/updateattendance', [AttendancePageController::class, 'updateAttendance']);
-            Route::get('/gettoday/{id}', [AttendancePageController::class, 'getTodayAttendance']);
-            Route::get('/getallattendance/{id}', [AttendancePageController::class, 'getAllAttendanceWithWorkedHours']);
-            Route::get('/late-arrivals/{id}', [AttendancePageController::class, 'calculateLateArrivals']);
-            Route::get('/late-arrivals-by-role/{id}', [AttendancePageController::class, 'getLateArrivalsByRole']);
-            Route::get('/late-arrivals-all', [AttendancepageController::class, 'getAllLateArrivals']);
-            Route::get('/early-arrivals/{id}', [AttendancepageController::class, 'calculateEarlyArrivals']);
-            Route::get('/early-arrivals', [AttendancepageController::class, 'getAllEarlyArrivals']);
-            Route::get('/all-employee-attendance', [AttendancePageController::class,'getAllEmployeeAttendance']);
-            Route::get('/punctual-arrivals/{id}', [AttendancePageController::class, 'calculatePunctualArrivals']);
-            Route::get('/punctual-arrivals-all', [AttendancePageController::class, 'getAllPunctualArrivals']);
-            Route::get('/absent-days/{id}', [AttendancePageController::class, 'calculateAbsentDays']);
-
-
-        });
+        
         Route::prefix('leave')->group(function () {
             Route::get('/getleave/{id}', [LeaveTrackerPageController::class, 'getLeaveStatus']);
             Route::post('/addleave', [LeaveTrackerPageController::class, 'addLeave']);
@@ -211,6 +193,25 @@ Route::prefix('hrms')->group(function () {
         Route::post('/addenquiry', [EnquiriesController::class, 'addInquiry']);
         Route::get('/getenquiries', [EnquiriesController::class, 'getInquiry']);
     });
+    Route::prefix('attendance')->group(function () {
+            Route::get('/getattendances/{id}', [AttendancePageController::class, 'getAttendance']);
+            Route::get('/getattendancebyrole/{id}', [AttendancePageController::class, 'getAttendanceByRole']);
+            Route::post('/addattendance', [AttendancePageController::class, 'addAttendance']);
+            Route::post('/updateattendance', [AttendancePageController::class, 'updateAttendance']);
+            Route::get('/gettoday/{id}', [AttendancePageController::class, 'getTodayAttendance']);
+            Route::get('/getallattendance/{id}', [AttendancePageController::class, 'getAllAttendanceWithWorkedHours']);
+            Route::get('/late-arrivals/{id}', [AttendancePageController::class, 'calculateLateArrivals']);
+            Route::get('/late-arrivals-by-role/{id}', [AttendancePageController::class, 'getLateArrivalsByRole']);
+            Route::get('/late-arrivals-all', [AttendancepageController::class, 'getAllLateArrivals']);
+            Route::get('/early-arrivals/{id}', [AttendancepageController::class, 'calculateEarlyArrivals']);
+            Route::get('/early-arrivals', [AttendancepageController::class, 'getAllEarlyArrivals']);
+            Route::get('/all-employee-attendance', [AttendancePageController::class,'getAllEmployeeAttendance']);
+            Route::get('/punctual-arrivals/{id}', [AttendancePageController::class, 'calculatePunctualArrivals']);
+            Route::get('/punctual-arrivals-all', [AttendancePageController::class, 'getAllPunctualArrivals']);
+            Route::get('/absent-days/{id}', [AttendancePageController::class, 'calculateAbsentDays']);
+
+
+        });
 });
 
 Route::prefix('ats')->group(function () {

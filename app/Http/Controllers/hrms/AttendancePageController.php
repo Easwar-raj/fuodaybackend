@@ -25,6 +25,7 @@ class AttendancePageController extends Controller
                     'checkin',
                     'checkout',
                     'status',
+                    'worked_hours'
                 ])
                 ->orderBy('date', 'desc')
                 ->get();
