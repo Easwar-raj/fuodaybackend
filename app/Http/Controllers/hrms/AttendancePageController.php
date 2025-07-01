@@ -127,7 +127,7 @@ class AttendancePageController extends Controller
                         'checkin' => $checkin->format('h:i:s A'),
                         'checkout' => $checkout ? $checkout->format('h:i:s A') : null,
                         'status' => $a->status,
-                        'worked_hours' => $a->worked_hours
+                        'worked_hours' => $a->worked_hours ?? '00:00 hours'
                     ];
 
                     // Initialize monthly graph
