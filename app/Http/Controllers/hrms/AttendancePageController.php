@@ -414,6 +414,11 @@ class AttendancePageController extends Controller
                 'checkin' => $checkin,
                 'checkout' => $checkout ?? '',
                 'worked_hours' => $workedHours ?? '',
+                'emp_name' => $webUser->name,
+                'emp_id' => $webUser->emp_id,
+                'location' => $first->location,
+                'status' => $first->status,
+                'web_user_id' => $webUser->id,
                 'created_at' => $first->created_at->toDateTimeString()
             ];
         }
