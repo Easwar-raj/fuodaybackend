@@ -16,19 +16,14 @@ class HomePageController extends Controller
         $webUser = WebUser::findOrFail($id);
         $adminUserId = $webUser->admin_user_id;
 
-        if (!$webUser) {
+        if (!$webUser || !$adminUserId) {
             return response()->json([
                 'message' => 'User not found'
             ], 404);
         }
 
-        $query = JobOpening::query();
+        $openings = JobOpening::where('admin_user_id', $adminUserId)->get();
 
-        if ($adminUserId) {
-            $query->where('admin_user_id', $adminUserId);
-        }
-
-        $openings = $query->get();
         $statusCounts = ['closed', 'pending', 'open', 'interviewing', 'reviewing'];
 
         $positionCounts = collect($statusCounts)->mapWithKeys(function ($status) use ($openings) {
@@ -64,24 +59,14 @@ class HomePageController extends Controller
         });
 
         // Employees
-        $employeeQuery = EmployeeDetails::select('emp_name', 'emp_id', 'designation as role', 'profile_photo');
-
-        if ($webUser->filled('emp_id')) {
-            $employeeQuery->where('emp_id', $webUser->emp_id);
-        }
-
-        if ($webUser->filled('web_user_id')) {
-            $employeeQuery->where('web_user_id', $webUser->id);
-        }
-
-        $employees = $employeeQuery->get();
+        $employeeDetails = EmployeeDetails::select('emp_name', 'emp_id', 'designation as role', 'profile_photo')->where('web_user_id', $webUser->id)->get();
 
         return response()->json([
-            'status' => true,
+            'status' => 'Success',
             'message' => 'ATS Dashboard details fetched successfully',
             'data' => array_merge([
                 'total_requirement' => $totalOpenings,
-                'employees' => $employees,
+                'employees' => $employeeDetails,
             ], $positionCounts->toArray()),
             'goals' => $goalData,
             'graph' => [

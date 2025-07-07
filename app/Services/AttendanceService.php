@@ -25,10 +25,10 @@ class AttendanceService
             // === Fetch Policies for this Admin ===
             $policies = Policies::where('admin_user_id', $adminUserId)
                 ->whereIn('title', [
-                    "What is your organization's general shift timing?",
+                    "general_shift", // 09:00 - 06:00
                     "What are the total weekly working hours in your organization?",
-                    "What is the standard work time per day in your organization?",
-                    "How many hours of break time are provided per day in your organization?",
+                    "daily_work_hours", // 8
+                    "daily_break_hours", // 1
                     "Do employees receive LOP for late arrivals? If yes, after how many warnings?",
                     "Is LOP applied for unauthorized leaves?",
                     "Is LOP applied when employees exhaust their leave quota?",
@@ -40,16 +40,16 @@ class AttendanceService
             // === Parse Policies
             $shiftStart = '09:00';
             $shiftEnd = '18:00';
-            if (isset($policies["What is your organization's general shift timing?"])) {
-                $parts = explode(' - ', $policies["What is your organization's general shift timing?"]);
+            if (isset($policies["general_shift"])) {
+                $parts = explode(' - ', $policies["general_shift"]);
                 if (count($parts) === 2) {
                     $shiftStart = Carbon::parse($parts[0])->format('H:i');
                     $shiftEnd = Carbon::parse($parts[1])->format('H:i');
                 }
             }
 
-            $dailyWorkHours = (int) filter_var($policies["What is the standard work time per day in your organization?"] ?? '8', FILTER_SANITIZE_NUMBER_INT);
-            $breakTimeHours = (int) filter_var($policies["How many hours of break time are provided per day in your organization?"] ?? '1', FILTER_SANITIZE_NUMBER_INT);
+            $dailyWorkHours = (int) filter_var($policies["daily_work_hours"] ?? '8', FILTER_SANITIZE_NUMBER_INT);
+            $breakTimeHours = (int) filter_var($policies["daily_break_hours"] ?? '1', FILTER_SANITIZE_NUMBER_INT);
 
             $lateArrivalWarnings = null;
             if (!empty($policies["Do employees receive LOP for late arrivals? If yes, after how many warnings?"])) {
