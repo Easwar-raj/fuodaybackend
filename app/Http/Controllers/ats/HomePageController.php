@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\ats;
 
 use App\Http\Controllers\Controller;
+use App\Models\CallLogs;
 use Illuminate\Http\Request;
 use App\Models\JobOpening;
 use App\Models\EmployeeDetails;
 use App\Models\WebUser;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class HomePageController extends Controller
@@ -73,6 +75,59 @@ class HomePageController extends Controller
                 'total' => $totalOpenings,
                 'closed' => $positionCounts['closed_positions'],
                 'pending' => $positionCounts['pending_positions'],
+            ]
+        ]);
+    }
+
+    public function getCallStats($id)
+    {
+
+        $webUser = WebUser::findOrFail($id);
+        $adminUserId = $webUser->admin_user_id;
+
+        if (!$webUser || !$adminUserId) {
+            return response()->json([
+                'message' => 'User not found'
+            ], 404);
+        }
+        $today = Carbon::today();
+        $yesterday = Carbon::yesterday();
+
+        $query = CallLogs::where('web_user_id', $id);
+
+        // 1. Total calls made today
+        $callsToday = $query->whereDate('created_at', $today)->get();
+
+        // 2. Total calls made yesterday
+        $callsYesterday = $query->whereDate('created_at', $yesterday)->get();
+
+        // 3. Follow-up calls today (by 'date' column and 'status')
+        $followUpCallsToday = $query->whereDate('date', $today)->where('status', 'follow-up')->get();
+
+        // 4. Non-responsive calls today (by 'created_at' and status)
+        $nonResponsiveCallsToday = $query->whereDate('created_at', $today)->where('status', 'no-response')->get();
+
+        // Return response
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Call logs fetched successfully',
+            'data' => [
+                'total_calls_today' => [
+                    'count' => $callsToday->count(),
+                    'list' => $callsToday
+                ],
+                'total_calls_yesterday' => [
+                    'count' => $callsYesterday->count(),
+                    'list' => $callsYesterday
+                ],
+                'follow_up_calls_today' => [
+                    'count' => $followUpCallsToday->count(),
+                    'list' => $followUpCallsToday
+                ],
+                'non_responsive_calls_today' => [
+                    'count' => $nonResponsiveCallsToday->count(),
+                    'list' => $nonResponsiveCallsToday
+                ],
             ]
         ]);
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\ats;
 use App\Http\Controllers\Controller;
 use App\Models\Candidate;
+use App\Models\WebUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -12,7 +13,9 @@ class CandidatePageController extends Controller
     public function getCandidates(Request $request)
     {
         try {
-            $query = Candidate::with(['details:id,candidate_id,nationality'])
+            $webUser = WebUser::find($request->web_user_id);
+            $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
+            $query = Candidate::with(['details:id,candidate_id,nationality'])->whereIn('web_user_id', $webuserIds)
                 ->select('id', 'emp_name as employee_name', 'experience', 'role', 'ats_score');
 
             // Apply filters
@@ -49,13 +52,23 @@ class CandidatePageController extends Controller
                     'location' => optional($candidate->details)->nationality,
                 ];
             });
-            $applied = Candidate::where('hiring_status', 'Applied')->count();
-            $shortlisted = Candidate::where('hiring_status', 'Shortlisted')->count();
-            $holded = Candidate::where('hiring_status', 'Holded')->count();
-            $rejected = Candidate::where('hiring_status', 'Rejected')->count();
+
+            // Extract separate lists
+            $names = $candidates->pluck('employee_name')->unique()->values();
+            $roles = $candidates->pluck('role')->unique()->values();
+            $locations = $candidates->pluck('location')->filter()->unique()->values();
+
+            // Hiring status counts
+            $applied = Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Applied')->count();
+            $shortlisted = Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Shortlisted')->count();
+            $holded = Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Holded')->count();
+            $rejected = Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Rejected')->count();
 
             return response()->json([
                 'candidates' => $candidates,
+                'names' => $names,
+                'roles' => $roles,
+                'locations' => $locations,
                 'applied' => $applied,
                 'shortlisted' => $shortlisted,
                 'holded' => $holded,
@@ -95,8 +108,39 @@ class CandidatePageController extends Controller
                 'hiring_status' => 'nullable|string',
                 'referred_by' => 'nullable|string|max:255',
             ]);
-            Candidate::create($validated);
+
+            if (!$validated) {
+                return response()->json([
+                    'message' => 'Invalid data'
+                ], 400);
+            }
+
+            $webUser = WebUser::findOrFail($request->web_user_id) ?? '';
+            Candidate::create([
+                'web_user_id' => $request->web_user_id ?? '',
+                'emp_name' => $webUser->name ?? '',
+                'emp_id' => $webUser->emp_id ?? '',
+                'name' => $request->name,
+                'experience' => $request->experience,
+                'interview_date' => $request->interview_date ?? '',
+                'role' => $request->role,
+                'L1' => $request->L1 ?? '',
+                'L2' => $request->L2 ?? '',
+                'L3' => $request->L3 ?? '',
+                'ats_score' => $request->ats_score ?? 0,
+                'overall_score' => $request->overall_score ?? 0,
+                'technical_status' => $request->technical_status ?? '',
+                'technical_feedback' => $request->technical_feedback ?? '',
+                'hr_status' => $request->hr_status ?? '',
+                'hr_feedback' => $request->hr_feedback ?? '',
+                'contact' => $request->contact ?? '',
+                'resume' => $request->resume,
+                'feedback' => $request->feedback ?? '',
+                'hiring_status' => $request->hiring_status ?? '',
+                'referred_by' => $request->referred_by ?? '',
+            ]);
             return response()->json([
+                'status' => 'Success',
                 'message' => 'Candidate added successfully',
             ], 201);
         } catch (\Exception $e) {

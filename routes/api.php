@@ -213,6 +213,7 @@ Route::prefix('ats')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('home')->group(function () {
             Route::get('/getdashboard/{id}', [AtsHomePageController::class, 'getDashboardDetails']);
+            Route::get('/getcallstats/{id}', [AtsHomePageController::class, 'getCallStats']);
         });
         Route::prefix('candidates')->group(function () {
             Route::get('/getcandidates', [CandidatePageController::class, 'getCandidates']);
@@ -221,7 +222,7 @@ Route::prefix('ats')->group(function () {
         Route::prefix('tracker')->group(function () {
             Route::get('/gettracker', [TrackerPageController::class, 'getTrackerData']);
         });
-        });
+    });
 });
 
 Route::post('/forgot-password', [WebpageUserController::class, 'sendResetLinkEmail'])->name('password.email');
