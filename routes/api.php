@@ -218,6 +218,7 @@ Route::prefix('ats')->group(function () {
         Route::prefix('candidates')->group(function () {
             Route::get('/getcandidates', [CandidatePageController::class, 'getCandidates']);
             Route::post('/addcandidate', [CandidatePageController::class, 'addCandidate']);
+            Route::post('/updatecandidate', [CandidatePageController::class, 'updateCandidate']);
         });
         Route::prefix('tracker')->group(function () {
             Route::get('/gettracker', [TrackerPageController::class, 'getTrackerData']);
