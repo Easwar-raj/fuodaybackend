@@ -30,6 +30,10 @@ return new class extends Migration
             $table->string('certifications')->nullable();
             $table->string('skillset')->nullable();
             $table->string('experience')->nullable();
+            $table->string('current_job_title')->nullable();
+            $table->string('current_employer')->nullable();
+            $table->string('linkedin')->nullable();
+            $table->date('interview_date')->nullable();
             $table->timestamps();
         });
     }
