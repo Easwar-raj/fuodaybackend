@@ -227,7 +227,7 @@ class CandidatePageController extends Controller
                     'job_id' => $validated['job_id'] ?? '',
                     'designation' => $validated['designation'] ?? '',
                     'department' => $validated['department'] ?? '',
-                    'employment_type' => $validated['employement_type'] ?? '',
+                    'employment_status' => $validated['employement_status'] ?? '',
                     'job_title' => $validated['job_title'] ?? '',
                     'nationality' => $validated['nationality'] ?? '',
                 ]);
