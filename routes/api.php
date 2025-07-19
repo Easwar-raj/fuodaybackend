@@ -221,7 +221,17 @@ Route::prefix('ats')->group(function () {
             Route::post('/updatecandidate', [CandidatePageController::class, 'updateCandidate']);
         });
         Route::prefix('tracker')->group(function () {
-            Route::get('/gettracker', [TrackerPageController::class, 'getTrackerData']);
+            Route::get('/gettracker/{id}', [TrackerPageController::class, 'getTrackerData']);
+            Route::get('/getinterview/{id}', [TrackerPageController::class, 'getInterviewStats']);
+        });
+        Route::prefix('hiring')->group(function () {
+            Route::get('/getoverview/{id}', [HiringPageController::class, 'getInterviewOverview']);
+            Route::get('/getcandidatedetails/{id}', [HiringPageController::class, 'getCandidateWithDetails']);
+            Route::get('/getonboarding/{id}', [HiringPageController::class, 'getOnboarding']);
+        });
+        Route::prefix('template')->group(function () {
+            Route::get('/gettemplate', [EmailTemplatesController::class, 'getTemplatesByType']);
+            Route::get('/addtemplate', [EmailTemplatesController::class, 'addEmailTemplate']);
         });
     });
 });
