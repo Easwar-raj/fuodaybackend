@@ -24,6 +24,7 @@ return new class extends Migration
             $table->string('priority');
             $table->date('date');
             $table->string('status')->nullable();
+            $table->enum('system_type', ['hrms', 'ats'])->default('hrms');
             $table->timestamps();
         });
     }

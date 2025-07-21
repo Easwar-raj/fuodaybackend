@@ -10,14 +10,14 @@ use Illuminate\Http\Request;
 
 class SupportPageController extends Controller
 {
-    public function getAllTicketsByStatus($id)
+    public function getAllTicketsByStatus($id, $type)
     {
         // Step 1: Get admin_user_id of the given web_user
         $adminId = WebUser::where('id', $id)->value('admin_user_id');
 
         // Step 2: Get all tickets where the related web_user has the same admin_user_id
-        $tickets = Ticket::whereHas('webUser.employeeDetails', function ($query) use ($adminId) {
-            $query->where('admin_user_id', $adminId);
+        $tickets = Ticket::whereHas('webUser.employeeDetails', function ($query) use ($adminId, $type) {
+            $query->where('admin_user_id', $adminId)->where('system_type', $type);
         })->get();
 
         // Step 3: Normalize status and group by it
@@ -56,6 +56,7 @@ class SupportPageController extends Controller
             'priority' => 'required|string|max:100',
             'date' => 'required|date',
             'status' => 'nullable|string|max:255',
+            'system_type' => 'nullable|string'
         ]);
 
         $webUser = WebUser::find($request->web_user_id);
@@ -93,6 +94,7 @@ class SupportPageController extends Controller
             'priority' => $request->priority,
             'date' => $request->date,
             'status' => $status,
+            'system_type' => $request->system_type
         ]);
 
         // Step 4: Return success response
