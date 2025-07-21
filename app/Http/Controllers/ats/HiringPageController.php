@@ -25,34 +25,11 @@ class HiringPageController extends Controller
         $today = Carbon::today();
         $availablePositions = JobOpening::where('admin_user_id', $webUser->admin_user_id)->whereIn('status', ['Open'])->select('id', 'title', 'position', 'no_of_openings', 'company_name', 'status')->get();
         $interviewsToday = Candidate::whereIn('web_user_id', $webuserIds)->whereDate('interview_date', $today)->pluck('name');
-        $techDoneHrNotStarted = Candidate::with(['details:id,candidate_id,phone'])
+        $techDoneHrNotStarted = Candidate::with('details')
             ->whereIn('web_user_id', $webuserIds)
             ->whereNotNull('technical_status')
             ->whereNull('hr_status')
-            ->select(
-                'id',
-                'name',
-                'role',
-                'contact',
-                'technical_status',
-                'ats_score',
-                'overall_score',
-                'technical_feedback'
-            )
-            ->get()
-            ->map(function ($candidate) {
-                return [
-                    'id' => $candidate->id,
-                    'name' => $candidate->name,
-                    'role' => $candidate->role,
-                    'contact' => $candidate->contact,
-                    'ats_score' => $candidate->ats_score,
-                    'overall_score' => $candidate->overall_score,
-                    'technical_status' => $candidate->technical_status,
-                    'technical_feedback' => $candidate->technical_feedback,
-                    'phone' => optional($candidate->details)->phone,
-                ];
-            });
+            ->get();
 
         return response()->json([
             'status' => 'Success',
@@ -96,7 +73,7 @@ class HiringPageController extends Controller
             }
  
         $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
-        $hrCompleted = Candidate::whereNotNull('hr_status')->whereIn('web_user_id', $webuserIds)->select('id', 'name', 'role', 'hr_status', 'hr_feedback', 'hiring_status')->get();
+        $hrCompleted = Candidate::whereNotNull('hr_status')->whereIn('web_user_id', $webuserIds)->get();
         $selectedCount = Candidate::where('hiring_status', 'Selected')->whereIn('web_user_id', $webuserIds)->count();
 
         return response()->json([
