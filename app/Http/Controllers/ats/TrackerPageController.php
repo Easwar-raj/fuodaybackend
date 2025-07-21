@@ -22,7 +22,7 @@ class TrackerPageController extends Controller
             }
  
         $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
-        $query = Candidate::with(['details:id,candidate_id,nationality'])->whereIn('web_user_id', $webuserIds)->select('id', 'name', 'experience', 'role', 'ats_score');
+        $query = Candidate::with('details')->whereIn('web_user_id', $webuserIds);
 
         if ($request->filled('role')) {
             $query->where('role', $request->role);

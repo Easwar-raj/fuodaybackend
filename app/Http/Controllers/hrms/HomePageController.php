@@ -386,6 +386,9 @@ class HomePageController extends Controller
         // Step 2: Get all users with their employee details (excluding self)
         $users = WebUser::with('employeeDetails')
             ->where('admin_user_id', $adminUserId)
+            ->whereHas('employeeDetails', function ($query) {
+                $query->whereNotNull('reporting_manager_id');
+            })
             ->get()
             ->map(function ($user) {
                 $details = $user->employeeDetails;
@@ -715,8 +718,7 @@ class HomePageController extends Controller
         $today = now();
         $anniversaries = WebUser::select(
             'web_users.name',
-            'web_users.emp_id',
-            'web_users.created_at' // or use 'employee_details.date_of_joining' if that's what you meant
+            'web_users.emp_id'
         )
         ->join('employee_details', 'employee_details.web_user_id', '=', 'web_users.id')
         ->where('web_users.admin_user_id', $adminUserId)
