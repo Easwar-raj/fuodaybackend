@@ -22,7 +22,7 @@ class TrackerPageController extends Controller
             }
  
         $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
-        $query = Candidate::with(['details:id,candidate_id,nationality'])->whereIn('web_user_id', $webuserIds)->select('id', 'emp_name as employee_name', 'experience', 'role', 'ats_score');
+        $query = Candidate::with(['details:id,candidate_id,nationality'])->whereIn('web_user_id', $webuserIds)->select('id', 'name', 'experience', 'role', 'ats_score');
 
         if ($request->filled('role')) {
             $query->where('role', $request->role);
@@ -46,21 +46,12 @@ class TrackerPageController extends Controller
             });
         }
 
-        $candidates = $query->get()->map(function ($candidate) {
-            return [
-                'id' => $candidate->id,
-                'employee_name' => $candidate->employee_name,
-                'experience' => $candidate->experience,
-                'role' => $candidate->role,
-                'ats_score' => $candidate->ats_score,
-                'location' => optional($candidate->details)->nationality,
-            ];
-        });
+        $candidates = $query->get();
 
-        $resumeDownloadedList = Candidate::whereNotNull('resume')->get(['id', 'emp_name as employee_name', 'ats_score']);
-        $above80List = Candidate::where('ats_score', '>=', 80)->get(['id', 'emp_name as employee_name', 'ats_score']);
-        $between50_80List = Candidate::whereBetween('ats_score', [50, 79])->get(['id', 'emp_name as employee_name', 'ats_score']);
-        $below40List = Candidate::where('ats_score', '<', 40)->get(['id', 'emp_name as employee_name', 'ats_score']);
+        $resumeDownloadedList = Candidate::whereNotNull('resume')->get();
+        $above80List = Candidate::where('ats_score', '>=', 80)->get();
+        $between50_80List = Candidate::whereBetween('ats_score', [50, 79])->get();
+        $below40List = Candidate::where('ats_score', '<', 40)->get();
 
         return response()->json([
             'status' => 'Success',

@@ -5,8 +5,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\admin\AdminUserController;
 use App\Http\Controllers\admin\AdminController;
 use App\Http\Controllers\ats\CandidatePageController;
+use App\Http\Controllers\ats\HiringPageController;
 use App\Http\Controllers\ats\HomePageController as AtsHomePageController;
 use App\Http\Controllers\ats\TrackerPageController;
+use App\Http\Controllers\EmailTemplatesController;
 use App\Http\Controllers\EnquiriesController;
 use App\Http\Controllers\hrms\AttendancePageController;
 use App\Http\Controllers\hrms\HomePageController;
@@ -219,6 +221,7 @@ Route::prefix('ats')->group(function () {
             Route::get('/getcandidates', [CandidatePageController::class, 'getCandidates']);
             Route::post('/addcandidate', [CandidatePageController::class, 'addCandidate']);
             Route::post('/updatecandidate', [CandidatePageController::class, 'updateCandidate']);
+            Route::post('/resumefitcheck', [CandidatePageController::class, 'resumeFitCheck']);
         });
         Route::prefix('tracker')->group(function () {
             Route::get('/gettracker/{id}', [TrackerPageController::class, 'getTrackerData']);

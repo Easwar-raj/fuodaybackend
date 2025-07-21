@@ -29,9 +29,7 @@ class CandidatePageController extends Controller
  
             $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
  
-            $query = Candidate::with(['details:id,candidate_id,place'])
-                ->whereIn('web_user_id', $webuserIds)
-                ->select('id', 'name as name', 'experience', 'role', 'ats_score');
+            $query = Candidate::with('details')->whereIn('web_user_id', $webuserIds);
  
             // Apply filters
             if ($request->filled('role')) {
@@ -65,19 +63,12 @@ class CandidatePageController extends Controller
                 });
             }
  
-            $candidates = $query->get()->map(function ($candidate) {
-                return [
-                    'id' => $candidate->id,
-                    'name' => $candidate->name,
-                    'experience' => $candidate->experience,
-                    'role' => $candidate->role,
-                    'l1' => $candidate->L1,
-                    'l2' => $candidate->L2,
-                    'l3' => $candidate->L3,
-                    'ats_score' => $candidate->ats_score,
-                    'location' => optional($candidate->details)->place,
-                ];
-            });
+            $candidates = $query->get();
+
+            $totalApplied = Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Applied');
+            $totalShortlisted = Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Selected');
+            $totalHolded = Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Holded');
+            $totalRejected = Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Rejected');
  
             return response()->json([
                 'candidates' => $candidates,
@@ -86,10 +77,14 @@ class CandidatePageController extends Controller
                 'ats_scores' => $candidates->pluck('ats_score')->unique()->values(),
                 'experiences' => $candidates->pluck('experience')->unique()->values(),
                 'locations' => $candidates->pluck('details.place')->filter()->unique()->values(),
-                'applied' => Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Applied')->count(),
-                'shortlisted' => Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Shortlisted')->count(),
-                'holded' => Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Holded')->count(),
-                'rejected' => Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Rejected')->count(),
+                'total_applied' => $totalApplied->count(),
+                'applied_list' => $totalApplied,
+                'total_shortlisted' => $totalShortlisted->count(),
+                'shortlisted_list' => $totalShortlisted,
+                'total_holded' => $totalHolded->count(),
+                'holded_list' => $totalHolded,
+                'total_rejected' => $totalRejected->count(),
+                'rejected_list' => $totalRejected
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -186,8 +181,7 @@ class CandidatePageController extends Controller
                     $atsApiUrl = 'https://ai.fuoday.com/api/ats-score'; // e.g. env('ATS_API_URL')
                     
                     // Use URL and job description to send to ATS scoring API
-                    $response = Http::post($atsApiUrl, [
-                        'resume' => $request->resume,
+                    $response = Http::attach('resume', file_get_contents($resumeFile->getRealPath()), $resumeFile->getClientOriginalName())->post($atsApiUrl, [
                         'job_description' => $validated['job_description'],
                     ]);
 
@@ -201,18 +195,18 @@ class CandidatePageController extends Controller
             }
  
             $newCandidate = Candidate::create([
-                'web_user_id' => $validated['web_user_id'],
+                'web_user_id' => $request->web_user_id,
                 'emp_name' => $webUser->name ?? '',
                 'emp_id' => $webUser->emp_id ?? '',
-                'name' => $validated['name'],
-                'contact' => $validated['contact'] ?? '',
-                'experience' => $validated['experience'],
-                'interview_date' => $validated['interview_date'] ?? null,
-                'role' => $validated['role'],
+                'name' => $request->name,
+                'contact' => $request->contact ?? '',
+                'experience' => $request->experience,
+                'interview_date' => $request->interview_date ?? null,
+                'role' => $request->role,
                 'resume' => $resumeUrl ?? '',
-                'feedback' => $validated['feedback'] ?? '',
-                'hiring_status' => $validated['hiring_status'] ?? '',
-                'referred_by' => $validated['referred_by'] ?? '',
+                'feedback' => $request->feedback ?? '',
+                'hiring_status' => $request->hiring_status ?? '',
+                'referred_by' => $request->referred_by ?? '',
                 'ats_score' => $atsScore ?? ''
             ]);
 
@@ -220,16 +214,16 @@ class CandidatePageController extends Controller
                 $addedCandidate = Candidate::where('name', $request->name)->first();
                 CandidateDetails::create([
                     'candidate_id' => $addedCandidate->id,
-                    'place' => $validated['location'] ?? '',
-                    'phone' => $validated['contact'] ?? '',
-                    'email' => $validated['email'] ?? '',
-                    'dob' => $validated['dob'] ?? '',
-                    'job_id' => $validated['job_id'] ?? '',
-                    'designation' => $validated['designation'] ?? '',
-                    'department' => $validated['department'] ?? '',
-                    'employment_status' => $validated['employement_status'] ?? '',
-                    'job_title' => $validated['job_title'] ?? '',
-                    'nationality' => $validated['nationality'] ?? '',
+                    'place' => $request->place ?? '',
+                    'phone' => $request->contact ?? '',
+                    'email' => $request->email ?? '',
+                    'dob' => $request->dob ?? '',
+                    'job_id' => $request->job_id ?? '',
+                    'designation' => $request->designation ?? '',
+                    'department' => $request->department ?? '',
+                    'employment_status' => $request->employment_status ?? '',
+                    'job_title' => $request->job_title ?? '',
+                    'nationality' => $request->nationality ?? '',
                 ]);
             }
  
@@ -341,6 +335,68 @@ class CandidatePageController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Something went wrong',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function resumeFitCheck(Request $request)
+    {
+        $request->validate([
+            'candidate_id' => 'required|integer|exists:candidates,id',
+            'job_description' => 'required|string',
+        ]);
+
+        try {
+            $candidate = Candidate::find($request->candidate_id);
+
+            if (!$candidate || empty($candidate->resume)) {
+                return response()->json([
+                    'error' => 'Resume not found for the given candidate.'
+                ], 404);
+            }
+
+            $resumeUrl = $candidate->resume;
+
+            // Download the file content from the resume URL
+            $resumeContents = file_get_contents($resumeUrl);
+
+            if ($resumeContents === false) {
+                return response()->json([
+                    'error' => 'Failed to download resume from S3.'
+                ], 500);
+            }
+
+            // Extract file name from URL
+            $fileName = basename(parse_url($resumeUrl, PHP_URL_PATH));
+
+            // Call external API
+            $atsApiUrl = 'https://ai.fuoday.com/api/fit-check';
+
+            $response = Http::attach(
+                'resume',
+                $resumeContents,
+                $fileName
+            )->post($atsApiUrl, [
+                'job_description' => $request->job_description,
+            ]);
+
+            if ($response->successful()) {
+                return response()->json([
+                    'status' => 'success',
+                    'data' => $response->json(),
+                ]);
+            } else {
+                return response()->json([
+                    'error' => 'ATS API request failed.',
+                    'details' => $response->body()
+                ], $response->status());
+            }
+        } catch (\Exception $e) {
+            Log::error('ATS Resume Scoring Error: ' . $e->getMessage());
+
+            return response()->json([
+                'error' => 'Internal Server Error',
                 'message' => $e->getMessage(),
             ], 500);
         }

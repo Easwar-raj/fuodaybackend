@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\ats;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Candidate;
 use App\Models\JobOpening;
 use App\Models\WebUser;
