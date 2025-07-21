@@ -200,7 +200,7 @@ Route::prefix('hrms')->group(function () {
             Route::get('/getallauditreport/{id}', [PerformancePageController::class, 'getAllAuditReport']);
         });
         Route::prefix('support')->group(function () {
-            Route::get('/gettickets/{id}', [SupportPageController::class, 'getAllTicketsByStatus']);
+            Route::get('/gettickets/{id}/{type}', [SupportPageController::class, 'getAllTicketsByStatus']);
             Route::post('/addticket', [SupportPageController::class, 'addTicket']);
             Route::post('/updateticket/{ticketId}', [SupportPageController::class, 'updateTicket']);
         });
