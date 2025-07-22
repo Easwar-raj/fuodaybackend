@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AdminUser;
 use App\Models\Candidate;
 use App\Models\CandidateDetails;
+use App\Models\JobOpening;
 use App\Models\WebUser;
 use Aws\S3\S3Client;
 use Illuminate\Http\Request;
@@ -19,18 +20,18 @@ class CandidatePageController extends Controller
     {
         try {
             $webUser = WebUser::find($request->web_user_id);
- 
+
             if (!$webUser) {
                 return response()->json([
                     'error' => 'Invalid web_user_id',
                     'message' => 'User not found'
                 ], 404);
             }
- 
+
             $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
- 
+
             $query = Candidate::with('details')->whereIn('web_user_id', $webuserIds);
- 
+
             // Apply filters
             if ($request->filled('role')) {
                 $query->where('role', $request->role);
@@ -44,32 +45,44 @@ class CandidatePageController extends Controller
             if ($request->filled('l3')) {
                 $query->where('L3', $request->l3);
             }
- 
+
             if ($request->filled('experience')) {
                 $query->where('experience', $request->experience);
             }
- 
+
             if ($request->filled('name')) {
                 $query->where('name', 'LIKE', "%{$request->name}%");
             }
- 
+
             if ($request->filled('ats_score')) {
                 $query->where('ats_score', $request->ats_score);
             }
- 
+
             if ($request->filled('location')) {
                 $query->whereHas('details', function ($q) use ($request) {
                     $q->where('place', 'LIKE', "%{$request->location}%");
                 });
             }
- 
+
             $candidates = $query->get();
 
             $totalApplied = Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Applied');
             $totalShortlisted = Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Selected');
             $totalHolded = Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Holded');
             $totalRejected = Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Rejected');
- 
+            $jobOpenings = JobOpening::where('admin_user_id', $webUser->admin_user_id)
+                ->get(['id', 'title', 'position', 'date', 'status', 'updated_at'])
+                ->map(function ($job) {
+                    return [
+                        'id' => $job->id,
+                        'title' => $job->title,
+                        'position' => $job->position,
+                        'date_opened' => $job->date->format('Y-m-d'),
+                        'status' => $job->status,
+                        'date_closed' => $job->status === 'Closed' ? $job->updated_at->format('Y-m-d') : null,
+                    ];
+                });
+
             return response()->json([
                 'candidates' => $candidates,
                 'names' => $candidates->pluck('name')->unique()->values(),
@@ -84,7 +97,8 @@ class CandidatePageController extends Controller
                 'total_holded' => $totalHolded->count(),
                 'holded_list' => $totalHolded,
                 'total_rejected' => $totalRejected->count(),
-                'rejected_list' => $totalRejected
+                'rejected_list' => $totalRejected,
+                'job_openings' => $jobOpenings
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -93,7 +107,7 @@ class CandidatePageController extends Controller
             ], 500);
         }
     }
- 
+
     public function addCandidate(Request $request)
     {
         try {
