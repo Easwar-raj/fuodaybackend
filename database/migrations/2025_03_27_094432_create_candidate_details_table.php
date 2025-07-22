@@ -33,7 +33,7 @@ return new class extends Migration
             $table->string('current_job_title')->nullable();
             $table->string('current_employer')->nullable();
             $table->string('linkedin')->nullable();
-            $table->date('interview_date')->nullable();
+            $table->string('cv')->nullable();
             $table->timestamps();
         });
     }

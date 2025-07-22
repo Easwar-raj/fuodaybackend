@@ -22,7 +22,7 @@ class TrackerPageController extends Controller
             }
  
         $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
-        $query = Candidate::with('details')->whereIn('web_user_id', $webuserIds);
+        $query = Candidate::with('details')->where('web_user_id', $id);
 
         if ($request->filled('role')) {
             $query->where('role', $request->role);
@@ -83,11 +83,11 @@ class TrackerPageController extends Controller
  
         $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
         $today = Carbon::today();
-        $interviewsToday = Candidate::whereDate('interview_date', $today)->whereIn('web_user_id', $webuserIds)->get();
-        $technicalCompleted = Candidate::whereNotNull('technical_status')->whereIn('web_user_id', $webuserIds)->get();
-        $finalRoundCompleted = Candidate::whereNotNull('hr_status')->whereIn('web_user_id', $webuserIds)->get();
-        $notScheduled = Candidate::whereNull('interview_date')->whereIn('web_user_id', $webuserIds)->get();
-        $attendedRounds = Candidate::whereIn('web_user_id', $webuserIds)->where(function ($query) {
+        $interviewsToday = Candidate::whereDate('interview_date', $today)->where('web_user_id', $id)->get();
+        $technicalCompleted = Candidate::whereNotNull('technical_status')->where('web_user_id', $id)->get();
+        $finalRoundCompleted = Candidate::whereNotNull('hr_status')->where('web_user_id', $id)->get();
+        $notScheduled = Candidate::whereNull('interview_date')->where('web_user_id', $id)->get();
+        $attendedRounds = Candidate::where('web_user_id', $id)->where(function ($query) {
             $query->whereNotNull('L1')
                 ->orWhereNotNull('L2')
                 ->orWhereNotNull('L3')

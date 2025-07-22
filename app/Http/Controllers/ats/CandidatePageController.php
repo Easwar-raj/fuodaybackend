@@ -30,7 +30,7 @@ class CandidatePageController extends Controller
 
             $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
 
-            $query = Candidate::with('details')->whereIn('web_user_id', $webuserIds);
+            $query = Candidate::with('details')->where('web_user_id', $request->web_user_id);
 
             // Apply filters
             if ($request->filled('role')) {
@@ -66,10 +66,10 @@ class CandidatePageController extends Controller
 
             $candidates = $query->get();
 
-            $totalApplied = Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Applied');
-            $totalShortlisted = Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Selected');
-            $totalHolded = Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Holded');
-            $totalRejected = Candidate::whereIn('web_user_id', $webuserIds)->where('hiring_status', 'Rejected');
+            $totalApplied = Candidate::where('web_user_id', $request->web_user_id)->where('hiring_status', 'Applied');
+            $totalShortlisted = Candidate::where('web_user_id', $request->web_user_id)->where('hiring_status', 'Selected');
+            $totalHolded = Candidate::where('web_user_id', $request->web_user_id)->where('hiring_status', 'Holded');
+            $totalRejected = Candidate::where('web_user_id', $request->web_user_id)->where('hiring_status', 'Rejected');
             $jobOpenings = JobOpening::where('admin_user_id', $webUser->admin_user_id)
                 ->get(['id', 'title', 'position', 'date', 'status', 'updated_at'])
                 ->map(function ($job) {
@@ -130,9 +130,11 @@ class CandidatePageController extends Controller
                 'linkedin' => 'nullable|string|max:255',
                 'interview_date' => 'nullable|date',
                 'role' => 'required|string|max:255',
-                'resume' => 'nullable|file|mimes:pdf,doc,docx|max:5048',
+                'resume' => 'nullable|file|mimes:pdf|max:5048',
                 'feedback' => 'nullable|string',
                 'hiring_status' => 'nullable|string',
+                'place' => 'nullable|string',
+                'cv' => 'nullable|file|mimes:pdf|max:5048',
                 'referred_by' => 'nullable|string|max:255',
                 'job_description' => 'nullable|string'
             ]);
@@ -146,6 +148,7 @@ class CandidatePageController extends Controller
             $webUser = WebUser::find($validated['web_user_id']);
             $adminUser = AdminUser::find($webUser->admin_user_id);
             $resumeFile = $request->file('resume');
+            $cvFile = $request->file('cv');
 
             if ($resumeFile) {
                 $resumeExtension = $resumeFile->getClientOriginalExtension();
@@ -185,6 +188,46 @@ class CandidatePageController extends Controller
 
                 // Generate public URL
                 $resumeUrl = $s3->getObjectUrl($bucket, $key);
+            }
+
+            if ($cvFile) {
+                $cvExtension = $cvFile->getClientOriginalExtension();
+
+                // S3 path format: CompanyName/resumes/CandidateName.extension
+                $folderPath = "{$adminUser->company_name}/resumes/";
+                $fileName = "{$request->name}_cv.{$cvExtension}";
+                $key = $folderPath . $fileName;
+
+                // Delete existing resumes with the same name but any extension
+                $existingFiles = Storage::disk('s3')->files($folderPath);
+
+                foreach ($existingFiles as $existingFile) {
+                    if (basename($existingFile, '.' . pathinfo($existingFile, PATHINFO_EXTENSION)) == $request->name) {
+                        Storage::disk('s3')->delete($existingFile);
+                    }
+                }
+
+                // Use S3Client to upload
+                $s3 = new S3Client([
+                    'region'  => env('AWS_DEFAULT_REGION'),
+                    'version' => 'latest',
+                    'credentials' => [
+                        'key'    => env('AWS_ACCESS_KEY_ID'),
+                        'secret' => env('AWS_SECRET_ACCESS_KEY'),
+                    ],
+                ]);
+
+                $bucket = env('AWS_BUCKET');
+
+                $s3->putObject([
+                    'Bucket' => $bucket,
+                    'Key'    => $key,
+                    'Body'   => $cvFile->get(),
+                    'ContentType' => $cvFile->getClientMimeType(),
+                ]);
+
+                // Generate public URL
+                $cvUrl = $s3->getObjectUrl($bucket, $key);
             }
 
             $atsScore = null;
@@ -238,6 +281,7 @@ class CandidatePageController extends Controller
                     'employment_status' => $request->employment_status ?? '',
                     'job_title' => $request->job_title ?? '',
                     'nationality' => $request->nationality ?? '',
+                    'cv' => $cvUrl ?? ''
                 ]);
             }
  

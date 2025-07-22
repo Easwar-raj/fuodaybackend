@@ -31,7 +31,7 @@ class CandidateDetails extends Model
         'current_job_title',
         'current_employer',
         'linkedin',
-        'interview_date'
+        'cv'
     ];
 
     protected $casts = [
