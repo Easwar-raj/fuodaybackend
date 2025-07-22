@@ -10,14 +10,14 @@ use Illuminate\Http\Request;
 
 class SupportPageController extends Controller
 {
-    public function getAllTicketsByStatus($id, $type)
+    public function getAllTicketsByStatus($id)
     {
         // Step 1: Get admin_user_id of the given web_user
         $adminId = WebUser::where('id', $id)->value('admin_user_id');
 
         // Step 2: Get all tickets where the related web_user has the same admin_user_id
-        $tickets = Ticket::whereHas('webUser.employeeDetails', function ($query) use ($adminId, $type) {
-            $query->where('admin_user_id', $adminId)->where('system_type', $type);
+        $tickets = Ticket::whereHas('webUser.employeeDetails', function ($query) use ($adminId) {
+            $query->where('admin_user_id', $adminId);
         })->get();
 
         // Step 3: Normalize status and group by it
@@ -43,6 +43,40 @@ class SupportPageController extends Controller
             ],
         ], 200);
     }
+
+    // public function getAllTicketsByStatus($id, $type)
+    // {
+    //     // Step 1: Get admin_user_id of the given web_user
+    //     $adminId = WebUser::where('id', $id)->value('admin_user_id');
+
+    //     // Step 2: Get all tickets where the related web_user has the same admin_user_id
+    //     $tickets = Ticket::whereHas('webUser.employeeDetails', function ($query) use ($adminId, $type) {
+    //         $query->where('admin_user_id', $adminId)->where('system_type', $type);
+    //     })->get();
+
+    //     // Step 3: Normalize status and group by it
+    //     $groupedTickets = $tickets->groupBy(function ($ticket) {
+    //         $status = strtolower($ticket->status ?? 'unassigned');
+
+    //         // Normalize any unexpected status values
+    //         if (in_array($status, ['unassigned', 'assigned', 'in_progress', 'completed'])) {
+    //             return $status;
+    //         }
+
+    //         return 'unassigned'; // fallback
+    //     });
+
+    //     $employeeNames = WebUser::where('admin_user_id', $adminId)->select('id', 'name')->get();
+
+    //     return response()->json([
+    //         'message' => 'Successfully fetched tickets',
+    //         'status' => 'success',
+    //         'data' => [
+    //             'groupedTickets' => $groupedTickets,
+    //             'assignees' => $employeeNames
+    //         ],
+    //     ], 200);
+    // }
 
     public function addTicket(Request $request)
     {
