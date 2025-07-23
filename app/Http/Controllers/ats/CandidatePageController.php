@@ -64,7 +64,10 @@ class CandidatePageController extends Controller
                 });
             }
 
-            $candidates = $query->get();
+            $candidates = $query->get()->map(function ($candidate) {
+                $candidate['date_applied'] = $candidate->created_at->format('Y-m-d');
+                return $candidate;
+            });
 
             $totalApplied = Candidate::where('web_user_id', $request->web_user_id)->where('hiring_status', 'Applied');
             $totalShortlisted = Candidate::where('web_user_id', $request->web_user_id)->where('hiring_status', 'Selected');
