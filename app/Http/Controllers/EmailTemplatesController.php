@@ -9,40 +9,58 @@ use Illuminate\Http\Request;
 
 class EmailTemplatesController extends Controller
 {
-    public function getTemplatesByType(Request $request)
+    public function getEmailTemplateByType(Request $request)
     {
-        $request->validate([
-            'type' => 'required|string',
-            'web_user_id' => 'required|exists:web_users,id'
+        $validated = $request->validate([
+            'web_user_id' => 'required|integer|exists:web_users,id',
+            'type' => 'required|string|max:255',
         ]);
 
-        $webUser = WebUser::find($request->web_user_id);
- 
-        if (!$webUser) {
+        try {
+            $webUser = WebUser::findOrFail($validated['web_user_id']);
+            $adminUserId = $webUser->admin_user_id;
+
+            $types = [$validated['type']];
+
+            // If type is 'technical', map to multiple internal template types
+            if ($validated['type'] === 'technical') {
+                $types = [
+                    'l1_interview',
+                    'l1_rejection',
+                    'technical_interview',
+                    'technical_rejection',
+                ];
+            } else if ($validated['type'] === 'hr') {
+                $types = [
+                    'hr_interview',
+                    'hr_rejection'
+                ];
+            }
+
+            $templates = EmailTemplates::where('admin_user_id', $adminUserId)
+                ->whereIn('type', $types)
+                ->get();
+
+            if ($templates->isEmpty()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'No email templates found for the given type(s).',
+                ], 404);
+            }
+
             return response()->json([
-                'error' => 'Invalid web_user_id',
-                'message' => 'User not found'
-            ], 404);
-        }
- 
-        $admin_user_id = AdminUser::find($webUser->admin_user_id);
+                'status' => 'Success',
+                'message' => 'Email templates fetched successfully',
+                'data' => $templates,
+            ], 200);
 
-        $templates = EmailTemplates::where('admin_user_id', $admin_user_id)->where('type', $request->type)
-            ->select('id', 'company_name', 'type', 'subject', 'body')
-            ->get();
-
-        if ($templates->isEmpty()) {
+        } catch (\Exception $e) {
             return response()->json([
-                'status' => false,
-                'message' => 'No email templates found for the given type.',
-            ], 404);
+                'status' => 'error',
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        return response()->json([
-            'status' => 'Success',
-            'message' => 'Email templates fetched successfully.',
-            'templates' => $templates
-        ]);
     }
 
     public function addEmailTemplate(Request $request)

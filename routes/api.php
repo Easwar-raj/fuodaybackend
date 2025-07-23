@@ -234,8 +234,8 @@ Route::prefix('ats')->group(function () {
             Route::get('/getonboarding/{id}', [HiringPageController::class, 'getOnboarding']);
         });
         Route::prefix('template')->group(function () {
-            Route::get('/gettemplate', [EmailTemplatesController::class, 'getTemplatesByType']);
-            Route::get('/addtemplate', [EmailTemplatesController::class, 'addEmailTemplate']);
+            Route::get('/get', [EmailTemplatesController::class, 'getTemplatesByType']);
+            Route::post('/add', [EmailTemplatesController::class, 'addEmailTemplate']);
         });
     });
 });

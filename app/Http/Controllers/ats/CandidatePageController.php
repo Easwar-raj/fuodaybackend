@@ -68,6 +68,11 @@ class CandidatePageController extends Controller
 
             $candidates = $query->get()->map(function ($candidate) {
                 $candidate['date_applied'] = $candidate->created_at->format('Y-m-d');
+                if ($candidate->job_id) {
+                    $jobOpening = JobOpening::find($candidate->job_id);
+                    $candidate['date_opened'] = $jobOpening->date;
+                    $candidate['date_closed'] = $jobOpening->status === 'Closed' ? $jobOpening->updated_at->format('Y-m-d') : null;
+                }
                 return $candidate;
             });
 
