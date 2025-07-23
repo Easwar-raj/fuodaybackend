@@ -220,7 +220,7 @@ Route::prefix('ats')->group(function () {
         Route::prefix('candidates')->group(function () {
             Route::get('/getcandidates', [CandidatePageController::class, 'getCandidates']);
             Route::post('/addcandidate', [CandidatePageController::class, 'addCandidate']);
-            Route::post('/updatecandidate', [CandidatePageController::class, 'updateCandidate']);
+            Route::post('/updatecandidate/{id}', [CandidatePageController::class, 'updateCandidate']);
             Route::post('/resumefitcheck', [CandidatePageController::class, 'resumeFitCheck']);
         });
         Route::prefix('tracker')->group(function () {
