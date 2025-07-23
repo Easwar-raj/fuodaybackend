@@ -221,6 +221,7 @@ Route::prefix('ats')->group(function () {
             Route::get('/getcandidates', [CandidatePageController::class, 'getCandidates']);
             Route::post('/addcandidate', [CandidatePageController::class, 'addCandidate']);
             Route::post('/updatecandidate/{id}', [CandidatePageController::class, 'updateCandidate']);
+            Route::post('/save', [CandidatePageController::class, 'saveCandidate']);
             Route::post('/resumefitcheck', [CandidatePageController::class, 'resumeFitCheck']);
         });
         Route::prefix('tracker')->group(function () {

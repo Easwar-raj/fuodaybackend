@@ -9,6 +9,8 @@ use App\Models\CandidateDetails;
 use App\Models\JobOpening;
 use App\Models\WebUser;
 use Aws\S3\S3Client;
+use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -135,7 +137,8 @@ class CandidatePageController extends Controller
                 'role' => 'required|string|max:255',
                 'resume' => 'nullable|file|mimes:pdf|max:5048',
                 'feedback' => 'nullable|string',
-                'hiring_status' => 'nullable|string',
+                'hiring_manager' => 'nullable|string|max:255',
+                'hiring_status' => 'nullable|string|max:255',
                 'place' => 'nullable|string',
                 'cv' => 'nullable|file|mimes:pdf|max:5048',
                 'referred_by' => 'nullable|string|max:255',
@@ -265,6 +268,7 @@ class CandidatePageController extends Controller
                 'role' => $request->role,
                 'resume' => $resumeUrl ?? '',
                 'feedback' => $request->feedback ?? '',
+                'hiring_manager' => $request->hiring_manager ?? '',
                 'hiring_status' => $request->hiring_status ?? '',
                 'referred_by' => $request->referred_by ?? '',
                 'ats_score' => $atsScore ?? ''
@@ -323,6 +327,7 @@ class CandidatePageController extends Controller
                 'contact' => 'sometimes|nullable|string|max:20',
                 'resume' => 'sometimes|nullable|string',
                 'feedback' => 'sometimes|nullable|string',
+                'hiring_manager' => 'sometimes|nullable|string',
                 'hiring_status' => 'sometimes|nullable|string',
                 'referred_by' => 'sometimes|nullable|string|max:255',
                 // Candidate details table fields
@@ -352,7 +357,7 @@ class CandidatePageController extends Controller
                 if (in_array($key, [
                     'name', 'experience', 'interview_date', 'role', 'L1', 'L2', 'L3',
                     'ats_score', 'overall_score', 'technical_status', 'technical_feedback',
-                    'hr_status', 'hr_feedback', 'contact', 'resume', 'feedback',
+                    'hr_status', 'hr_feedback', 'contact', 'resume', 'feedback', 'hiring_manager',
                     'hiring_status', 'referred_by'
                 ]) && ($request->filled($key) || $request->has($key))) {
                     $candidate->$key = $value;
@@ -397,6 +402,194 @@ class CandidatePageController extends Controller
             return response()->json([
                 'error' => 'Something went wrong',
                 'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function saveCandidate(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'action' => 'required|in:create,update',
+                'web_user_id' => 'required|integer|exists:web_users,id',
+                'name' => 'required|string|max:255',
+                'total_experience' => 'nullable|string|max:100',
+                'experience' => 'nullable|string',
+                'role' => 'nullable|string|max:255',
+                'interview_date' => 'nullable|date',
+                'contact' => 'nullable|string|max:255',
+                'ats_score' => 'nullable|numeric',
+                'overall_score' => 'nullable|numeric',
+                'technical_status' => 'nullable|string',
+                'technical_feedback' => 'nullable|string',
+                'hr_status' => 'nullable|string',
+                'hr_feedback' => 'nullable|string',
+                'resume' => 'nullable|file|mimes:pdf|max:5048',
+                'cv' => 'nullable|file|mimes:pdf|max:5048',
+                'feedback' => 'nullable|string',
+                'hiring_manager' => 'nullable|string|max:255',
+                'hiring_status' => 'nullable|string|max:255',
+                'referred_by' => 'nullable|string|max:255',
+                'place' => 'nullable|string|max:255',
+                'email' => 'nullable|string|email',
+                'dob' => 'nullable|date_format:Y-m-d',
+                'job_id' => 'nullable|string|max:255',
+                'designation' => 'nullable|string|max:255',
+                'department' => 'nullable|string|max:255',
+                'employment_status' => 'nullable|string|max:255',
+                'job_title' => 'nullable|string|max:255',
+                'nationality' => 'nullable|string|max:255',
+                'expected_ctc' => 'nullable|string|max:255',
+                'address' => 'nullable|string|max:255',
+                'education' => 'nullable|string|max:255',
+                'certifications' => 'nullable|string|max:255',
+                'skillset' => 'nullable|string|max:255',
+                'current_job_title' => 'nullable|string|max:255',
+                'current_employer' => 'nullable|string|max:255',
+                'linkedin' => 'nullable|string|max:255',
+                'job_description' => 'nullable|string',
+                'id' => 'required_if:action,update|integer|exists:candidates,id',
+            ]);
+
+            $webUser = WebUser::findOrFail($validated['web_user_id']);
+            $adminUser = AdminUser::find($webUser->admin_user_id);
+
+            $resumeFile = $request->file('resume');
+            $cvFile = $request->file('cv');
+
+            $resumeUrl = null;
+            $cvUrl = null;
+
+            $s3 = new \Aws\S3\S3Client([
+                'region' => env('AWS_DEFAULT_REGION'),
+                'version' => 'latest',
+                'credentials' => [
+                    'key' => env('AWS_ACCESS_KEY_ID'),
+                    'secret' => env('AWS_SECRET_ACCESS_KEY'),
+                ],
+            ]);
+            $bucket = env('AWS_BUCKET');
+            $folderPath = "{$adminUser->company_name}/resumes/";
+
+            // Upload resume
+            if ($resumeFile) {
+                $resumeKey = "{$folderPath}{$request->name}." . $resumeFile->getClientOriginalExtension();
+                $s3->putObject([
+                    'Bucket' => $bucket,
+                    'Key' => $resumeKey,
+                    'Body' => $resumeFile->get(),
+                    'ContentType' => $resumeFile->getClientMimeType(),
+                ]);
+                $resumeUrl = $s3->getObjectUrl($bucket, $resumeKey);
+            }
+
+            // Upload CV
+            if ($cvFile) {
+                $cvKey = "{$folderPath}{$request->name}_cv." . $cvFile->getClientOriginalExtension();
+                $s3->putObject([
+                    'Bucket' => $bucket,
+                    'Key' => $cvKey,
+                    'Body' => $cvFile->get(),
+                    'ContentType' => $cvFile->getClientMimeType(),
+                ]);
+                $cvUrl = $s3->getObjectUrl($bucket, $cvKey);
+            }
+
+            // ATS score (optional)
+            $atsScore = null;
+            if ($resumeFile && !empty($validated['job_description'])) {
+                try {
+                    $atsApiUrl = 'https://ai.fuoday.com/api/ats-score';
+                    $response = Http::attach('resume', file_get_contents($resumeFile->getRealPath()), $resumeFile->getClientOriginalName())
+                        ->post($atsApiUrl, [
+                            'job_description' => $validated['job_description'],
+                        ]);
+                    if ($response->successful()) {
+                        $atsScore = $response->json('Score');
+                    }
+                } catch (\Exception $e) {
+                    Log::error('ATS Score error: ' . $e->getMessage());
+                }
+            }
+
+            // ========== CREATE ==========
+            if ($request->action === 'create') {
+                $candidate = Candidate::create([
+                    'web_user_id' => $webUser->id,
+                    'emp_name' => $webUser->name,
+                    'emp_id' => $webUser->emp_id,
+                    'name' => $validated['name'],
+                    'experience' => $validated['total_experience'],
+                    'interview_date' => $validated['interview_date'] ?? null,
+                    'role' => $validated['role'],
+                    'resume' => $resumeUrl ?? '',
+                    'contact' => $validated['contact'] ?? '',
+                    'feedback' => $validated['feedback'] ?? '',
+                    'hiring_manager' => $validated['hiring_manager'] ?? '',
+                    'hiring_status' => $validated['hiring_status'] ?? '',
+                    'referred_by' => $validated['referred_by'] ?? '',
+                    'ats_score' => $atsScore ?? '',
+                ]);
+            }
+
+            // ========== UPDATE ==========
+            elseif ($request->action === 'update') {
+                $candidate = Candidate::findOrFail($validated['id']);
+                $candidate->update([
+                    'name' => $validated['name'],
+                    'experience' => $validated['total_experience'],
+                    'interview_date' => $validated['interview_date'] ?? $candidate->interview_date,
+                    'role' => $validated['role'],
+                    'contact' => $validated['contact'] ?? $candidate->contact,
+                    'resume' => $resumeUrl ?? $candidate->resume,
+                    'feedback' => $validated['feedback'] ?? $candidate->feedback,
+                    'hiring_manager' => $validated['hiring_manager'] ?? $candidate->hiring_manager,
+                    'hiring_status' => $validated['hiring_status'] ?? $candidate->hiring_status,
+                    'referred_by' => $validated['referred_by'] ?? $candidate->referred_by,
+                    'ats_score' => $atsScore ?? $candidate->ats_score,
+                    'technical_status' => $validated['technical_status'] ?? $candidate->technical_status,
+                    'technical_feedback' => $validated['technical_feedback'] ?? $candidate->technical_feedback,
+                    'hr_status' => $validated['hr_status'] ?? $candidate->hr_status,
+                    'hr_feedback' => $validated['hr_feedback'] ?? $candidate->hr_feedback,
+                    'overall_score' => $validated['overall_score'] ?? $candidate->overall_score,
+                    'L1' => $request->L1 ?? $candidate->L1,
+                    'L2' => $request->L2 ?? $candidate->L2,
+                    'L3' => $request->L3 ?? $candidate->L3,
+                ]);
+            }
+
+            // ========== Candidate Details ==========
+            $detailsData = collect($validated)->only([
+                'place', 'email', 'dob', 'job_id', 'designation',
+                'department', 'employment_status', 'job_title',
+                'nationality', 'expected_ctc', 'address', 'education',
+                'certifications', 'skillset', 'experience', 'current_job_title',
+                'current_employer', 'linkedin'
+            ])->merge(['cv' => $cvUrl ?? ''])->toArray();
+
+            if ($candidate->details) {
+                $candidate->details->update($detailsData);
+            } else {
+                $candidate->details()->create($detailsData);
+            }
+
+            return response()->json([
+                'status' => 'Success',
+                'message' => $request->action === 'create'
+                    ? 'Candidate created successfully.'
+                    : 'Candidate updated successfully.',
+            ], $request->action === 'create' ? 201 : 200);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Candidate not found',
+            ], 404);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
