@@ -30,6 +30,7 @@ class Candidate extends Model
         'contact',
         'resume',
         'feedback',
+        'hiring_manager',
         'hiring_status',
         'referred_by'
     ];

@@ -32,6 +32,7 @@ return new class extends Migration
             $table->string('contact')->nullable();
             $table->string('resume');
             $table->string('feedback')->nullable();
+            $table->string('hiring_manager')->nullable();
             $table->string('hiring_status')->nullable();
             $table->string('referred_by')->nullable();
             $table->timestamps();
