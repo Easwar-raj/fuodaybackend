@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Incentives;
 use App\Models\Payroll;
 use App\Models\Payslip;
+use Exception;
 use NumberToWords\NumberToWords;
 
 class HrPageController extends Controller
@@ -271,13 +272,11 @@ class HrPageController extends Controller
                 }, 'employee_details.xlsx', ExcelFormat::XLSX);
             }
 
-            // PDF Format
             if ($format === 'pdf') {
                 $pdf = Pdf::loadView('pdf.employee_list', ['employees' => $employees]);
                 return $pdf->download('employee_details.pdf');
             }
 
-            // Invalid format
             return response()->json(['error' => 'Invalid format. Use ?format=pdf or ?format=xlsx'], 400);
 
         } catch (\Exception $e) {
@@ -300,7 +299,7 @@ class HrPageController extends Controller
             return response()->json(['message' => 'Invalid status value'], 400);
         }
 
-        $leaveRequests = LeaveRequest::with(['webUser:id,id,name,emp_id'])
+        $leaveRequests = LeaveRequest::with(['webUser:id,name,emp_id'])
             ->whereIn('web_user_id', $employeeIds)
             ->where('status', $status)
             ->orderByDesc('created_at')
@@ -309,13 +308,16 @@ class HrPageController extends Controller
                 return [
                     'id' => $leave->id,
                     'web_user_id' => $leave->web_user_id,
+                    'name' => $leave->webUser->name ?? null,
                     'date' => $leave->date,
                     'type' => $leave->type,
                     'from' => $leave->from,
-                    'reason' => $leave->reason,
                     'to' => $leave->to,
-                    'name' => $leave->webUser->name ?? null,
+                    'reason' => $leave->reason,
+                    'permission_timing'=> $leave->permission_timing,
                     'status' => $leave->status,
+                    'regulation_date' => $leave->regulation_date,
+                    'regulation_reason' => $leave->regulation_reason,
                 ];
             });
         return response()->json([
@@ -393,7 +395,6 @@ class HrPageController extends Controller
                 ->with('payslip')
                 ->get();
 
-            // Sort payrolls by payslip date or created_at if payslip is missing
             $latestPayroll = $payrolls->sortByDesc(function ($payroll) {
                 return $payroll->payslip->date ?? $payroll->created_at;
             })->first();
@@ -407,7 +408,6 @@ class HrPageController extends Controller
                 ? ucfirst($numberTransformer->toWords((int) $totalSalary)) . ' only'
                 : null;
 
-            // Group salary components by type
             $components = Payroll::where('web_user_id', $userId)
                 ->whereNotNull('salary_component')
                 ->whereNotNull('type')
@@ -422,7 +422,6 @@ class HrPageController extends Controller
                     })->values();
                 });
 
-            // Compute totals from components if no payslip
             $earnings = $components->get('Earnings') ?? collect();
             $deductions = $components->get('Deductions') ?? collect();
 
@@ -467,14 +466,6 @@ class HrPageController extends Controller
         ]);
     }
 
-    //
-    // private function convertNumberToWords($number)
-    // {
-    //     $f = new \NumberFormatter("en", \NumberFormatter::SPELLOUT);
-    //     return ucfirst($f->format($number)) . ' only';
-    // }
-
-    //
 
     public function getEmployeePayrollSummaryById($id)
     {
@@ -508,7 +499,6 @@ class HrPageController extends Controller
             ? ucfirst($numberTransformer->toWords((int) $totalSalary)) . ' only'
             : null;
 
-        // Get salary components grouped by type
         $components = Payroll::where('web_user_id', $id)
             ->whereNotNull('salary_component')
             ->whereNotNull('type')
@@ -556,4 +546,76 @@ class HrPageController extends Controller
             'data' => $summary,
         ]);
     }
+
+    public function getRegulations()
+    {
+        try {
+            $regulations = Attendance::whereNotNull('regulation_status')
+                ->where('regulation_status', '!=', 'None')
+                ->select('id', 'emp_id', 'emp_name', 'date', 'checkin', 'checkout', 'regulation_checkin', 'regulation_checkout','reason', 'regulation_date', 'regulation_status', 'status')
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'status' => 'Success',
+                'data' => $regulations
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'Error',
+                'message' => 'Failed to fetch regulations: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateRegulationStatus(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|exists:attendances,id',
+            'status' => 'required|in:Approved,Rejected',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $regulation = Attendance::findOrFail($request->id);
+
+            $updateData = [
+                'regulation_status' => $request->status
+            ];
+
+            if ($request->status === 'Approved') {
+                $checkin = $regulation->regulation_checkin;
+
+                if ($checkin) {
+                    $standardTime = Carbon::createFromTimeString('09:00:00');
+                    $actualCheckin = Carbon::createFromTimeString($checkin);
+
+                    if ($actualCheckin->lessThanOrEqualTo($standardTime)) {
+                        $updateData['status'] = 'Present';
+                    } else {
+                        $updateData['status'] = 'Late';
+                    }
+                } else {
+                    $updateData['status'] = 'Present';
+                }
+            }
+
+            $regulation->update($updateData);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'Regulation ' . $request->status . ' successfully.',
+            ]);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'Error',
+                'message' => 'Failed to update regulation status: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
 }

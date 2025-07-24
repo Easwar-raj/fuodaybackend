@@ -154,6 +154,7 @@ Route::prefix('hrms')->group(function () {
             Route::get('/punctual-arrivals/{id}', [AttendancePageController::class, 'calculatePunctualArrivals']);
             Route::get('/punctual-arrivals-all', [AttendancePageController::class, 'getAllPunctualArrivals']);
             Route::get('/absent-days/{id}', [AttendancePageController::class, 'calculateAbsentDays']);
+            Route::post('/requestregulation', [AttendancePageController::class, 'submitRegulationRequest']);
         });
         Route::prefix('leave')->group(function () {
             Route::get('/getleave/{id}', [LeaveTrackerPageController::class, 'getLeaveStatus']);
@@ -175,6 +176,8 @@ Route::prefix('hrms')->group(function () {
             Route::get('/all-attendance', [HrPageController::class, 'getAllEmployeeAttendance']);
             Route::get('/payroll-summary', [HrPageController::class, 'getAllEmployeePayrollSummaries']);
             Route::get('/payroll-summary/{id}', [HrPageController::class, 'getEmployeePayrollSummaryById']);
+            Route::get('/regulations', [HrPageController::class, 'getRegulations']);
+            Route::post('/update-regulation-status', [HrPageController::class, 'updateRegulationStatus']);
         });
         Route::prefix('payroll')->group(function () {
             Route::get('/getpayroll/{id}', [PayrollPageController::class, 'getPayrollDetails']);
