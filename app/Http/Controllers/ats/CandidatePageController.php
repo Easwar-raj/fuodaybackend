@@ -68,10 +68,12 @@ class CandidatePageController extends Controller
 
             $candidates = $query->get()->map(function ($candidate) {
                 $candidate['date_applied'] = $candidate->created_at->format('Y-m-d');
-                if ($candidate->job_id) {
-                    $jobOpening = JobOpening::find($candidate->job_id);
-                    $candidate['date_opened'] = $jobOpening->date;
-                    $candidate['date_closed'] = $jobOpening->status === 'Closed' ? $jobOpening->updated_at->format('Y-m-d') : null;
+                if (!empty($candidate->details->job_id)) {
+                    $jobOpening = JobOpening::find($candidate->details->job_id);
+                    if ($jobOpening) {
+                        $candidate['date_opened'] = $jobOpening->date->format('Y-m-d');
+                        $candidate['date_closed'] = ($jobOpening->status === 'Closed') ? $jobOpening->updated_at->format('Y-m-d') : null;
+                    }
                 }
                 return $candidate;
             });
@@ -110,7 +112,7 @@ class CandidatePageController extends Controller
                 'rejected_list' => $totalRejected,
                 'job_openings' => $jobOpenings
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'error' => 'Something went wrong',
                 'message' => $e->getMessage()
@@ -256,7 +258,7 @@ class CandidatePageController extends Controller
                     if ($response->successful()) {
                         $atsScore = $response->json('Score'); // or whatever key the API returns
                     }
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     // Optional: Log error but don’t stop the candidate creation
                     Log::error('ATS Score API failed: ' . $e->getMessage());
                 }
@@ -301,7 +303,7 @@ class CandidatePageController extends Controller
                 'status' => 'Success',
                 'message' => 'Candidate added successfully',
             ], 201);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'error' => 'Something went wrong',
                 'message' => $e->getMessage()
@@ -399,11 +401,11 @@ class CandidatePageController extends Controller
                 'status' => 'Success',
                 'message' => 'Candidate and details updated successfully',
             ], 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return response()->json([
                 'error' => 'Candidate not found',
             ], 404);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'error' => 'Something went wrong',
                 'message' => $e->getMessage(),
@@ -465,7 +467,7 @@ class CandidatePageController extends Controller
             $resumeUrl = null;
             $cvUrl = null;
 
-            $s3 = new \Aws\S3\S3Client([
+            $s3 = new S3Client([
                 'region' => env('AWS_DEFAULT_REGION'),
                 'version' => 'latest',
                 'credentials' => [
@@ -512,7 +514,7 @@ class CandidatePageController extends Controller
                     if ($response->successful()) {
                         $atsScore = $response->json('Score');
                     }
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     Log::error('ATS Score error: ' . $e->getMessage());
                 }
             }
@@ -651,7 +653,7 @@ class CandidatePageController extends Controller
                     'details' => $response->body()
                 ], $response->status());
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('ATS Resume Scoring Error: ' . $e->getMessage());
 
             return response()->json([
