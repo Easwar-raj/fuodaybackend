@@ -129,7 +129,7 @@ class CandidatePageController extends Controller
                 'name' => 'required|string|max:255',
                 'email' => 'nullable|string|max:255',
                 'contact' => 'nullable|string|max:255',
-                'location' => 'nullable|string|max:255',
+                'job_location' => 'nullable|string|max:255',
                 'dob' => 'nullable|date_format:Y-m-d',
                 'job_id' => 'nullable|string|max:255',
                 'designation' => 'nullable|string|max:255',
@@ -296,6 +296,7 @@ class CandidatePageController extends Controller
                     'department' => $request->department ?? '',
                     'employment_status' => $request->employment_status ?? '',
                     'job_title' => $request->job_title ?? '',
+                    'job_location' => $request->job_location ?? '',
                     'nationality' => $request->nationality ?? '',
                     'current_job_title' => $request->current_job_title ?? '',
                     'current_employer' => $request->current_employer ?? '',
@@ -363,6 +364,7 @@ class CandidatePageController extends Controller
                 'department' => 'sometimes|string|max:255',
                 'employment_status' => 'sometimes|string|max:255',
                 'job_title' => 'sometimes|string|max:255',
+                'job_location' => 'sometimes|string|max:255',
                 'nationality' => 'sometimes|string|max:255',
                 'expected_ctc' => 'sometimes|nullable|string|max:255',
                 'address' => 'sometimes|nullable|string|max:255',
@@ -392,7 +394,7 @@ class CandidatePageController extends Controller
             // Handle candidate_details
             $detailsData = collect($validated)->only([
                 'place', 'phone', 'email', 'dob', 'job_id', 'designation',
-                'department', 'employment_status', 'job_title', 'nationality',
+                'department', 'employment_status', 'job_title', 'job_location', 'nationality',
                 'expected_ctc', 'address', 'education', 'certifications',
                 'skillset', 'experience', 'current_job_title', 'current_employer',
                 'linkedin', 'interview_date_details'
@@ -461,6 +463,7 @@ class CandidatePageController extends Controller
                 'department' => 'nullable|string|max:255',
                 'employment_status' => 'nullable|string|max:255',
                 'job_title' => 'nullable|string|max:255',
+                'job_location' => 'nullable|string|max:255',
                 'nationality' => 'nullable|string|max:255',
                 'expected_ctc' => 'nullable|string|max:255',
                 'address' => 'nullable|string|max:255',
@@ -598,7 +601,7 @@ class CandidatePageController extends Controller
             // ========== Candidate Details ==========
             $detailsData = collect($validated)->only([
                 'place', 'email', 'dob', 'job_id', 'designation',
-                'department', 'employment_status', 'job_title',
+                'department', 'employment_status', 'job_title', 'job_location',
                 'nationality', 'expected_ctc', 'address', 'education',
                 'certifications', 'skillset', 'experience', 'current_job_title',
                 'current_employer', 'linkedin'
