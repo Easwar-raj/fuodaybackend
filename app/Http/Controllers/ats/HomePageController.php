@@ -9,6 +9,8 @@ use App\Models\JobOpening;
 use App\Models\EmployeeDetails;
 use App\Models\WebUser;
 use Carbon\Carbon;
+use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
 class HomePageController extends Controller
@@ -81,7 +83,6 @@ class HomePageController extends Controller
 
     public function getCallStats($id)
     {
-
         $webUser = WebUser::findOrFail($id);
         $adminUserId = $webUser->admin_user_id;
 
@@ -96,16 +97,16 @@ class HomePageController extends Controller
         $query = CallLogs::where('web_user_id', $id);
 
         // 1. Total calls made today
-        $callsToday = $query->whereDate('created_at', $today)->get();
+        $callsToday = $query->whereDate('date', $today)->get();
 
         // 2. Total calls made yesterday
-        $callsYesterday = $query->whereDate('created_at', $yesterday)->get();
+        $callsYesterday = $query->whereDate('date', $yesterday)->get();
 
         // 3. Follow-up calls today (by 'date' column and 'status')
         $followUpCallsToday = $query->whereDate('date', $today)->where('status', 'follow-up')->get();
 
         // 4. Non-responsive calls today (by 'created_at' and status)
-        $nonResponsiveCallsToday = $query->whereDate('created_at', $today)->where('status', 'no-response')->get();
+        $nonResponsiveCallsToday = $query->whereDate('date', $today)->where('status', 'no-response')->get();
 
         // Return response
         return response()->json([
@@ -130,5 +131,77 @@ class HomePageController extends Controller
                 ],
             ]
         ]);
+    }
+
+    public function saveCallLog(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'action' => 'required|in:create,update',
+                'web_user_id' => 'nullable|integer|exists:web_users,id',
+                'name' => 'required|string|max:255',
+                'contact' => 'nullable|string|max:255',
+                'email' => 'nullable|email|max:255',
+                'attempts' => 'nullable|integer',
+                'status' => 'nullable|string|max:255',
+                'date' => 'nullable|date_format:Y-m-d',
+                'id' => 'required_if:action,update|integer|exists:call_logs,id',
+            ]);
+
+            $webUser = WebUser::findOrFail($request->web_user_id);
+
+            if (!$webUser) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'User not found'
+                ], 404);
+            }
+
+            if ($request->action === 'create') {
+                CallLogs::create([
+                    'web_user_id' => $validated['web_user_id'] ?? null,
+                    'emp_name' => $webUser->name ?? null,
+                    'emp_id' => $webUser->emp_id ?? null,
+                    'name' => $request->name,
+                    'contact' => $request->Contact ?? null,
+                    'email' => $request->email ?? null,
+                    'attempts' => 1,
+                    'status' => $request->status ?? null,
+                    'date' => now()->toDateString(),
+                ]);
+
+                return response()->json([
+                    'status' => 'Success',
+                    'message' => 'Call log created successfully.'
+                ], 201);
+            }
+
+            if ($request->action === 'update') {
+                $callLog = CallLogs::findOrFail($request->id);
+                $callLog->update([
+                    'name' => $request->name ?? $callLog->name,
+                    'contact' => $request->contact ?? $callLog->contact,
+                    'email' => $request->email ?? $callLog->email,
+                    'attempts' => $request->attempts ?? $callLog->attempts,
+                    'status' => $request->status ?? $callLog->status,
+                ]);
+
+                return response()->json([
+                    'status' => 'Success',
+                    'message' => 'Call log updated successfully.'
+                ], 200);
+            }
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Call log not found',
+            ], 404);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

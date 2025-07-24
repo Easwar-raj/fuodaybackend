@@ -216,6 +216,7 @@ Route::prefix('ats')->group(function () {
         Route::prefix('home')->group(function () {
             Route::get('/getdashboard/{id}', [AtsHomePageController::class, 'getDashboardDetails']);
             Route::get('/getcallstats/{id}', [AtsHomePageController::class, 'getCallStats']);
+            Route::post('/savelogs', [AtsHomePageController::class, 'saveCallLog']);
         });
         Route::prefix('candidates')->group(function () {
             Route::get('/getcandidates', [CandidatePageController::class, 'getCandidates']);

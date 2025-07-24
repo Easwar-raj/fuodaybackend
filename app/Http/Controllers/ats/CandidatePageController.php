@@ -4,6 +4,7 @@ namespace App\Http\Controllers\ats;
  
 use App\Http\Controllers\Controller;
 use App\Models\AdminUser;
+use App\Models\CallLogs;
 use App\Models\Candidate;
 use App\Models\CandidateDetails;
 use App\Models\JobOpening;
@@ -149,7 +150,8 @@ class CandidatePageController extends Controller
                 'place' => 'nullable|string',
                 'cv' => 'nullable|file|mimes:pdf|max:5048',
                 'referred_by' => 'nullable|string|max:255',
-                'job_description' => 'nullable|string'
+                'job_description' => 'nullable|string',
+                'call_status' => 'nullable|string|max:255'
             ]);
 
              if (!$validated) {
@@ -295,7 +297,21 @@ class CandidatePageController extends Controller
                     'employment_status' => $request->employment_status ?? '',
                     'job_title' => $request->job_title ?? '',
                     'nationality' => $request->nationality ?? '',
+                    'current_job_title' => $request->current_job_title ?? '',
+                    'current_employer' => $request->current_employer ?? '',
                     'cv' => $cvUrl ?? ''
+                ]);
+
+                CallLogs::create([
+                    'web_user_id' => $request->web_user_id,
+                    'emp_name' => $webUser->name ?? '',
+                    'emp_id' => $webUser->emp_id ?? '',
+                    'name' => $request->name,
+                    'contact' => $request->contact ?? '',
+                    'email' => $request->email ?? null,
+                    'attempts' => 1,
+                    'status' => $request->call_status ?? null,
+                    'date' => now()->toDateString()
                 ]);
             }
  
@@ -525,40 +541,54 @@ class CandidatePageController extends Controller
                     'web_user_id' => $webUser->id,
                     'emp_name' => $webUser->name,
                     'emp_id' => $webUser->emp_id,
-                    'name' => $validated['name'],
-                    'experience' => $validated['total_experience'],
-                    'interview_date' => $validated['interview_date'] ?? null,
-                    'role' => $validated['role'],
+                    'name' => $request->name,
+                    'experience' => $request->total_experience,
+                    'interview_date' => $request->interview_date ?? null,
+                    'role' => $request->role,
                     'resume' => $resumeUrl ?? '',
-                    'contact' => $validated['contact'] ?? '',
-                    'feedback' => $validated['feedback'] ?? '',
-                    'hiring_manager' => $validated['hiring_manager'] ?? '',
-                    'hiring_status' => $validated['hiring_status'] ?? '',
-                    'referred_by' => $validated['referred_by'] ?? '',
+                    'contact' => $request->contact ?? '',
+                    'feedback' => $request->feedback ?? '',
+                    'hiring_manager' => $request->hiring_manager ?? '',
+                    'hiring_status' => $request->hiring_status ?? '',
+                    'referred_by' => $request->referred_by ?? '',
                     'ats_score' => $atsScore ?? '',
                 ]);
+
+                if ($candidate) {
+                    CallLogs::create([
+                        'web_user_id' => $request->web_user_id,
+                        'emp_name' => $webUser->name ?? '',
+                        'emp_id' => $webUser->emp_id ?? '',
+                        'name' => $request->name,
+                        'contact' => $request->contact ?? '',
+                        'email' => $request->email ?? null,
+                        'attempts' => 1,
+                        'status' => $request->call_status ?? null,
+                        'date' => now()->toDateString()
+                    ]);
+                }
             }
 
             // ========== UPDATE ==========
             elseif ($request->action === 'update') {
                 $candidate = Candidate::findOrFail($validated['id']);
                 $candidate->update([
-                    'name' => $validated['name'],
-                    'experience' => $validated['total_experience'],
-                    'interview_date' => $validated['interview_date'] ?? $candidate->interview_date,
-                    'role' => $validated['role'],
-                    'contact' => $validated['contact'] ?? $candidate->contact,
+                    'name' => $request->name,
+                    'experience' => $request->total_experience,
+                    'interview_date' => $request->interview_date ?? $candidate->interview_date,
+                    'role' => $request->role,
+                    'contact' => $request->contact ?? $candidate->contact,
                     'resume' => $resumeUrl ?? $candidate->resume,
-                    'feedback' => $validated['feedback'] ?? $candidate->feedback,
-                    'hiring_manager' => $validated['hiring_manager'] ?? $candidate->hiring_manager,
-                    'hiring_status' => $validated['hiring_status'] ?? $candidate->hiring_status,
-                    'referred_by' => $validated['referred_by'] ?? $candidate->referred_by,
+                    'feedback' => $request->feedback ?? $candidate->feedback,
+                    'hiring_manager' => $request->hiring_manager ?? $candidate->hiring_manager,
+                    'hiring_status' => $request->hiring_status ?? $candidate->hiring_status,
+                    'referred_by' => $request->referred_by ?? $candidate->referred_by,
                     'ats_score' => $atsScore ?? $candidate->ats_score,
-                    'technical_status' => $validated['technical_status'] ?? $candidate->technical_status,
-                    'technical_feedback' => $validated['technical_feedback'] ?? $candidate->technical_feedback,
-                    'hr_status' => $validated['hr_status'] ?? $candidate->hr_status,
-                    'hr_feedback' => $validated['hr_feedback'] ?? $candidate->hr_feedback,
-                    'overall_score' => $validated['overall_score'] ?? $candidate->overall_score,
+                    'technical_status' => $request->techincal_status ?? $candidate->technical_status,
+                    'technical_feedback' => $request->technical_feedback ?? $candidate->technical_feedback,
+                    'hr_status' => $request->hr_status ?? $candidate->hr_status,
+                    'hr_feedback' => $request->hr_feedback ?? $candidate->hr_feedback,
+                    'overall_score' => $request->overall_score ?? $candidate->overall_score,
                     'L1' => $request->L1 ?? $candidate->L1,
                     'L2' => $request->L2 ?? $candidate->L2,
                     'L3' => $request->L3 ?? $candidate->L3,

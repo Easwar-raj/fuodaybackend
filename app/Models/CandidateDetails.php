@@ -21,6 +21,7 @@ class CandidateDetails extends Model
         'department',
         'employment_status',
         'job_title',
+        'job_location',
         'nationality',
         'expected_ctc',
         'address',

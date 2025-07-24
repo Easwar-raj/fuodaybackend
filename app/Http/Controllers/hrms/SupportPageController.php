@@ -10,39 +10,43 @@ use Illuminate\Http\Request;
 
 class SupportPageController extends Controller
 {
-    public function getAllTicketsByStatus($id)
-    {
-        // Step 1: Get admin_user_id of the given web_user
-        $adminId = WebUser::where('id', $id)->value('admin_user_id');
+    
+public function getAllTicketsByStatus($id)
+{
+    // Step 1: Get the admin_user_id of the given web_user
+    $adminId = WebUser::where('id', $id)->value('admin_user_id');
 
-        // Step 2: Get all tickets where the related web_user has the same admin_user_id
-        $tickets = Ticket::whereHas('webUser.employeeDetails', function ($query) use ($adminId) {
-            $query->where('admin_user_id', $adminId);
-        })->get();
-
-        // Step 3: Normalize status and group by it
-        $groupedTickets = $tickets->groupBy(function ($ticket) {
-            $status = strtolower($ticket->status ?? 'unassigned');
-
-            // Normalize any unexpected status values
-            if (in_array($status, ['unassigned', 'assigned', 'in_progress', 'completed'])) {
-                return $status;
-            }
-
-            return 'unassigned'; // fallback
-        });
-
-        $employeeNames = WebUser::where('admin_user_id', $adminId)->select('id', 'name')->get();
-
+    if (!$adminId) {
         return response()->json([
-            'message' => 'Successfully fetched tickets',
-            'status' => 'success',
-            'data' => [
-                'groupedTickets' => $groupedTickets,
-                'assignees' => $employeeNames
-            ],
-        ], 200);
+            'status' => 'error',
+            'message' => 'Invalid admin user',
+        ], 400);
     }
+
+    // Step 2: Get all tickets where the related web_user has the same admin_user_id
+    $tickets = Ticket::whereHas('webUser.employeeDetails', function ($query) use ($adminId) {
+        $query->where('admin_user_id', $adminId);
+    })->with('webUser')->get();
+
+    // Step 3: Group tickets by normalized status
+    $groupedTickets = $tickets->groupBy(function ($ticket) {
+        $status = strtolower($ticket->status ?? 'unassigned');
+        return in_array($status, ['unassigned', 'assigned', 'in_progress', 'completed']) ? $status : 'unassigned';
+    });
+
+    // Step 4: Get all employees under the same admin with emp_id
+    $employeeNames = WebUser::where('admin_user_id', $adminId)->select('id', 'name', 'emp_id')->get();
+
+    // Step 5: Return the response
+    return response()->json([
+        'message' => 'Successfully fetched tickets',
+        'status' => 'success',
+        'data' => [
+            'groupedTickets' => $groupedTickets,
+            'assignees' => $employeeNames
+        ],
+    ], 200);
+}
 
     // public function getAllTicketsByStatus($id, $type)
     // {
@@ -66,7 +70,7 @@ class SupportPageController extends Controller
     //         return 'unassigned'; // fallback
     //     });
 
-    //     $employeeNames = WebUser::where('admin_user_id', $adminId)->select('id', 'name')->get();
+    //     $employeeNames = WebUser::where('admin_user_id', $adminId)->select('id', 'name', 'emp_id')->get();
 
     //     return response()->json([
     //         'message' => 'Successfully fetched tickets',

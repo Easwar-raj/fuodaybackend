@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('department');
             $table->string('employment_status');
             $table->string('job_title');
+            $table->string('job_location')->nullable();
             $table->string('nationality');
             $table->string('expected_ctc')->nullable();
             $table->string('address')->nullable();
