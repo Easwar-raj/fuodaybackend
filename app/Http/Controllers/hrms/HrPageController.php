@@ -547,10 +547,19 @@ class HrPageController extends Controller
         ]);
     }
 
-    public function getRegulations()
+    public function getRegulations($id)
     {
         try {
+            $webUser = WebUser::find($id);
+            $webUserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
+            if (!$webUser) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'User not found'
+                ], 404);
+            }
             $regulations = Attendance::whereNotNull('regulation_status')
+                ->whereIn('web_user_id', $webUserIds)
                 ->where('regulation_status', '!=', 'None')
                 ->select('id', 'emp_id', 'emp_name', 'date', 'checkin', 'checkout', 'regulation_checkin', 'regulation_checkout','reason', 'regulation_date', 'regulation_status', 'status')
                 ->orderBy('created_at', 'desc')

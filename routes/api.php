@@ -176,7 +176,7 @@ Route::prefix('hrms')->group(function () {
             Route::get('/all-attendance', [HrPageController::class, 'getAllEmployeeAttendance']);
             Route::get('/payroll-summary', [HrPageController::class, 'getAllEmployeePayrollSummaries']);
             Route::get('/payroll-summary/{id}', [HrPageController::class, 'getEmployeePayrollSummaryById']);
-            Route::get('/regulations', [HrPageController::class, 'getRegulations']);
+            Route::get('/regulations/{id}', [HrPageController::class, 'getRegulations']);
             Route::post('/update-regulation-status', [HrPageController::class, 'updateRegulationStatus']);
         });
         Route::prefix('payroll')->group(function () {
