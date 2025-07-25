@@ -20,7 +20,12 @@ return new class extends Migration
             $table->string('checkin')->nullable();
             $table->string('checkout')->nullable();
             $table->string('worked_hours')->nullable();
-            $table->string('location')->nullable(); // hybrid / remote / WFH / WFO
+            $table->string('location')->nullable();
+            $table->string('regulation_checkin')->nullable();
+            $table->string('regulation_checkout')->nullable();
+            $table->string('regulation_date')->nullable();
+            $table->string('regulation_status')->nullable();
+            $table->string('reason')->nullable();
             $table->string('status');
             $table->timestamps();
         });
