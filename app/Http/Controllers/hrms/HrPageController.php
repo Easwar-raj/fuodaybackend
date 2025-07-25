@@ -581,7 +581,9 @@ class HrPageController extends Controller
             $regulation = Attendance::findOrFail($request->id);
 
             $updateData = [
-                'regulation_status' => $request->status
+                'regulation_status' => $request->status,
+                'reason' => $regulation->reason,
+                'regulation_date' => $regulation->regulation_date
             ];
 
             if ($request->status === 'Approved') {
