@@ -8,6 +8,7 @@ use App\Models\Audits;
 use App\Models\EmployeeDetails;
 use App\Models\SectionSelection;
 use App\Models\Payroll;
+use App\Models\Payslip;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
@@ -108,7 +109,7 @@ class WebpageUserController extends Controller
                 ]);
 
                 $initials = strtoupper($request->first_name[0] ?? '') . strtoupper($request->last_name[0] ?? '');
-                $profilePhotoPath = $this->generateProfileImage($initials, $request->emp_id, $request->admin_user_id);
+                // $profilePhotoPath = $this->generateProfileImage($initials, $request->emp_id, $request->admin_user_id);
 
                 EmployeeDetails::create([
                     'web_user_id' => $webUser->id,
@@ -129,7 +130,7 @@ class WebpageUserController extends Controller
                     'reporting_manager_id' => $request->reporting_manager_id,
                     'reporting_manager_name' => $request->reporting_manager_name,
                     'place' => $request->place,
-                    'profile_photo' => $profilePhotoPath,
+                    // 'profile_photo' => $profilePhotoPath,
                 ]);
 
                 // Save payroll components
@@ -154,6 +155,49 @@ class WebpageUserController extends Controller
                         'monthly_salary' => $request->actual_salary,
                     ]);
                 }
+
+                $basic = collect($request->earnings)->firstWhere('salary_component', 'Basic')['amount'] ?? null;
+                $gross = collect($request->earnings)->sum('amount');
+                $total_deductions = collect($request->deductions ?? [])->sum('amount');
+                $total_salary = $request->actual_salary ?? null;
+                $status = 'Generated';
+                $lastPayroll = Payroll::where('web_user_id', $webUser->id)->first();
+
+                $policy = DB::table('policies')->where('admin_user_id', $request->admin_user_id)->where('title', 'salary_period')->first();
+                $salaryPeriod = $policy->policy ?? '26To25';
+
+                preg_match('/To(\d{1,2})/', $salaryPeriod, $matches);
+                $endDay = isset($matches[1]) ? (int)$matches[1] : 25;
+
+                $today = Carbon::today();
+                $year = $today->year;
+                $month = $today->month;
+                $day = $today->day;
+
+                if ($day <= $endDay) {
+                    $endDate = Carbon::create($year, $month, $endDay);
+                } else {
+                    $nextMonth = $month == 12 ? 1 : $month + 1;
+                    $nextYear = $month == 12 ? $year + 1 : $year;
+                    $daysInNextMonth = Carbon::create($nextYear, $nextMonth, 1)->daysInMonth;
+                    $validEndDay = min($endDay, $daysInNextMonth);
+                    $endDate = Carbon::create($nextYear, $nextMonth, $validEndDay);
+                }
+
+                $totalPaidDays = $today->diffInDays($endDate) + 1;
+
+                Payslip::create([
+                    'payroll_id' => $lastPayroll ? $lastPayroll->id : null,
+                    'date' => now()->toDateString(),
+                    'time' => now()->format('H:i:s'),
+                    'month' => now()->format('F'),
+                    'basic' => $basic,
+                    'total_paid_days' => $totalPaidDays,
+                    'gross' => $gross,
+                    'total_deductions' => $total_deductions,
+                    'total_salary' => $total_salary,
+                    'status' => $status,
+                ]);
 
                 DB::commit();
 
