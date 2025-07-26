@@ -17,43 +17,95 @@ use App\Models\WebUser;
 use App\Models\Heirarchies;
 use App\Models\Payroll;
 use App\Models\Payslip;
+use App\Models\Projects;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class PerformancePageController extends Controller
 {
-    public function getUserTasks($id)
+    public function getUserTasksAndPerformance($id)
     {
         // Get all tasks assigned to this user
         $tasks = Task::with(['project', 'projectTeamBy'])
             ->where('assigned_to_id', $id)
-            ->get()
-            ->map(function ($task) {
-                return [
-                    'description' => $task->description,
-                    'assigned_by' => $task->assigned_by ?? null,
-                    'project'     => $task->project ?? null,
-                    'priority'    => $task->priority,
-                    'status'      => $task->status,
-                    'progress_note' => $task->progress_note,
-                    'deadline'    => $task->deadline->format('Y-m-d'),
-                    'date'        => $task->date->format('Y-m-d'),
-                ];
-            });
+            ->get();
 
-        // Status counts
-        $totalCompleted = Task::where('assigned_to_id', $id)->where('status', 'Completed')->count();
-        $totalPending = Task::where('assigned_to_id', $id)->where('status', 'Pending')->count();
-        $totalInProgress = Task::where('assigned_to_id', $id)->where('status', 'In Progress')->count();
+        // Format tasks
+        $mappedTasks = $tasks->map(function ($task) {
+            return [
+                'description'     => $task->description,
+                'assigned_by'     => $task->assigned_by ?? null,
+                'project'         => $task->project ?? null,
+                'priority'        => $task->priority,
+                'status'          => $task->status,
+                'progress_note'   => $task->progress_note,
+                'deadline'        => optional($task->deadline)->format('Y-m-d'),
+                'date'            => optional($task->date)->format('Y-m-d'),
+            ];
+        });
+
+        // Normalize and filter task statuses case-insensitively
+        $completedTasks = $tasks->filter(function ($task) {
+            return strtolower($task->status) === 'completed';
+        });
+
+        $pendingTasks = $tasks->filter(function ($task) {
+            return strtolower($task->status) === 'pending';
+        });
+
+        $inProgressTasks = $tasks->filter(function ($task) {
+            return strtolower($task->status) === 'in progress';
+        });
+
+        // Task performance
+        $onTimeTasks = 0;
+        foreach ($completedTasks as $task) {
+            if ($task->deadline && $task->updated_at) {
+                if ($task->updated_at->format('Y-m-d') <= $task->deadline->format('Y-m-d')) {
+                    $onTimeTasks++;
+                }
+            }
+        }
+
+        $completedCount = $completedTasks->count();
+        $timelyPerformance = $completedCount > 0 ? round(($onTimeTasks / $completedCount) * 100, 2) : 0;
+        $ratingOutOfFive = round(($timelyPerformance / 100) * 5, 2);
+
+        // Get all project team entries for this user
+        $projectTeamEntries = ProjectTeam::where('web_user_id', $id)->get();
+
+        // All related project IDs
+        $allProjectIds = $projectTeamEntries->pluck('project_id')->filter()->unique();
+
+        // Upcoming project IDs (progress = 0%)
+        $upcomingProjectIds = $projectTeamEntries
+            ->where('progress', '0%')
+            ->pluck('project_id')
+            ->filter()
+            ->unique();
+
+        // Fetch projects
+        $allProjects = Projects::whereIn('id', $allProjectIds)->get();
+        $upcomingProjects = Projects::whereIn('id', $upcomingProjectIds)->get();
+        $completedProjects = $allProjects->where('status', 'Completed')->values();
 
         return response()->json([
-            'status' => 'Success',
-            'message' => 'Tasks fetched successfully.',
-            'data' => [
-                'tasks' => $tasks,
-                'total_completed' => $totalCompleted,
-                'total_pending' => $totalPending,
-                'total_in_progress' => $totalInProgress,
+            'status'  => 'Success',
+            'message' => 'User tasks, performance, and project data fetched successfully.',
+            'data'    => [
+                'tasks' => $mappedTasks,
+                'total_completed' => $completedCount,
+                'completed_tasks' => $completedTasks->values(),
+                'total_pending' => $pendingTasks->count(),
+                'pending_goals' => $pendingTasks->values(),
+                'total_in_progress' => $inProgressTasks->count(),
+                'goal_progress' => $inProgressTasks->values(),
+                'performance_score' => $timelyPerformance,
+                'performance_rating_out_of_5' => $ratingOutOfFive,
+                'total_completed_projects' => $completedProjects->count(),
+                'completed_projects' => $completedProjects,
+                'total_upcoming_projects' => $upcomingProjects->count(),
+                'upcoming_projects' => $upcomingProjects,
             ],
         ], 200);
     }
@@ -86,79 +138,6 @@ class PerformancePageController extends Controller
         return response()->json([
             'message' => 'Task updated successfully.',
             'status' => 'Success'
-        ], 200);
-    }
-
-    public function getTeamPerformance($id)
-    {
-        $today = now()->toDateString();
-
-        // Step 1: Get all project IDs where this user is involved
-        $projectIds = ProjectTeam::where('web_user_id', $id)->pluck('project_id');
-
-        // Step 2: Get all unique team member IDs from those projects
-        $teamMemberIds = ProjectTeam::whereIn('project_id', $projectIds)->pluck('web_user_id')->unique()->values();
-
-        $totalMembers = count($teamMemberIds);
-        $locationCounts = [
-            'on-site' => 0,
-            'leave' => 0,
-            'work from home' => 0,
-            'half day' => 0,
-            'unknown' => 0,
-        ];
-
-        foreach ($teamMemberIds as $memberId) {
-            $attendance = Attendance::where('web_user_id', $memberId)->whereDate('date', $today)->first();
-
-            $location = strtolower(trim($attendance->location ?? 'unknown'));
-
-            if (array_key_exists($location, $locationCounts)) {
-                $locationCounts[$location]++;
-            } else {
-                $locationCounts['unknown']++;
-            }
-        }
-
-        // Step 3: Calculate availability percentage
-        $availabilityPercentage = [];
-        foreach ($locationCounts as $location => $count) {
-            $availabilityPercentage[$location] = $totalMembers > 0 ? round(($count / $totalMembers) * 100, 0) : 0;
-        }
-
-        // Step 4: Task performance analysis
-        $tasks = Task::where('assigned_to_id', $id)->get();
-        $totalTasks = $tasks->count();
-        $completedTasks = $tasks->where('status', 'completed')->count();
-        $pendingTasks = $tasks->where('status', 'pending')->count();
-        $completedPercentage = $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100, 2) : 0;
-        $pendingPercentage = $totalTasks > 0 ? round(($pendingTasks / $totalTasks) * 100, 2) : 0;
-
-        // Step 5: Timely performance calculation
-        $onTimeTasks = 0;
-        foreach ($tasks as $task) {
-            if ($task->status === 'completed' && $task->deadline && $task->updated_at) {
-                if (date('Y-m-d', strtotime($task->updated_at)) <= date('Y-m-d', strtotime($task->deadline))) {
-                    $onTimeTasks++;
-                }
-            }
-        }
-
-        $timelyPerformance = $completedTasks > 0 ? round(($onTimeTasks / $completedTasks) * 100, 2) : 0;
-
-        // Step 6: Rating out of 5 based on timely performance
-        $ratingOutOfFive = round(($timelyPerformance / 100) * 5, 2);
-
-        return response()->json([
-            'status' => 'Success',
-            'message' => 'Team performance data fetched successfully.',
-            'data' => [
-                'team_availability' => $availabilityPercentage,
-                'completed_percentage' => $completedPercentage,
-                'pending_percentage' => $pendingPercentage,
-                'performance_score' => $timelyPerformance,
-                'performance_rating_out_of_5' => $ratingOutOfFive,
-            ],
         ], 200);
     }
 

@@ -371,15 +371,16 @@ class ProfilePageController extends Controller
             ], 404);
         }
 
-        $bucket = env('AWS_BUCKET');
         $s3 = new S3Client([
-            'region' => env('AWS_DEFAULT_REGION'),
+            'region' => config('filesystems.disks.s3.region'),
             'version' => 'latest',
             'credentials' => [
-                'key' => env('AWS_ACCESS_KEY_ID'),
-                'secret' => env('AWS_SECRET_ACCESS_KEY'),
+                'key'    => config('filesystems.disks.s3.key'),
+                'secret' => config('filesystems.disks.s3.secret'),
             ],
         ]);
+
+        $bucket = config('filesystems.disks.s3.bucket');
 
         $uploadFields = ['photo', 'pan', 'passbook', 'payslip', 'offer_letter'];
         $uploadResults = [];

@@ -408,15 +408,15 @@ class WebpageUserController extends Controller
             }
 
             $s3 = new S3Client([
-                'region'  => env('AWS_DEFAULT_REGION'),
+                'region' => config('filesystems.disks.s3.region'),
                 'version' => 'latest',
                 'credentials' => [
-                    'key'    => env('AWS_ACCESS_KEY_ID'),
-                    'secret' => env('AWS_SECRET_ACCESS_KEY'),
+                    'key'    => config('filesystems.disks.s3.key'),
+                    'secret' => config('filesystems.disks.s3.secret'),
                 ],
             ]);
 
-            $bucket = env('AWS_BUCKET');
+            $bucket = config('filesystems.disks.s3.bucket');
             $key = "{$adminUser->company_name}/profile/{$webUser->emp_id}.{$extension}";
 
             $s3->putObject([

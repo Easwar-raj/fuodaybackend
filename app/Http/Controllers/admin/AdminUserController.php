@@ -58,14 +58,15 @@ class AdminUserController extends Controller
             }
 
             $s3 = new S3Client([
-                'region'  => env('AWS_DEFAULT_REGION'),
+                'region' => config('filesystems.disks.s3.region'),
                 'version' => 'latest',
                 'credentials' => [
-                    'key'    => env('AWS_ACCESS_KEY_ID'),
-                    'secret' => env('AWS_SECRET_ACCESS_KEY'),
+                    'key'    => config('filesystems.disks.s3.key'),
+                    'secret' => config('filesystems.disks.s3.secret'),
                 ],
             ]);
-            $bucket = env('AWS_BUCKET');
+
+            $bucket = config('filesystems.disks.s3.bucket');
             $key = "{$request->company_name}/logo_{$request->company_name}.{$logoExtension}";
 
             $s3->putObject([
@@ -416,14 +417,15 @@ class AdminUserController extends Controller
         }
 
         $s3 = new S3Client([
-            'region'  => env('AWS_DEFAULT_REGION'),
+            'region' => config('filesystems.disks.s3.region'),
             'version' => 'latest',
             'credentials' => [
-                'key'    => env('AWS_ACCESS_KEY_ID'),
-                'secret' => env('AWS_SECRET_ACCESS_KEY'),
+                'key'    => config('filesystems.disks.s3.key'),
+                'secret' => config('filesystems.disks.s3.secret'),
             ],
         ]);
-        $bucket = env('AWS_BUCKET');
+
+        $bucket = config('filesystems.disks.s3.bucket');
         $key = "{$adminUser->company_name}/client/{$request->name}.{$logoExtension}";
 
         $s3->putObject([

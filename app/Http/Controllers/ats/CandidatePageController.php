@@ -164,7 +164,6 @@ class CandidatePageController extends Controller
             $adminUser = AdminUser::find($webUser->admin_user_id);
             $resumeFile = $request->file('resume');
             $cvFile = $request->file('cv');
-
             if ($resumeFile) {
                 $resumeExtension = $resumeFile->getClientOriginalExtension();
 
@@ -184,15 +183,15 @@ class CandidatePageController extends Controller
 
                 // Use S3Client to upload
                 $s3 = new S3Client([
-                    'region'  => env('AWS_DEFAULT_REGION'),
+                    'region' => config('filesystems.disks.s3.region'),
                     'version' => 'latest',
                     'credentials' => [
-                        'key'    => env('AWS_ACCESS_KEY_ID'),
-                        'secret' => env('AWS_SECRET_ACCESS_KEY'),
+                        'key'    => config('filesystems.disks.s3.key'),
+                        'secret' => config('filesystems.disks.s3.secret'),
                     ],
                 ]);
 
-                $bucket = env('AWS_BUCKET');
+                $bucket = config('filesystems.disks.s3.bucket');
 
                 $s3->putObject([
                     'Bucket' => $bucket,
@@ -224,15 +223,15 @@ class CandidatePageController extends Controller
 
                 // Use S3Client to upload
                 $s3 = new S3Client([
-                    'region'  => env('AWS_DEFAULT_REGION'),
+                    'region' => config('filesystems.disks.s3.region'),
                     'version' => 'latest',
                     'credentials' => [
-                        'key'    => env('AWS_ACCESS_KEY_ID'),
-                        'secret' => env('AWS_SECRET_ACCESS_KEY'),
+                        'key'    => config('filesystems.disks.s3.key'),
+                        'secret' => config('filesystems.disks.s3.secret'),
                     ],
                 ]);
 
-                $bucket = env('AWS_BUCKET');
+                $bucket = config('filesystems.disks.s3.bucket');
 
                 $s3->putObject([
                     'Bucket' => $bucket,
@@ -249,19 +248,14 @@ class CandidatePageController extends Controller
 
             if ($resumeFile && !empty($validated['job_description'])) {
                 try {
-                    // Replace with your actual ATS API endpoint
-                    $atsApiUrl = 'https://ai.fuoday.com/api/ats-score'; // e.g. env('ATS_API_URL')
-                    
-                    // Use URL and job description to send to ATS scoring API
+                    $atsApiUrl = 'https://ai.fuoday.com/api/ats-score';
                     $response = Http::attach('resume', file_get_contents($resumeFile->getRealPath()), $resumeFile->getClientOriginalName())->post($atsApiUrl, [
                         'job_description' => $validated['job_description'],
                     ]);
-
                     if ($response->successful()) {
-                        $atsScore = $response->json('Score'); // or whatever key the API returns
+                        $atsScore = $response->json('Score');
                     }
                 } catch (Exception $e) {
-                    // Optional: Log error but don’t stop the candidate creation
                     Log::error('ATS Score API failed: ' . $e->getMessage());
                 }
             }
@@ -487,14 +481,15 @@ class CandidatePageController extends Controller
             $cvUrl = null;
 
             $s3 = new S3Client([
-                'region' => env('AWS_DEFAULT_REGION'),
+                'region' => config('filesystems.disks.s3.region'),
                 'version' => 'latest',
                 'credentials' => [
-                    'key' => env('AWS_ACCESS_KEY_ID'),
-                    'secret' => env('AWS_SECRET_ACCESS_KEY'),
+                    'key'    => config('filesystems.disks.s3.key'),
+                    'secret' => config('filesystems.disks.s3.secret'),
                 ],
             ]);
-            $bucket = env('AWS_BUCKET');
+
+            $bucket = config('filesystems.disks.s3.bucket');
             $folderPath = "{$adminUser->company_name}/resumes/";
 
             // Upload resume
