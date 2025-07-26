@@ -20,7 +20,7 @@ jobs:
  
     - name: Deploy Laravel App to EC2
       run: |
-        ssh -o StrictHostKeyChecking=no ubuntu@13.235.183.64 << 'EOF
+        ssh -o StrictHostKeyChecking=no ubuntu@13.235.183.64 << 'EOF'
           # Clone fresh repo
           cd /tmp
           rm -rf fuodaybackend
