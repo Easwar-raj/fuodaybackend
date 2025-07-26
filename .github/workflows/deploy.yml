@@ -21,30 +21,29 @@ jobs:
     - name: Deploy Laravel App to EC2
       run: |
         ssh -o StrictHostKeyChecking=no ubuntu@13.235.183.64 << 'EOF'
-          # Set working directory with permissions
+          set -e
+          # Clone fresh repo
           cd /tmp
           rm -rf fuodaybackend
-          git clone https://github.com/Easwar-raj/fuodaybackend.git
- 
-          # Move to project directory
+          git clone https://github.com/Easwar-raj/fuodaybackend.git fuodaybackend
           cd fuodaybackend
+
+          # Inject .env securely
+          echo '${{ secrets.LARAVEL_ENV }}' > .env
  
-          # Inject .env from GitHub Secrets
-          echo "${{ secrets.LARAVEL_ENV }}" > .env
- 
-          # Run composer as regular user
-          composer update --no-interaction --prefer-dist --optimize-autoloader
+          # Move to web root
+          sudo rm -rf /var/www/fuodaybackend
+          sudo mv /tmp/fuodaybackend /var/www/fuodaybackend
+          cd /var/www/fuodaybackend
+
+          # Install dependencies
+          composer install --no-interaction --prefer-dist --optimize-autoloader
  
           # Laravel setup
           php artisan key:generate
           php artisan storage:link
  
-          # Move project to /var/www
-          sudo rm -rf /var/www/fuodaybackend
-          sudo mv ../fuodaybackend /var/www/fuodaybackend
- 
           # Fix permissions
           sudo chown -R www-data:www-data /var/www/fuodaybackend
-          sudo chmod -R 775 /var/www/fuodaybackend/storage
-          sudo chmod -R 755 /var/www/fuodaybackend/bootstrap/cache
+          sudo chmod -R 775 storage bootstrap/cache
         EOF
