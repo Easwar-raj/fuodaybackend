@@ -25,7 +25,7 @@ jobs:
           # Clone fresh repo
           cd /tmp
           rm -rf fuodaybackend
-          git clone https://github.com/Easwar-raj/fuodaybackend.git
+          git clone git@github.com:Easwar-raj/fuodaybackend.git fuodaybackend
           cd fuodaybackend
 
           # Inject .env securely
