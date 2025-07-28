@@ -186,9 +186,8 @@ Route::prefix('hrms')->group(function () {
             Route::post('/getpayroll/{id}', [PayrollPageController::class, 'getPayroll']);
         });
         Route::prefix('performance')->group(function () {
-            Route::get('/getgoals/{id}', [PerformancePageController::class, 'getUserTasks']);
+            Route::get('/getperformance/{id}', [PerformancePageController::class, 'getUserTasksAndPerformance']);
             Route::post('/updatetasks', [PerformancePageController::class, 'updateTaskStatus']);
-            Route::get('/getteamperformance/{id}', [PerformancePageController::class, 'getTeamPerformance']);
             Route::get('/getfeedbacks/{id}', [PerformancePageController::class, 'getUserFeedbackDetails']);
             Route::get('/getfeedbackquestions/{id}', [PerformancePageController::class, 'getFeedbackQuestions']);
             Route::post('/addfeedback', [PerformancePageController::class, 'addFeedback']);

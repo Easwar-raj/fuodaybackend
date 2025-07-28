@@ -248,7 +248,6 @@ class CandidatePageController extends Controller
 
             if ($resumeFile && !empty($validated['job_description'])) {
                 try {
-                    Log::info('resume found');
                     // Replace with your actual ATS API endpoint
                     $atsApiUrl = 'https://ai.fuoday.com/api/ats-score'; // e.g. env('ATS_API_URL')
                     
@@ -256,10 +255,8 @@ class CandidatePageController extends Controller
                     $response = Http::attach('resume', file_get_contents($resumeFile->getRealPath()), $resumeFile->getClientOriginalName())->post($atsApiUrl, [
                         'job_description' => $validated['job_description'],
                     ]);
-                    Log::info('response', [$response]);
                     if ($response->successful()) {
-                        $atsScore = $response->json('Score'); // or whatever key the API returns
-                        Log::info('ats score', [$atsScore]);
+                        $atsScore = $response->json('Score');
                     }
                 } catch (Exception $e) {
                     // Optional: Log error but don’t stop the candidate creation
