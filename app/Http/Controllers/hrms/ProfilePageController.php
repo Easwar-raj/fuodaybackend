@@ -343,7 +343,7 @@ class ProfilePageController extends Controller
         return response()->json(['message' => 'Experience deleted successfully']);
     }
 
-    public function updateOnboardingDocuments(Request $request)
+    public function updateOrCreateOnboarding(Request $request)
     {
         $validated = $request->validate([
             'web_user_id'         => 'required|exists:web_users,id',
@@ -362,15 +362,6 @@ class ProfilePageController extends Controller
             return response()->json(['message' => 'Invalid details.'], 400);
         }
 
-        $onboarding = Onboarding::where('web_user_id', $request->web_user_id)->first();
-
-        if (!$onboarding) {
-            return response()->json([
-                'message' => 'Onboarding record not found.',
-                'status'  => 'error',
-            ], 404);
-        }
-
         $s3 = new S3Client([
             'region' => config('filesystems.disks.s3.region'),
             'version' => 'latest',
@@ -385,13 +376,16 @@ class ProfilePageController extends Controller
         $uploadFields = ['photo', 'pan', 'passbook', 'payslip', 'offer_letter'];
         $uploadResults = [];
 
+        $existingOnboarding = Onboarding::where('web_user_id', $request->web_user_id)->first();
+        $existingData = $existingOnboarding ? $existingOnboarding->toArray() : [];
+
         foreach ($uploadFields as $field) {
             if ($request->hasFile($field)) {
                 $file = $request->file($field);
                 $extension = $file->getClientOriginalExtension();
                 $fileName = "onboarding/{$webUser->id}/{$field}." . $extension;
 
-                // Delete any existing file with the same name
+                // Delete any existing file
                 $existingFiles = Storage::disk('s3')->files("onboarding/{$webUser->id}");
                 foreach ($existingFiles as $existingFile) {
                     if (str_contains($existingFile, $field)) {
@@ -402,31 +396,39 @@ class ProfilePageController extends Controller
                 // Upload new file
                 $s3->putObject([
                     'Bucket' => $bucket,
-                    'Key' => $fileName,
-                    'Body' => $file->get(),
+                    'Key'    => $fileName,
+                    'Body'   => $file->get(),
                     'ContentType' => $file->getMimeType(),
                 ]);
 
                 $uploadResults[$field] = $s3->getObjectUrl($bucket, $fileName);
             } else {
-                $uploadResults[$field] = !Str::startsWith($onboarding->$field, 'https') ? $onboarding->$field : 'not uploaded';
+                // Preserve existing value or set as 'not uploaded'
+                $uploadResults[$field] = $existingData[$field] ?? 'not uploaded';
             }
         }
 
-        $onboarding->update([
-            'welcome_email_sent' => $request->welcome_email_sent ?? $onboarding->welcome_email_sent,
-            'scheduled_date'     => $request->scheduled_date ?? $onboarding->scheduled_date,
-            'photo'              => $onboarding->photo,
-            'pan'                => $onboarding->pan,
-            'passbook'           => $onboarding->passbook,
-            'payslip'            => $onboarding->payslip,
-            'offer_letter'       => $onboarding->offer_letter,
-        ]);
+        Onboarding::updateOrCreate(
+            [
+                'web_user_id' => $request->web_user_id,
+                'emp_name' => $webUser->name,
+                'emp_id' => $webUser->emp_id
+            ],
+            [
+                'welcome_email_sent' => $request->welcome_email_sent ?? ($existingData['welcome_email_sent'] ?? null),
+                'scheduled_date'     => $request->scheduled_date ?? ($existingData['scheduled_date'] ?? null),
+                'photo'              => $uploadResults['photo'],
+                'pan'                => $uploadResults['pan'],
+                'passbook'           => $uploadResults['passbook'],
+                'payslip'            => $uploadResults['payslip'],
+                'offer_letter'       => $uploadResults['offer_letter'],
+            ]
+        );
 
         return response()->json([
-            'message' => 'Onboarding documents updated successfully.',
-            'status'  => 'Success',
-            'upload_status' => $uploadResults
+            'message'        => 'Onboarding record updated or created successfully.',
+            'status'         => 'Success',
+            'upload_status'  => $uploadResults
         ], 200);
     }
 }
