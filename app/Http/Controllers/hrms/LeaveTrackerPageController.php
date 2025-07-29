@@ -4,6 +4,7 @@ namespace App\Http\Controllers\hrms;
 
 
 use App\Http\Controllers\Controller;
+use App\Models\Attendance;
 use App\Models\Holidays;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 use App\Models\LeaveRequest;
 use App\Models\TotalLeaves;
 use App\Models\WebUser;
+use Carbon\CarbonPeriod;
+use Illuminate\Support\Facades\Auth;
 
 class LeaveTrackerPageController extends Controller
 {
@@ -56,23 +59,20 @@ class LeaveTrackerPageController extends Controller
             ->orderBy('date', 'asc')
             ->get()
             ->map(function ($holiday) {
-                if (!empty($holiday->date)) {
-                    $holiday->formatted_date = Carbon::parse($holiday->date)->format('d-m-Y');
-                } else {
-                    $holiday->formatted_date = null;
-                }
+                $holiday->formatted_date = $holiday->date ? Carbon::parse($holiday->date)->format('d-m-Y') : null;
                 return $holiday;
             });
 
         // Step 4: Leave report (all leaves)
         $leaveReport = LeaveRequest::where('web_user_id', $id)
-            ->select('date', 'type', 'from', 'to', 'days', 'reason', 'status')
+            ->select('id', 'emp_id', 'department', 'date', 'type', 'from', 'to', 'days', 'reason', 'permission_timing', 'status', 'regulation_date', 'regulation_reason')
             ->orderBy('date', 'desc')
             ->get()
             ->map(function ($leave) {
                 $leave->date = $leave->date ? Carbon::parse($leave->date)->format('d-m-Y') : null;
                 $leave->from = $leave->from ? Carbon::parse($leave->from)->format('d-m-Y') : null;
                 $leave->to = $leave->to ? Carbon::parse($leave->to)->format('d-m-Y') : null;
+                $leave->regulation_date = $leave->regulation_date ? Carbon::parse($leave->regulation_date)->format('d-m-Y') : null;
                 return $leave;
             });
 
@@ -96,17 +96,15 @@ class LeaveTrackerPageController extends Controller
 
         // Step 6: Dynamic yearly leave type graph (based on total_leaves)
         $leaveTypes = TotalLeaves::where('admin_user_id', $adminUserId)
-            ->pluck('total', 'type'); // ['casualleave' => 12, ...]
+            ->pluck('total', 'type');
 
         $takenLeaves = LeaveRequest::where('web_user_id', $id)
             ->whereYear('from', now()->year)
             ->select('type', DB::raw('SUM(DATEDIFF(`to`, `from`) + 1) as total'))
             ->groupBy('type')
-            ->pluck('total', 'type'); // ['casualleave' => 5, ...]
+            ->pluck('total', 'type');
 
-        $graphRow = [
-            'year' => now()->year,
-        ];
+        $graphRow = [ 'year' => now()->year ];
 
         $totalAllowed = 0;
         $totalTaken = 0;
@@ -121,13 +119,14 @@ class LeaveTrackerPageController extends Controller
         $graphRow['percentage'] = $totalAllowed > 0 ? intval(($totalTaken / $totalAllowed) * 100) . '%' : '0%';
         $graph = [$graphRow];
 
-        $leaveTypesList = TotalLeaves::where('admin_user_id', $adminUserId)->pluck('type')->unique()->values(); // optional: to reindex the array
+        $leaveTypesList = TotalLeaves::where('admin_user_id', $adminUserId)->pluck('type')->unique()->values();
 
         // Step 7: Final JSON response
         return response()->json([
             'status' => 'Success',
             'message' => 'Leave status fetched successfully.',
             'data' => [
+                'id' => $id,
                 'leave_summary' => $leaveSummary,
                 'holidays' => $holidays,
                 'leave_report' => $leaveReport,
@@ -146,6 +145,7 @@ class LeaveTrackerPageController extends Controller
             'from' => 'required|date',
             'to' => 'required|date|after_or_equal:from_date',
             'reason' => 'required|string',
+            'permission_timing' => 'nullable|string',
         ]);
 
         $webUser = WebUser::with('employeeDetails')->find($request->web_user_id);
@@ -167,8 +167,8 @@ class LeaveTrackerPageController extends Controller
             'to' => $request->to,
             'days' => Carbon::parse($request->from)->diffInDays(Carbon::parse($request->to)) + 1,
             'reason' => $request->reason,
+            'permission_timing' => $request->permission_timing,
             'status' => 'Pending',
-            
         ]);
 
         return response()->json([
@@ -181,11 +181,12 @@ class LeaveTrackerPageController extends Controller
     {
         $validated = $request->validate([
             'leave_request_id' => 'required|integer|exists:leave_requests,id',
-            'status' => 'required|in:Approved,Rejected',
+            'status' => 'required|in:Approved,Rejected,Cancelled',
             'comment' => 'nullable|string',
         ]);
 
         $leaveRequest = LeaveRequest::find($request->leave_request_id);
+        $user = Auth::user();
 
         if (!$leaveRequest || !$validated) {
             return response()->json([
@@ -194,9 +195,45 @@ class LeaveTrackerPageController extends Controller
             ], 404);
         }
 
+        if ($request->status === 'Cancelled' && $leaveRequest->web_user_id === $user->id) {
+            $now = now()->startOfDay();
+
+            $fromDate = Carbon::parse($leaveRequest->from_date)->startOfDay();
+            $toDate = Carbon::parse($leaveRequest->to_date)->startOfDay();
+
+            if ($fromDate <= $now || $toDate <= $now) {
+                return response()->json([
+                    'message' => 'Leave can only be cancelled if both start and end dates are in the future.',
+                    'status' => 'error',
+                ], 400);
+            }
+        }
+
         $leaveRequest->status = $request->status;
-        $leaveRequest->comment = $request->comment ?? $leaveRequest->comment; // optional
+        $leaveRequest->comment = $request->comment ?? $leaveRequest->comment;
         $leaveRequest->save();
+
+        if ($request->status === 'Approved') {
+            $period = CarbonPeriod::create($leaveRequest->from, $leaveRequest->to);
+
+            foreach ($period as $date) {
+                Attendance::updateOrCreate(
+                    [
+                        'web_user_id' => $leaveRequest->web_user_id,
+                        'date' => $date->format('Y-m-d'),
+                    ],
+                    [
+                        'emp_name' => $leaveRequest->emp_name,
+                        'emp_id' => $leaveRequest->emp_id,
+                        'status' => 'On Leave',
+                        'checkin' => null,
+                        'checkout' => null,
+                        'worked_hours' => null,
+                        'location' => null,
+                    ]
+                );
+            }
+        }
 
         return response()->json([
             'message' => 'Leave status updated successfully.',
@@ -204,94 +241,53 @@ class LeaveTrackerPageController extends Controller
         ], 200);
     }
 
-// public function regulateLeave(Request $request)
-// {
-//     $validated = $request->validate([
-//         'id' => 'required|exists:leave_requests,id',
-//         'web_user_id' => 'required|exists:web_users,id',
-//         'type' => 'required|string',
-//         'from' => 'required|date',
-//         'to' => 'required|date|after_or_equal:from',
-//         'reason' => 'required|string',
-//         'regulation_date' => 'required|date',
-//     ]);
+    public function regulateLeave(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|exists:leave_requests,id',
+            'type' => 'nullable|string',
+            'from' => 'nullable|date',
+            'to' => 'nullable|date|after_or_equal:from',
+            'status' => 'nullable|string|max:255',
+            'regulation_date' => 'required|date',
+            'regulation_reason' => 'nullable|string',
+            'regulation_status' => 'nullable|string|max:255',
+            'regulation_comment' => 'nullable|string'
+        ]);
 
-//     $webUser = WebUser::find($request->web_user_id);
-//     $leave = LeaveRequest::find($request->id);
+        $webUser = auth()->user();
+        $leave = LeaveRequest::find($request->id);
 
-//     if (!$webUser || !$leave) {
-//         return response()->json([
-//             'message' => 'User or Leave not found.'
-//         ], 404);
-//     }
+        if (!$webUser || !$leave) {
+            return response()->json(['message' => 'User or Leave not found.'], 404);
+        }
 
-//     // updates
-//     $leave->emp_id = $webUser->emp_id;
-//     $leave->department = $webUser->department;
-//     $leave->type = $request->type;
-//     $leave->from = $request->from;
-//     $leave->to = $request->to;
-//     $leave->reason = $request->reason;
-//     $leave->regulation_date = $request->regulation_date;
-//     $leave->days = \Carbon\Carbon::parse($request->from)->diffInDays($request->to) + 1;
+        $from = $request->from ?? $leave->from;
+        $to = $request->to ?? $leave->to;
 
-//     $leave->save();
-//     return response()->json([
-//         'message' => 'Leave updated successfully.',
-//         'status' => 'Success',
-//         'updated_fields' => [
-//             'emp_id' => $leave->emp_id,
-//             'department' => $leave->department,
-//             'type' => $leave->type,
-//             'from' => $leave->from,
-//             'to' => $leave->to,
-//             'reason' => $leave->reason,
-//             'regulation_date' => $leave->regulation_date,
-//             'days' => $leave->days
-//         ]
-//     ]);
-// }
+        $leave->type = $request->type ?? $leave->type;
+        $leave->from = $from;
+        $leave->to = $to;
+        $leave->days = Carbon::parse($from)->diffInDays($to) + 1;
+        $leave->status = $request->status ?? $leave->status;
+        $leave->regulation_date = $request->regulation_date;
+        $leave->regulation_reason = $request->regulation_reason ?? $leave->regulation_reason;
+        if ($request->has('regulation_status') && !empty(trim($request->regulation_status))) {
+            $leave->regulation_status = $request->regulation_status;
+        } else {
+            $leave->regulation_status = 'Pending';
+        }
 
+        $leave->regulation_comment = $request->regulation_comment ?? $leave->regulation_comment;
 
+        $leave->save();
 
-public function regulateLeave(Request $request)
-{
-   $request->validate([
-    'id' => 'required|exists:leave_requests,id',
-    'web_user_id' => 'required|exists:web_users,id',
-    'type' => 'required|string',
-    'from' => 'required|date',
-    'to' => 'required|date|after_or_equal:from',
-    'reason' => 'required|string',
-    'regulation_date' => 'required|date',
-]);
-
-
-    $webUser = auth()->user(); // current user
-    $leave = LeaveRequest::find($request->id);
-
-    if (!$webUser || !$leave) {
-        return response()->json(['message' => 'User or Leave not found.'], 404);
+        return response()->json([
+            'message' => 'Leave regulated successfully.',
+            'status' => 'Success',
+            'data' => [
+                'regulation_status' => $leave->regulation_status
+            ]
+        ]);
     }
-
-    $leave->emp_id = $webUser->emp_id;
-    $leave->department = $webUser->department;
-    $leave->type = $request->type;
-    $leave->from = $request->from;
-    $leave->to = $request->to;
-    $leave->reason = $request->reason;
-    $leave->regulation_date = $request->regulation_date;
-    $leave->days = Carbon::parse($request->from)->diffInDays($request->to) + 1;
-
-    $leave->save();
-
-    return response()->json([
-        'message' => 'Leave updated successfully.',
-        'status' => 'Success'
-    ]);
-}
-
-
-
-
 }

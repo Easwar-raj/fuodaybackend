@@ -23,8 +23,13 @@ return new class extends Migration
             $table->date('to');
             $table->string('days')->nullable();
             $table->string('reason');
+            $table->string('permission_timing')->nullable();
             $table->string('status');
             $table->string('comment')->nullable();
+            $table->date('regulation_date')->nullable();
+            $table->string('regulation_reason')->nullable();
+            $table->string('regulation_status')->nullable();
+            $table->string('regulation_comment')->nullable();
             $table->timestamps();
         });
     }

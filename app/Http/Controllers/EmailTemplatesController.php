@@ -6,6 +6,7 @@ use App\Models\AdminUser;
 use App\Models\EmailTemplates;
 use App\Models\WebUser;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class EmailTemplatesController extends Controller
 {
@@ -87,6 +88,35 @@ class EmailTemplatesController extends Controller
         return response()->json([
             'status' => 'Success',
             'message' => 'Email template created successfully.',
+        ]);
+    }
+
+    public function sendCustomEmail(Request $request)
+    {
+        $validated = $request->validate([
+            'to' => 'required|array|min:1',
+            'to.*' => 'email',
+            'subject' => 'required|string',
+            'body' => 'required|string',
+        ]);
+
+        $toEmails = $validated['to'];
+        $subject = $validated['subject'];
+        $plainBody = $validated['body'];
+
+        $convertedBody = nl2br(e($plainBody));
+        $htmlBody = "<div style='font-family: Arial, sans-serif; font-size: 14px;'>$convertedBody</div>";
+
+        foreach ($toEmails as $email) {
+            Mail::send([], [], function ($message) use ($email, $subject, $htmlBody) {
+                $message->to($email)->subject($subject)->setBody($htmlBody, 'text/html');
+            });
+        }
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Email(s) sent successfully.',
+            'to' => $toEmails,
         ]);
     }
 }

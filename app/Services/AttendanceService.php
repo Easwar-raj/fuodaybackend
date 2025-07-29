@@ -33,7 +33,7 @@ class AttendanceService
                     "Is LOP applied for unauthorized leaves?",
                     "Is LOP applied when employees exhaust their leave quota?",
                     "Which days are considered weekly holidays in your organization?",
-                    "salary_period",
+                    "salary_period", // 26To25
                     "salary_date"
                 ])->pluck('policy', 'title');
 

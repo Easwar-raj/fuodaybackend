@@ -14,14 +14,12 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Excel as ExcelFormat;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Incentives;
 use App\Models\Payroll;
-use App\Models\Payslip;
 use Exception;
 use NumberToWords\NumberToWords;
 
@@ -558,16 +556,35 @@ class HrPageController extends Controller
                     'message' => 'User not found'
                 ], 404);
             }
-            $regulations = Attendance::whereNotNull('regulation_status')
+            $attendanceRegulations = Attendance::whereNotNull('regulation_status')
                 ->whereIn('web_user_id', $webUserIds)
                 ->where('regulation_status', '!=', 'None')
-                ->select('id', 'emp_id', 'emp_name', 'date', 'checkin', 'checkout', 'regulation_checkin', 'regulation_checkout','reason', 'regulation_date', 'regulation_status', 'status')
+                ->select('id', 'emp_id', 'emp_name', 'date', 'checkin', 'checkout', 'regulation_checkin', 'regulation_checkout',
+                    'reason', 'regulation_date', 'regulation_status', 'status')
                 ->orderBy('created_at', 'desc')
-                ->get();
+                ->get()
+                ->map(function ($item) {
+                    $item->type = 'attendance';
+                    return $item;
+                });
+
+            $leaveRegulations = LeaveRequest::whereNotNull('regulation_status')
+                ->whereIn('web_user_id', $webUserIds)
+                ->where('regulation_status', '!=', 'None')
+                ->select('id', 'emp_id', 'emp_name', 'type', 'from', 'to', 'days', 'reason', 
+                    'regulation_date', 'regulation_status', 'status', 'regulation_comment', 'comment')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($item) {
+                    $item->type = 'leave';
+                    return $item;
+                });
+
+            $allRegulations = $attendanceRegulations->concat($leaveRegulations)->sortByDesc('regulation_date')->values();
 
             return response()->json([
                 'status' => 'Success',
-                'data' => $regulations
+                'data' => $allRegulations
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -580,46 +597,81 @@ class HrPageController extends Controller
     public function updateRegulationStatus(Request $request)
     {
         $request->validate([
-            'id' => 'required|exists:attendances,id',
+            'id' => 'required|integer',
             'status' => 'required|in:Approved,Rejected',
+            'type' => 'required|in:attendance,leave',
         ]);
 
         try {
             DB::beginTransaction();
 
-            $regulation = Attendance::findOrFail($request->id);
+            if ($request->type === 'attendance') {
+                $request->validate([
+                    'id' => 'exists:attendances,id',
+                ]);
 
-            $updateData = [
-                'regulation_status' => $request->status,
-                'reason' => $regulation->reason,
-                'regulation_date' => $regulation->regulation_date
-            ];
+                $regulation = Attendance::findOrFail($request->id);
 
-            if ($request->status === 'Approved') {
-                $checkin = $regulation->regulation_checkin;
+                $updateData = [
+                    'regulation_status' => $request->status,
+                    'reason' => $regulation->reason,
+                    'regulation_date' => $regulation->regulation_date
+                ];
 
-                if ($checkin) {
-                    $standardTime = Carbon::createFromTimeString('09:00:00');
-                    $actualCheckin = Carbon::createFromTimeString($checkin);
+                if ($request->status === 'Approved') {
+                    $checkin = $regulation->regulation_checkin;
 
-                    if ($actualCheckin->lessThanOrEqualTo($standardTime)) {
-                        $updateData['status'] = 'Present';
+                    if ($checkin) {
+                        $standardTime = Carbon::createFromTimeString('09:00:00');
+                        $actualCheckin = Carbon::createFromTimeString($checkin);
+
+                        if ($actualCheckin->lessThanOrEqualTo($standardTime)) {
+                            $updateData['status'] = 'Present';
+                        } else {
+                            $updateData['status'] = 'Late';
+                        }
                     } else {
-                        $updateData['status'] = 'Late';
+                        $updateData['status'] = 'Present';
                     }
-                } else {
-                    $updateData['status'] = 'Present';
                 }
-            }
 
-            $regulation->update($updateData);
+                $regulation->update($updateData);
+
+            } else if ($request->type === 'leave') {
+                $request->validate([
+                    'id' => 'exists:leave_requests,id',
+                ]);
+
+                $regulation = DB::table('leave_requests')->where('id', $request->id)->first();
+                
+                if (!$regulation) {
+                    throw new Exception('Leave regulation not found');
+                }
+
+                $updateData = [
+                    'regulation_status' => $request->status,
+                    'regulation_date' => now(),
+                ];
+
+                if ($request->status === 'Approved') {
+                    $updateData['status'] = 'Approved';
+                    
+                } else if ($request->status === 'Rejected') {
+                    $updateData['status'] = 'Rejected';
+                }
+
+                DB::table('leave_requests')
+                    ->where('id', $request->id)
+                    ->update($updateData);
+            }
 
             DB::commit();
 
             return response()->json([
                 'status' => 'Success',
-                'message' => 'Regulation ' . $request->status . ' successfully.',
+                'message' => ucfirst($request->type) . ' regulation ' . strtolower($request->status) . ' successfully.',
             ]);
+
         } catch (Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -628,5 +680,4 @@ class HrPageController extends Controller
             ], 500);
         }
     }
-
 }

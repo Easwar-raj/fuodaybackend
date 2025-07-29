@@ -4,6 +4,7 @@ namespace App\Http\Controllers\hrms;
 
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminUser;
 use App\Models\EmployeeDetails;
 use App\Models\WebUser;
 use Carbon\Carbon;
@@ -119,10 +120,49 @@ class ProfilePageController extends Controller
             'about' => 'nullable|string',
             'dob' => 'nullable|date',
             'address' => 'nullable|string|max:255',
+            'profile' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
+            'phone' => 'nullable|string|max:20',
         ]);
 
         // Step 2: Update the name in web_users table
         $webUser = WebUser::find($request->web_user_id);
+
+        $profileUrl = null;
+
+        if ($request->hasFile('profile')) {
+            $file = $request->file('profile');
+            $extension = $file->getClientOriginalExtension();
+            $adminUser = AdminUser::find($webUser->admin_user_id);
+
+            $existingFiles = Storage::disk('s3')->files("{$adminUser->company_name}/profile/{$webUser->emp_id}");
+
+            foreach ($existingFiles as $existingFile) {
+                if (pathinfo($existingFile, PATHINFO_FILENAME) == $webUser->emp_id) {
+                    Storage::disk('s3')->delete($existingFile);
+                }
+            }
+
+            $s3 = new S3Client([
+                'region' => config('filesystems.disks.s3.region'),
+                'version' => 'latest',
+                'credentials' => [
+                    'key'    => config('filesystems.disks.s3.key'),
+                    'secret' => config('filesystems.disks.s3.secret'),
+                ],
+            ]);
+
+            $bucket = config('filesystems.disks.s3.bucket');
+            $key = "{$adminUser->company_name}/profile/{$webUser->emp_id}.{$extension}";
+
+            $s3->putObject([
+                'Bucket' => $bucket,
+                'Key'    => $key,
+                'Body'   => $request->file('profile')->get(),
+                'ContentType' => 'image/png',
+            ]);
+
+            $profileUrl = $s3->getObjectUrl($bucket, $key);
+        }
 
         if ($request->first_name || $request->last_name) {
             $webUser->name = "{$request->first_name} {$request->last_name}" ?? $webUser->name;
@@ -141,6 +181,8 @@ class ProfilePageController extends Controller
         $employeeDetail->about = $request->about ?? $employeeDetail->about;
         $employeeDetail->dob = $request->dob ?? $employeeDetail->dob;
         $employeeDetail->address = $request->address ?? $employeeDetail->address;
+        $employeeDetail->profile_photo = $profileUrl ?? $employeeDetail->profile_photo;
+        $employeeDetail->personal_contact_no = $request->phone ?? $employeeDetail->personal_contact_no;
         $employeeDetail->save();
 
         return response()->json([
@@ -282,9 +324,7 @@ class ProfilePageController extends Controller
             'role'             => 'required|string',
             'duration'         => 'required|string',
             'responsibilities' => 'required|string',
-            'achievements'     => 'nullable|date',
-            'emp_name'         => 'nullable|string',
-            'emp_id'           => 'nullable|string',
+            'achievements'     => 'nullable|string',
         ]);
 
         $webUser = WebUser::find($request->web_user_id);
@@ -298,17 +338,16 @@ class ProfilePageController extends Controller
         $experience = Experience::updateOrCreate(
             [
                 'web_user_id'  => $request->web_user_id,
+                'emp_name'         => $webUser->name,
+                'emp_id'           => $webUser->emp_id,
                 'company_name' => $request->company_name,
                 'role'         => $request->role,
             ],
             [
                 'no_of_yrs'        => $request->no_of_yrs,
-                'role'             => $request->role,
                 'duration'         => $request->duration,
                 'responsibilities' => $request->responsibilities,
                 'achievements'     => $request->achievements,
-                'emp_name'         => $webUser->name,
-                'emp_id'           => $webUser->emp_id,
             ]
         );
 

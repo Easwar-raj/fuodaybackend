@@ -21,14 +21,20 @@ class LeaveRequest extends Model
         'to',
         'days',
         'reason',
+        'permission_timing',
         'status',
-        'comment'
+        'comment',
+        'regulation_date',
+        'regulation_reason',
+        'regulation_status',
+        'regulation_comment'
     ];
 
     protected $casts = [
         'from' => 'date:Y-m-d',
         'to' => 'date:Y-m-d',
         'date' => 'date:Y-m-d',
+        'regulation_date' => 'date:Y-m-d'
     ];
 
 

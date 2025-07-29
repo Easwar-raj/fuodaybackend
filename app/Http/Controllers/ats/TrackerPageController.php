@@ -22,7 +22,7 @@ class TrackerPageController extends Controller
             }
  
         $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
-        $query = Candidate::with('details')->where('web_user_id', $id);
+        $query = Candidate::with('details')->where('web_user_id', $id)->whereNotNull('L1')->whereNull('L2');
 
         if ($request->filled('role')) {
             $query->where('role', $request->role);
@@ -88,11 +88,7 @@ class TrackerPageController extends Controller
         $finalRoundCompleted = Candidate::whereNotNull('hr_status')->where('web_user_id', $id)->get();
         $notScheduled = Candidate::whereNull('interview_date')->where('web_user_id', $id)->get();
         $attendedRounds = Candidate::where('web_user_id', $id)->where(function ($query) {
-            $query->whereNotNull('L1')
-                ->orWhereNotNull('L2')
-                ->orWhereNotNull('L3')
-                ->orWhereNotNull('technical_status')
-                ->orWhereNotNull('hr_status');
+            $query->whereNotNull('L1')->whereNotNull('L2')->orWhereNotNull('technical_status')->whereNull('hr_status');
         })->get();
 
         return response()->json([

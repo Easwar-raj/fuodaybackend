@@ -23,19 +23,6 @@ return new class extends Migration
             $table->string('passbook');
             $table->string('payslip');
             $table->string('offer_letter');
-            $table->string('aadhaar_no')->nullable();
-            $table->string('pan_no')->nullable();
-            $table->string('blood_group')->nullable();
-            $table->string('personal_contact_no');
-            $table->string('official_contact_no')->nullable();
-            $table->string('official_email')->nullable();
-            $table->string('permanent_address')->nullable();
-            $table->string('bank_name')->nullable();
-            $table->string('account_no')->nullable();
-            $table->string('ifsc')->nullable();
-            $table->string('pf_account_no')->nullable();
-            $table->string('uan')->nullable();
-            $table->string('esi_no')->nullable();
             $table->timestamps();
         });
     }

@@ -20,6 +20,7 @@ use App\Models\Payslip;
 use App\Models\Projects;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PerformancePageController extends Controller
 {
@@ -57,6 +58,11 @@ class PerformancePageController extends Controller
             return strtolower($task->status) === 'in progress';
         });
 
+        $totalTasksCount = $tasks->count();
+        $inProgressCount = $inProgressTasks->count();
+
+        $inProgressPercentage = $totalTasksCount > 0 ? round(($inProgressCount / $totalTasksCount) * 100, 2) : 0;
+
         // Task performance
         $onTimeTasks = 0;
         foreach ($completedTasks as $task) {
@@ -89,6 +95,19 @@ class PerformancePageController extends Controller
         $upcomingProjects = Projects::whereIn('id', $upcomingProjectIds)->get();
         $completedProjects = $allProjects->where('status', 'Completed')->values();
 
+        $monthlyAttendance = DB::table('attendances')
+            ->selectRaw('YEAR(date) as year, MONTH(date) as month, COUNT(*) as total_days, SUM(CASE WHEN LOWER(status) = "present" THEN 1 ELSE 0 END) as present_days')
+            ->where('web_user_id', $id)
+            ->groupByRaw('YEAR(date), MONTH(date)')
+            ->get();
+
+        // Step 2: Calculate monthly percentages and overall average
+        $monthlyPercentages = $monthlyAttendance->map(function ($record) {
+            return $record->total_days > 0 ? round(($record->present_days / $record->total_days) * 100, 2) : 0;
+        });
+
+        $averageMonthlyAttendance = $monthlyPercentages->count() > 0 ? round($monthlyPercentages->avg(), 2) : 0;
+
         return response()->json([
             'status'  => 'Success',
             'message' => 'User tasks, performance, and project data fetched successfully.',
@@ -98,7 +117,7 @@ class PerformancePageController extends Controller
                 'completed_tasks' => $completedTasks->values(),
                 'total_pending' => $pendingTasks->count(),
                 'pending_goals' => $pendingTasks->values(),
-                'total_in_progress' => $inProgressTasks->count(),
+                'goal_progress_percentage' => $inProgressPercentage,
                 'goal_progress' => $inProgressTasks->values(),
                 'performance_score' => $timelyPerformance,
                 'performance_rating_out_of_5' => $ratingOutOfFive,
@@ -106,6 +125,7 @@ class PerformancePageController extends Controller
                 'completed_projects' => $completedProjects,
                 'total_upcoming_projects' => $upcomingProjects->count(),
                 'upcoming_projects' => $upcomingProjects,
+                'average_monthly_attendance' => $averageMonthlyAttendance
             ],
         ], 200);
     }

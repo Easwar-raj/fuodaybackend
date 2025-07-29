@@ -20,7 +20,6 @@ use App\Http\Controllers\hrms\ProfilePageController;
 use App\Http\Controllers\WebpageUserController;
 use App\Http\Controllers\hrms\SupportPageController;
 use App\Http\Controllers\hrms\TimeTrackerPageController;
-use App\Http\Controllers\hrms\EnqeriesController;
 
 /*
 |--------------------------------------------------------------------------
@@ -230,6 +229,7 @@ Route::prefix('ats')->group(function () {
         Route::prefix('tracker')->group(function () {
             Route::get('/gettracker/{id}', [TrackerPageController::class, 'getTrackerData']);
             Route::get('/getinterview/{id}', [TrackerPageController::class, 'getInterviewStats']);
+            Route::post('/sendemail', [EmailTemplatesController::class, 'sendCustomEmail']);
         });
         Route::prefix('hiring')->group(function () {
             Route::get('/getoverview/{id}', [HiringPageController::class, 'getInterviewOverview']);
