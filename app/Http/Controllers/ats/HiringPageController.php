@@ -14,12 +14,12 @@ class HiringPageController extends Controller
     {
         $webUser = WebUser::find($id);
  
-            if (!$webUser) {
-                return response()->json([
-                    'error' => 'Invalid web_user_id',
-                    'message' => 'User not found'
-                ], 404);
-            }
+        if (!$webUser) {
+            return response()->json([
+                'error' => 'Invalid web_user_id',
+                'message' => 'User not found'
+            ], 404);
+        }
  
         $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
         $today = Carbon::today();

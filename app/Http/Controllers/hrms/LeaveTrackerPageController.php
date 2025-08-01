@@ -26,8 +26,7 @@ class LeaveTrackerPageController extends Controller
         // Step 2: Leave summary (allowed, taken, pending, remaining)
         $leaveSummary = TotalLeaves::where('admin_user_id', $adminUserId)
             ->with(['leaveRequests' => function ($query) use ($id) {
-                $query->where('web_user_id', $id)
-                    ->whereIn('status', ['Approved', 'Pending']);
+                $query->where('web_user_id', $id)->whereIn('status', ['Approved', 'Pending']);
             }])
             ->get()
             ->map(function ($leave) {

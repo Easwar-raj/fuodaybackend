@@ -79,7 +79,7 @@ class CandidatePageController extends Controller
                 return $candidate;
             });
 
-            $totalApplied = Candidate::where('web_user_id', $request->web_user_id)->where('hiring_status', 'Applied');
+            $totalApplied = Candidate::where('web_user_id', $request->web_user_id);
             $totalShortlisted = Candidate::where('web_user_id', $request->web_user_id)->where('hiring_status', 'Selected');
             $totalHolded = Candidate::where('web_user_id', $request->web_user_id)->where('hiring_status', 'Holded');
             $totalRejected = Candidate::where('web_user_id', $request->web_user_id)->where('hiring_status', 'Rejected');
@@ -119,6 +119,26 @@ class CandidatePageController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+    
+    public function getAllCandidates($id)
+    {
+        $adminUserId = WebUser::where('id', $id)->value('admin_user_id');
+
+        if (!$adminUserId) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        $webUserIds = WebUser::where('admin_user_id', $adminUserId)->pluck('id');
+        $candidates = Candidate::with('detail')->whereIn('webuser_id', $webUserIds)->get();
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'All candidates retrieved successfully',
+            'data' => $candidates
+        ], 200);
     }
 
     public function addCandidate(Request $request)

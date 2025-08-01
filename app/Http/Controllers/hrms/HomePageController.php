@@ -590,6 +590,33 @@ class HomePageController extends Controller
         ], 200);
     }
 
+    public function getServicesAndIndustries($id)
+    {
+        $adminUserId = WebUser::where('id', $id)->value('admin_user_id');
+
+        if (!$adminUserId) {
+            return response()->json([
+                'status' => 'Error',
+                'message' => 'Invalid web user ID',
+            ], 404);
+        }
+
+        $about = About::where('admin_user_id', $adminUserId)->first(['services', 'industries']);
+        $services = Service::where('admin_user_id', $adminUserId)->get(['name', 'description']);
+        $industries = Industries::where('admin_user_id', $adminUserId)->get(['name', 'description']);
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Services and Industries fetched successfully',
+            'data' => [
+                'services_description' => $about->services ?? null,
+                'services' => $services,
+                'industries_description' => $about->industries ?? null,
+                'industries' => $industries,
+            ]
+        ], 200);
+    }
+
     public function getClients($id)
     {
         // Step 1: Get admin_user_id for the given web_user_id
@@ -608,6 +635,36 @@ class HomePageController extends Controller
             'data' => [
                 'description' => $description,
                 'clients' => $client,
+            ]
+        ], 200);
+    }
+
+    public function getAboutAndClients($id)
+    {
+        $adminUserId = WebUser::where('id', $id)->value('admin_user_id');
+
+        if (!$adminUserId) {
+            return response()->json([
+                'status' => 'Error',
+                'message' => 'Invalid web user ID',
+            ], 404);
+        }
+
+        $aboutInfo = About::where('admin_user_id', $adminUserId)->first(['about', 'client']);
+        $achievementsData = Achievement::where('admin_user_id', $adminUserId)->get(['achievement', 'values']);
+        $achievements = $achievementsData->pluck('achievement')->filter()->values();
+        $values = $achievementsData->pluck('values')->filter()->values();
+        $clients = Client::where('admin_user_id', $adminUserId)->get(['name', 'logo']);
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'About and Clients info fetched successfully',
+            'data' => [
+                'about_description' => $aboutInfo->about ?? null,
+                'achievements' => $achievements,
+                'values' => $values,
+                'client_description' => $aboutInfo->client ?? null,
+                'clients' => $clients,
             ]
         ], 200);
     }

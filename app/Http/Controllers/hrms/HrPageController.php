@@ -284,7 +284,6 @@ class HrPageController extends Controller
 
     public function getAllLeaveRequestsByStatus($status)
     {
-
         $user = Auth::user();
         $webUser = WebUser::find($user->id);
         $employeeIds = WebUser::where('admin_user_id', $webUser->admin_user_id)

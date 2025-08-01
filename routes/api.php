@@ -122,6 +122,8 @@ Route::prefix('hrms')->group(function () {
             Route::get('/getindustries/{id}', [HomePageController::class, 'getIndustries']);
             Route::get('/getclients/{id}', [HomePageController::class, 'getClients']);
             Route::get('/getteamdescription/{id}', [HomePageController::class, 'getTeamDescription']);
+            Route::get('/industry_service/{id}', [HomePageController::class, 'getServicesAndIndustries']);
+            Route::get('/about_client/{id}', [HomePageController::class, 'getAboutAndClients']);
 
             Route::get('/getfeeds/{id}', [HomePageController::class, 'getFeeds']);
             Route::post('/addtask', [HomePageController::class, 'createTask']);
@@ -221,6 +223,7 @@ Route::prefix('ats')->group(function () {
         });
         Route::prefix('candidates')->group(function () {
             Route::get('/getcandidates', [CandidatePageController::class, 'getCandidates']);
+            Route::get('/getallcandidates/{id}', [CandidatePageController::class, 'getAllCandidates']);
             Route::post('/addcandidate', [CandidatePageController::class, 'addCandidate']);
             Route::post('/updatecandidate/{id}', [CandidatePageController::class, 'updateCandidate']);
             Route::post('/save', [CandidatePageController::class, 'saveCandidate']);

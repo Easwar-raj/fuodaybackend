@@ -48,10 +48,10 @@ class TrackerPageController extends Controller
 
         $candidates = $query->get();
 
-        $resumeDownloadedList = Candidate::whereNotNull('resume')->get();
-        $above80List = Candidate::where('ats_score', '>=', 80)->get();
-        $between50_80List = Candidate::whereBetween('ats_score', [50, 79])->get();
-        $below40List = Candidate::where('ats_score', '<', 40)->get();
+        $resumeDownloadedList = Candidate::where('web_user_id', $id)->whereNotNull('resume')->get();
+        $above80List = Candidate::where('web_user_id', $id)->where('ats_score', '>=', 80)->get();
+        $between50_80List = Candidate::where('web_user_id', $id)->whereBetween('ats_score', [50, 79])->get();
+        $below40List = Candidate::where('web_user_id', $id)->where('ats_score', '<', 40)->get();
 
         return response()->json([
             'status' => 'Success',
