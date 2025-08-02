@@ -1261,13 +1261,11 @@ class AttendancePageController extends Controller
 
             $attendances = DB::table('attendances')
                 ->where('web_user_id', $id)
-                ->whereNotNull('checkin')
                 ->select([
                     DB::raw('MIN(id) as id'),
                     'date',
                     DB::raw('MIN(status) as status'),
                     DB::raw('MIN(emp_name) as emp_name'),
-                    DB::raw('MIN(checkin) as checkin'),
                 ])
                 ->groupBy('date')
                 ->orderBy('date', 'desc')
