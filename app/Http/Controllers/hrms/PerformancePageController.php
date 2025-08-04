@@ -83,17 +83,12 @@ class PerformancePageController extends Controller
         // All related project IDs
         $allProjectIds = $projectTeamEntries->pluck('project_id')->filter()->unique();
 
-        // Upcoming project IDs (progress = 0%)
-        $upcomingProjectIds = $projectTeamEntries
-            ->where('progress', '0%')
-            ->pluck('project_id')
-            ->filter()
-            ->unique();
-
         // Fetch projects
         $allProjects = Projects::whereIn('id', $allProjectIds)->get();
-        $upcomingProjects = Projects::whereIn('id', $upcomingProjectIds)->get();
-        $completedProjects = $allProjects->where('status', 'Completed')->values();
+        $upcomingProjects = Projects::whereIn('id', $allProjectIds)->where('progress', '0%')->get();
+        $completedProjects = $allProjects->filter(function ($project) {
+            return $project->progress === '100%' || strtolower($project->progress) === 'completed';
+        })->values();
 
         $monthlyAttendance = DB::table('attendances')
             ->selectRaw('YEAR(date) as year, MONTH(date) as month, COUNT(*) as total_days, SUM(CASE WHEN LOWER(status) = "present" THEN 1 ELSE 0 END) as present_days')
