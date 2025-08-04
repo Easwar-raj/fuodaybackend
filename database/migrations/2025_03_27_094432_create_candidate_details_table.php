@@ -17,14 +17,14 @@ return new class extends Migration
             $table->string('place');
             $table->string('phone');
             $table->string('email')->nullable();
-            $table->date('dob');
+            $table->date('dob')->nullable();
             $table->string('job_id')->nullable();
             $table->string('designation');
             $table->string('department');
             $table->string('employment_status');
             $table->string('job_title');
             $table->string('job_location')->nullable();
-            $table->string('nationality');
+            $table->string('nationality')->nullable();
             $table->string('expected_ctc')->nullable();
             $table->string('address')->nullable();
             $table->string('education')->nullable();
