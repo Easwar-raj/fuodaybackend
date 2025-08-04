@@ -27,9 +27,9 @@ class AttendancePageController extends Controller
                     DB::raw('MAX(checkout) as checkout'),
                     DB::raw('GROUP_CONCAT(status) as status_concat'),
                     DB::raw('GROUP_CONCAT(worked_hours) as worked_hours_concat'),
-                    DB::raw('MAX(regulation_status) as regulation_status'),
-                    DB::raw('MAX(regulation_checkin) as regulation_checkin'),
-                    DB::raw('MAX(regulation_checkout) as regulation_checkout')
+                    // DB::raw('MAX(regulation_status) as regulation_status'),
+                    // DB::raw('MAX(regulation_checkin) as regulation_checkin'),
+                    // DB::raw('MAX(regulation_checkout) as regulation_checkout')
                 )
                 ->groupBy('date')
                 ->orderBy('date', 'desc')

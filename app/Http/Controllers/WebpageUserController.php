@@ -568,7 +568,7 @@ class WebpageUserController extends Controller
             ])
             ->first();
 
-        if(($webUser->role === 'hr') || ($webUser->role !== 'hr_recruiter' && $webUser->role !== 'hr' && $webUser->role !== 'recruiter' && $request->role !== $webUser->role)) {
+        if(($webUser->role === 'hr' && $request->role === 'recruiter') || ($webUser->role !== 'hr_recruiter' && $webUser->role !== 'hr' && $request->role !== $webUser->role)) {
             return response()->json([
                 'message' => 'Unauthorized',
                 'status' => 'error',

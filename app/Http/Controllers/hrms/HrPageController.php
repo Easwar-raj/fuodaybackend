@@ -25,8 +25,6 @@ use NumberToWords\NumberToWords;
 
 class HrPageController extends Controller
 {
-
-
     public function getHr($id)
     {
         // Step 1: Get the admin_user_id from the given web_user_id

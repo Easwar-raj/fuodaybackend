@@ -26,7 +26,8 @@ class LeaveTrackerPageController extends Controller
         // Step 2: Leave summary (allowed, taken, pending, remaining)
         $leaveSummary = TotalLeaves::where('admin_user_id', $adminUserId)
             ->with(['leaveRequests' => function ($query) use ($id) {
-                $query->where('web_user_id', $id)->whereIn('status', ['Approved', 'Pending']);
+                $query->where('web_user_id', $id)
+                    ->whereIn('status', ['Approved', 'Pending']);
             }])
             ->get()
             ->map(function ($leave) {
@@ -62,9 +63,9 @@ class LeaveTrackerPageController extends Controller
                 return $holiday;
             });
 
-        // Step 4: Leave report (all leaves)
+        // Added regulation_status and regulation_comment
         $leaveReport = LeaveRequest::where('web_user_id', $id)
-            ->select('id', 'emp_id', 'department', 'date', 'type', 'from', 'to', 'days', 'reason', 'permission_timing', 'status', 'regulation_date', 'regulation_reason')
+            ->select('id', 'emp_id', 'department', 'date', 'type', 'from', 'to', 'days', 'reason', 'status', 'regulation_date', 'permission_timing', 'regulation_reason', 'regulation_status', 'regulation_comment')
             ->orderBy('date', 'desc')
             ->get()
             ->map(function ($leave) {
@@ -75,7 +76,7 @@ class LeaveTrackerPageController extends Controller
                 return $leave;
             });
 
-        // Step 5: Monthly graph (leave taken per month)
+        // Step 5: Monthly graph
         $monthlyGraph = LeaveRequest::select(
             DB::raw('MONTH(`from`) as month'),
             DB::raw('SUM(DATEDIFF(`to`, `from`) + 1) as leave_days')
@@ -89,11 +90,11 @@ class LeaveTrackerPageController extends Controller
             return [
                 'month' => $monthNames[$item->month] ?? $item->month,
                 'leave' => (int)$item->leave_days,
-                'days' => 15 // or calculate dynamically if needed
+                'days' => 15
             ];
         });
 
-        // Step 6: Dynamic yearly leave type graph (based on total_leaves)
+        // Step 6: Yearly graph
         $leaveTypes = TotalLeaves::where('admin_user_id', $adminUserId)
             ->pluck('total', 'type');
 
@@ -103,8 +104,7 @@ class LeaveTrackerPageController extends Controller
             ->groupBy('type')
             ->pluck('total', 'type');
 
-        $graphRow = [ 'year' => now()->year ];
-
+        $graphRow = ['year' => now()->year];
         $totalAllowed = 0;
         $totalTaken = 0;
 
@@ -120,12 +120,12 @@ class LeaveTrackerPageController extends Controller
 
         $leaveTypesList = TotalLeaves::where('admin_user_id', $adminUserId)->pluck('type')->unique()->values();
 
-        // Step 7: Final JSON response
         return response()->json([
             'status' => 'Success',
             'message' => 'Leave status fetched successfully.',
             'data' => [
                 'id' => $id,
+                'emp_name' => $webUser->name,
                 'leave_summary' => $leaveSummary,
                 'holidays' => $holidays,
                 'leave_report' => $leaveReport,
