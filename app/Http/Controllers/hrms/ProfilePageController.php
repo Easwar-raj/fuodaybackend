@@ -470,4 +470,34 @@ class ProfilePageController extends Controller
             'upload_status'  => $uploadResults
         ], 200);
     }
+
+    public function updateEmploymentDetails(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'department'              => 'nullable|string|max:100',
+            'designation'             => 'nullable|string|max:100',
+            'date_of_joining'         => 'nullable|date',
+            'reporting_manager_id'    => 'nullable|integer|exists:web_users,id',
+            'reporting_manager_name'  => 'nullable|string|max:100',
+            'emp_id'                  => 'nullable|string|max:50',
+        ]);
+
+        $employee = EmployeeDetails::where('web_user_id', $id)->first();
+
+        if (!$employee) {
+            return response()->json(['message' => 'Employee not found.'], 404);
+        }
+
+        if (!empty($validated['emp_id'])) {
+            WebUser::where('id', $id)->update(['emp_id' => $validated['emp_id']]);
+        }
+
+        $employee->update($validated);
+
+        return response()->json([
+            'message'  => 'Employment details updated successfully.',
+            'status'   => 'Success',
+            'employee' => $employee
+        ], 200);
+    }
 }

@@ -138,6 +138,7 @@ Route::prefix('hrms')->group(function () {
             Route::post('/updateeducation', [ProfilePageController::class, 'updateOrCreateEducation']);
             Route::post('/updateexperience', [ProfilePageController::class, 'updateOrCreateExperience']);
             Route::post('/updateonboarding', [ProfilePageController::class, 'updateOrCreateOnboarding']);
+            Route::post('/updateemploymentdetails/{id}', [ProfilePageController::class, 'updateEmploymentDetails']);
         });
         Route::prefix('attendance')->group(function () {
             Route::get('/getattendances/{id}', [AttendancePageController::class, 'getAttendance']);
