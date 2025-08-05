@@ -103,6 +103,7 @@ class HomePageController extends Controller
                 'progress' => $project->progress,
                 'progress_note' => $task->progress_note,
                 'deadline' => Carbon::parse($project->deadline)->format('d-m-Y'),
+                'status' => $task->status,
                 'comment' => $task->comment
             ];
         })->values();
@@ -120,6 +121,7 @@ class HomePageController extends Controller
                 'progress' => $project->progress,
                 'progress_note' => $task->progress_note,
                 'deadline' => Carbon::parse($project->deadline)->format('d-m-Y'),
+                'status' => $task->status,
                 'comment' => $task->comment
             ];
         })->values();
