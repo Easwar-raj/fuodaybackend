@@ -10,6 +10,7 @@ use App\Models\CandidateDetails;
 use App\Models\JobOpening;
 use App\Models\WebUser;
 use Aws\S3\S3Client;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -304,7 +305,7 @@ class CandidatePageController extends Controller
                     'place' => $request->place ?? '',
                     'phone' => $request->contact ?? '',
                     'email' => $request->email ?? '',
-                    'dob' => $request->dob ?? '',
+                    'dob' => $request->dob ? Carbon::parse($request->dob)->format('Y-m-d') : null,
                     'job_id' => $request->job_id ?? '',
                     'designation' => $request->designation ?? '',
                     'department' => $request->department ?? '',
