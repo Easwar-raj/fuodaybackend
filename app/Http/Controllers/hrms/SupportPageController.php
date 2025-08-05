@@ -24,14 +24,14 @@ public function getAllTicketsByStatus($id)
     }
 
     // Step 2: Get all tickets where the related web_user has the same admin_user_id
-    $tickets = Ticket::whereHas('webUser.employeeDetails', function ($query) use ($adminId) {
-        $query->where('admin_user_id', $adminId);
+    $tickets = Ticket::whereHas('webUser.employeeDetails', function ($query) use ($adminId, $id) {
+        $query->where('admin_user_id', $adminId)->where(function ($q) use ($id) { $q->where('web_user_id', $id)->orWhere('assigned_to_id', $id); });
     })->with('webUser')->get();
 
     // Step 3: Group tickets by normalized status
     $groupedTickets = $tickets->groupBy(function ($ticket) {
         $status = strtolower($ticket->status ?? 'unassigned');
-        return in_array($status, ['unassigned', 'assigned', 'in_progress', 'completed']) ? $status : 'unassigned';
+        return in_array($status, ['unassigned', 'assigned', 'in progress', 'completed']) ? $status : 'unassigned';
     });
 
     // Step 4: Get all employees under the same admin with emp_id
@@ -92,9 +92,7 @@ public function getAllTicketsByStatus($id)
             'assigned_to_id' => 'nullable|exists:web_users,id',
             'assigned_to' => 'nullable|string|max:255',
             'priority' => 'required|string|max:100',
-            'date' => 'required|date',
-            'status' => 'nullable|string|max:255',
-            'system_type' => 'nullable|string'
+            'date' => 'required|date'
         ]);
 
         $webUser = WebUser::find($request->web_user_id);
@@ -119,8 +117,10 @@ public function getAllTicketsByStatus($id)
             $status = 'assigned';
         }
 
+        $systemType = $webUser->role == 'recruiter' ? 'ats' : 'hrms';
+
         // Step 3: Create a new ticket
-        $ticket = Ticket::create([
+        Ticket::create([
             'web_user_id' => $webUser->id,
             'emp_id' => $webUser->emp_id,
             'emp_name' => $webUser->name,
@@ -132,7 +132,7 @@ public function getAllTicketsByStatus($id)
             'priority' => $request->priority,
             'date' => $request->date,
             'status' => $status,
-            'system_type' => $request->system_type
+            'system_type' => $systemType
         ]);
 
         // Step 4: Return success response
@@ -149,7 +149,7 @@ public function getAllTicketsByStatus($id)
             'web_user_id' => 'required|exists:web_users,id',
             'assigned_to_id' => 'nullable|exists:web_users,id',
             'assigned_to' => 'nullable|string|max:255',
-            'status' => 'nullable|string|max:255|in:assigned,in_progress,completed',
+            'status' => 'nullable|string|max:255',
         ]);
 
         // Step 2: Find the ticket
