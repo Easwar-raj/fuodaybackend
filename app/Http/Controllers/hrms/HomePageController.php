@@ -165,6 +165,7 @@ class HomePageController extends Controller
             'project'         => 'nullable|string',
             'priority'        => 'required|string',
             'deadline'        => 'required|date|after_or_equal:date',
+            'comment'         => 'nullable|string|max:255'
         ]);
 
         $webUser = WebUser::find($request->web_user_id);
@@ -190,6 +191,7 @@ class HomePageController extends Controller
             'priority' => $request->priority,
             'status' => 'pending',
             'deadline' => $request->deadline,
+            'comment' => $request->comment ?? null
         ]);
 
         return response()->json([

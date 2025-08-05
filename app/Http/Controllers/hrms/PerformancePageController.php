@@ -133,6 +133,7 @@ class PerformancePageController extends Controller
             'web_user_id' => 'required|exists:web_users,id',
             'status' => 'nullable|string|max:255',
             'progress' => 'nullable|string|max:255',
+            'comment' => 'nullable|string|max:255'
         ]);
 
         // Step 2: Find the task and make sure it belongs to the given web_user_id
@@ -147,6 +148,7 @@ class PerformancePageController extends Controller
         // Step 3: Update only the allowed fields
         $task->status = $request->status ?? $task->status;
         $task->progress_note = $request->progress ?? $task->progress;
+        $task->comment = $request->comment ?? $task->comment;
         $task->save();
 
         // Step 4: Return success response
