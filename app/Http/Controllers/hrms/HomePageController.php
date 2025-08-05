@@ -94,13 +94,16 @@ class HomePageController extends Controller
             $project = optional($task->projectTeamTo->project ?? $task->projectTeamBy->project);
             return [
                 'date' => Carbon::parse($task->date)->format('d-m-Y'),
+                'id' => $task->id,
                 'description' => $task->description,
                 'assigned_by' => $task->assigned_by,
                 'assigned_to' => $task->assigned_to,
                 'project' => $task->project,
                 'project_name' => $project->name,
                 'progress' => $project->progress,
+                'progress_note' => $task->progress_note,
                 'deadline' => Carbon::parse($project->deadline)->format('d-m-Y'),
+                'comment' => $task->comment
             ];
         })->values();
 
@@ -108,13 +111,16 @@ class HomePageController extends Controller
             $project = optional($task->projectTeamTo->project ?? $task->projectTeamBy->project);
             return [
                 'date' => Carbon::parse($task->date)->format('d-m-Y'),
+                'id' => $task->id,
                 'description' => $task->description,
                 'assigned_by' => $task->assigned_by,
                 'assigned_to' => $task->assigned_to,
                 'project' => $task->project,
                 'project_name' => $project->name,
                 'progress' => $project->progress,
+                'progress_note' => $task->progress_note,
                 'deadline' => Carbon::parse($project->deadline)->format('d-m-Y'),
+                'comment' => $task->comment
             ];
         })->values();
 

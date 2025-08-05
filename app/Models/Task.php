@@ -25,7 +25,8 @@ class Task extends Model
         'priority',
         'status',
         'progress_note',
-        'deadline'
+        'deadline',
+        'comment'
     ];
 
     protected $casts = [

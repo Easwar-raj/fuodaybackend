@@ -28,6 +28,7 @@ return new class extends Migration
             $table->string('status')->nullable();
             $table->string('progress_note')->nullable();
             $table->date('deadline');
+            $table->string('comment')->nullable();
             $table->timestamps();
         });
     }
