@@ -187,13 +187,9 @@ class CandidatePageController extends Controller
             $cvFile = $request->file('cv');
             if ($resumeFile) {
                 $resumeExtension = $resumeFile->getClientOriginalExtension();
-
-                // S3 path format: CompanyName/resumes/CandidateName.extension
                 $folderPath = "{$adminUser->company_name}/resumes/";
                 $fileName = "{$request->name}.{$resumeExtension}";
                 $key = $folderPath . $fileName;
-
-                // Delete existing resumes with the same name but any extension
                 $existingFiles = Storage::disk('s3')->files($folderPath);
 
                 foreach ($existingFiles as $existingFile) {
@@ -202,7 +198,6 @@ class CandidatePageController extends Controller
                     }
                 }
 
-                // Use S3Client to upload
                 $s3 = new S3Client([
                     'region' => config('filesystems.disks.s3.region'),
                     'version' => 'latest',
@@ -221,7 +216,6 @@ class CandidatePageController extends Controller
                     'ContentType' => $resumeFile->getClientMimeType(),
                 ]);
 
-                // Generate public URL
                 $resumeUrl = $s3->getObjectUrl($bucket, $key);
             }
 
@@ -237,7 +231,7 @@ class CandidatePageController extends Controller
                 $existingFiles = Storage::disk('s3')->files($folderPath);
 
                 foreach ($existingFiles as $existingFile) {
-                    if (basename($existingFile, '.' . pathinfo($existingFile, PATHINFO_EXTENSION)) == $request->name) {
+                    if (basename($existingFile, '.' . pathinfo($existingFile, PATHINFO_EXTENSION)) == "{$request->name}_cv") {
                         Storage::disk('s3')->delete($existingFile);
                     }
                 }
