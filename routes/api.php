@@ -157,6 +157,7 @@ Route::prefix('hrms')->group(function () {
             Route::get('/punctual-arrivals-all', [AttendancePageController::class, 'getAllPunctualArrivals']);
             Route::get('/absent-days/{id}', [AttendancePageController::class, 'calculateAbsentDays']);
             Route::post('/requestregulation', [AttendancePageController::class, 'submitRegulationRequest']);
+            Route::post('/process-expired-sessions', [AttendancePageController::class, 'processExpiredSessions']);
         });
         Route::prefix('leave')->group(function () {
             Route::get('/getleave/{id}', [LeaveTrackerPageController::class, 'getLeaveStatus']);

@@ -19,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Aws\S3\S3Client;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Support\Facades\DB;
 
 class WebpageUserController extends Controller
@@ -31,6 +32,7 @@ class WebpageUserController extends Controller
             'admin_user_id' => 'required|integer|exists:admin_users,id',
             'first_name' => 'nullable|string|max:255',
             'last_name' => 'nullable|string|max:255',
+            'name' => 'nullable|string|max:255',
             'email' => 'nullable|email',
             'role' => 'nullable|string|in:employee,recruiter,hr,hr_recruiter',
             'role_location' => 'nullable|string|max:255',
@@ -43,9 +45,9 @@ class WebpageUserController extends Controller
             'group' => 'nullable|string|max:255',
             'blood_group' => 'nullable|string|max:255',
             'dob' => 'nullable|string|max:255',
-            'personal_contact_no' => 'nullable|digits_between:10,15',
-            'emergency_contact_no' => 'nullable|digits_between:10,15',
-            'official_contact_no' => 'nullable|digits_between:10,15',
+            'personal_contact_no' => 'nullable|string|max:15',
+            'emergency_contact_no' => 'nullable|string|max:15',
+            'official_contact_no' => 'nullable|string|max:15',
             'employment_type' => 'nullable|string|max:255',
             'work_module' => 'nullable|string|max:255',
             'date_of_joining' => 'nullable|date',
@@ -53,14 +55,15 @@ class WebpageUserController extends Controller
             'reporting_manager_name' => 'nullable|string|max:255',
             'ctc' => 'nullable|string|max:255',
             'actual_salary' => 'nullable|string|max:255',
+            'profile' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
 
-            'earnings' => 'required|array',
+            'earnings' => 'required|array|min:1',
             'earnings.*.salary_component' => 'required|string|max:255',
             'earnings.*.amount' => 'required|string',
 
             'deductions' => 'nullable|array',
-            'deductions.*.salary_component' => 'required|string|max:255',
-            'deductions.*.amount' => 'required|string',
+            'deductions.*.salary_component' => 'required_with:deductions|string|max:255',
+            'deductions.*.amount' => 'required_with:deductions|string',
         ]);
 
         $user = Auth::user();
@@ -98,9 +101,14 @@ class WebpageUserController extends Controller
                     ], 409);
                 }
 
+                $fullName = trim(($request->first_name ?? '') . ' ' . ($request->last_name ?? ''));
+                if (empty($fullName)) {
+                    $fullName = $request->email ?? 'Unknown User';
+                }
+
                 $webUser = WebUser::create([
                     'admin_user_id' => $request->admin_user_id,
-                    'name' => $request->first_name . ' ' . $request->last_name,
+                    'name' => $fullName,
                     'role' => $request->role,
                     'emp_id' => $request->emp_id,
                     'group' => $request->group,
@@ -108,8 +116,59 @@ class WebpageUserController extends Controller
                     'password' => Hash::make($request->password),
                 ]);
 
-                $initials = strtoupper($request->first_name[0] ?? '') . strtoupper($request->last_name[0] ?? '');
-                // $profilePhotoPath = $this->generateProfileImage($initials, $request->emp_id, $request->admin_user_id);
+                // Handle profile image upload for create - INTEGRATED DIRECTLY
+                $profilePhotoPath = null;
+                $adminUser = AdminUser::find($request->admin_user_id);
+                if ($request->hasFile('profile')) {
+                    try {
+                        $profileFile = $request->file('profile');
+                        $profileExtension = $profileFile->getClientOriginalExtension();
+                        $folderPath = "{$adminUser->company_name}/profile/";
+                        $fileName = "{$request->emp_id}.{$profileExtension}";
+                        $key = $folderPath . $fileName;
+                        $existingFiles = Storage::disk('s3')->files($folderPath);
+
+                        foreach ($existingFiles as $existingFile) {
+                            if (basename($existingFile, '.' . pathinfo($existingFile, PATHINFO_EXTENSION)) == $request->emp_id) {
+                                Storage::disk('s3')->delete($existingFile);
+                            }
+                        }
+
+                        $s3 = new S3Client([
+                            'region' => config('filesystems.disks.s3.region'),
+                            'version' => 'latest',
+                            'credentials' => [
+                                'key'    => config('filesystems.disks.s3.key'),
+                                'secret' => config('filesystems.disks.s3.secret'),
+                            ],
+                        ]);
+
+                        $bucket = config('filesystems.disks.s3.bucket');
+
+                        $s3->putObject([
+                            'Bucket' => $bucket,
+                            'Key'    => $key,
+                            'Body'   => $profileFile->get(),
+                            'ContentType' => $profileFile->getClientMimeType(),
+                        ]);
+
+                        $profilePhotoPath = $s3->getObjectUrl($bucket, $key);
+                        
+                    } catch (Exception $e) {
+                        Log::error('Profile image upload failed: ' . $e->getMessage());
+                        // Generate initials-based image as fallback
+                        $initials = strtoupper(substr($request->first_name ?? '', 0, 1)) . strtoupper(substr($request->last_name ?? '', 0, 1));
+                        if (method_exists($this, 'generateProfileImage')) {
+                            $profilePhotoPath = $this->generateProfileImage($initials, $request->emp_id, $request->admin_user_id);
+                        }
+                    }
+                } else {
+                    // Generate initials-based image
+                    $initials = strtoupper(substr($request->first_name ?? '', 0, 1)) . strtoupper(substr($request->last_name ?? '', 0, 1));
+                    if (method_exists($this, 'generateProfileImage')) {
+                        $profilePhotoPath = $this->generateProfileImage($initials, $request->emp_id, $request->admin_user_id);
+                    }
+                }
 
                 EmployeeDetails::create([
                     'web_user_id' => $webUser->id,
@@ -130,41 +189,66 @@ class WebpageUserController extends Controller
                     'reporting_manager_id' => $request->reporting_manager_id,
                     'reporting_manager_name' => $request->reporting_manager_name,
                     'place' => $request->place,
-                    // 'profile_photo' => $profilePhotoPath,
+                    'profile_photo' => $profilePhotoPath,
                 ]);
 
-                // Save payroll components
-                $allComponents = collect($request->earnings)->map(function ($comp) {
-                    return array_merge($comp, ['type' => 'Earnings']);
-                })->merge(
-                    collect($request->deductions)->map(function ($comp) {
-                        return array_merge($comp, ['type' => 'Deductions']);
-                    })
-                );
-
-                foreach ($allComponents as $component) {
-                    Payroll::create([
-                        'web_user_id' => $webUser->id,
-                        'emp_name' => $webUser->name,
-                        'emp_id' => $webUser->emp_id,
-                        'designation' => $request->designation,
-                        'salary_component' => $component['salary_component'],
-                        'type' => $component['type'],
-                        'amount' => $component['amount'],
-                        'ctc' => $request->ctc,
-                        'monthly_salary' => $request->actual_salary,
-                    ]);
+                if (!empty($request->earnings)) {
+                    foreach ($request->earnings as $earning) {
+                        Payroll::create([
+                            'web_user_id' => $webUser->id,
+                            'emp_name' => $webUser->name,
+                            'emp_id' => $webUser->emp_id,
+                            'designation' => $request->designation,
+                            'salary_component' => $earning['salary_component'],
+                            'type' => 'Earnings',
+                            'amount' => $earning['amount'],
+                            'ctc' => $request->ctc,
+                            'monthly_salary' => $request->actual_salary,
+                        ]);
+                    }
                 }
 
-                $basic = collect($request->earnings)->firstWhere('salary_component', 'Basic')['amount'] ?? null;
-                $gross = collect($request->earnings)->sum('amount');
-                $total_deductions = collect($request->deductions ?? [])->sum('amount');
+                if (!empty($request->deductions)) {
+                    foreach ($request->deductions as $deduction) {
+                        Payroll::create([
+                            'web_user_id' => $webUser->id,
+                            'emp_name' => $webUser->name,
+                            'emp_id' => $webUser->emp_id,
+                            'designation' => $request->designation,
+                            'salary_component' => $deduction['salary_component'],
+                            'type' => 'Deductions',
+                            'amount' => $deduction['amount'],
+                            'ctc' => $request->ctc,
+                            'monthly_salary' => $request->actual_salary,
+                        ]);
+                    }
+                }
+
+                $basic = null;
+                $gross = 0;
+                $total_deductions = 0;
+
+                if (!empty($request->earnings)) {
+                    foreach ($request->earnings as $earning) {
+                        if (strtolower($earning['salary_component']) === 'basic') {
+                            $basic = $earning['amount'];
+                        }
+                        $gross += floatval($earning['amount']);
+                    }
+                }
+
+                if (!empty($request->deductions)) {
+                    foreach ($request->deductions as $deduction) {
+                        $total_deductions += floatval($deduction['amount']);
+                    }
+                }
+
                 $total_salary = $request->actual_salary ?? null;
                 $status = 'Generated';
                 $lastPayroll = Payroll::where('web_user_id', $webUser->id)->first();
 
                 $policy = DB::table('policies')->where('admin_user_id', $request->admin_user_id)->where('title', 'salary_period')->first();
-                $salaryPeriod = $policy->policy ?? '26To25';
+                $salaryPeriod = $policy ? ($policy->policy ?? '26To25') : '26To25';
 
                 preg_match('/To(\d{1,2})/', $salaryPeriod, $matches);
                 $endDay = isset($matches[1]) ? (int)$matches[1] : 25;
@@ -224,52 +308,110 @@ class WebpageUserController extends Controller
                     'role' => $request->role ?? $webUser->role,
                     'emp_id' => $request->emp_id ?? $webUser->emp_id,
                     'group' => $request->group ?? $webUser->group,
-                    // 'password' => Hash::make($request->password) ?? $webUser->password,
                 ]);
 
                 $empdetails = EmployeeDetails::where('web_user_id', $webUser->id)->first();
 
-                $webUser->employeeDetails()->update([
-                    'role_location' => $request->role_location ?? $empdetails->role_location,
-                    'gender' => $request->gender ?? $empdetails->gender,
-                    'personal_contact_no' => $request->personal_contact_no ?? $empdetails->personal_contact_no,
-                    'emergency_contact_no' => $request->emergency_contact_no ?? $empdetails->emergency_contact_no,
-                    'official_contact_no' => $request->official_contact_no ?? $empdetails->official_contact_no,
-                    'designation' => $request->designation ?? $empdetails->designation,
-                    'department' => $request->department ?? $empdetails->department,
-                    'employment_type' => $request->employment_type ?? $empdetails->employment_type,
-                    'blood_group' => $request->blood_group ?? $empdetails->blood_group,
-                    'dob' => $request->dob ?? $empdetails->dob,
-                    'work_module' => $request->work_module ?? $empdetails->work_module,
-                    'date_of_joining' => $request->date_of_joining ?? $empdetails->date_of_joining,
-                    'reporting_manager_id' => $request->reporting_manager_id ?? $empdetails->reporting_manager_id,
-                    'reporting_manager_name' => $request->reporting_manager_name ?? $empdetails->reporting_manager_name,
-                    'place' => $request->place ?? $empdetails->place,
-                ]);
+                // Handle profile image upload for update - INTEGRATED DIRECTLY
+                $profilePhotoPath = $empdetails ? $empdetails->profile_photo : null; // Keep existing if no new upload
+                $adminUser = AdminUser::find($request->admin_user_id);
+                if ($request->hasFile('profile')) {
+                    try {
+                        $profileFile = $request->file('profile');
+                        $profileExtension = $profileFile->getClientOriginalExtension();
+                        $folderPath = "{$adminUser->company_name}/profile/";
+                        $fileName = "{$request->emp_id}.{$profileExtension}";
+                        $key = $folderPath . $fileName;
+                        $existingFiles = Storage::disk('s3')->files($folderPath);
+
+                        foreach ($existingFiles as $existingFile) {
+                            if (basename($existingFile, '.' . pathinfo($existingFile, PATHINFO_EXTENSION)) == $request->emp_id) {
+                                Storage::disk('s3')->delete($existingFile);
+                            }
+                        }
+
+                        $s3 = new S3Client([
+                            'region' => config('filesystems.disks.s3.region'),
+                            'version' => 'latest',
+                            'credentials' => [
+                                'key'    => config('filesystems.disks.s3.key'),
+                                'secret' => config('filesystems.disks.s3.secret'),
+                            ],
+                        ]);
+
+                        $bucket = config('filesystems.disks.s3.bucket');
+
+                        $s3->putObject([
+                            'Bucket' => $bucket,
+                            'Key'    => $key,
+                            'Body'   => $profileFile->get(),
+                            'ContentType' => $profileFile->getClientMimeType(),
+                        ]);
+
+                        $profilePhotoPath = $s3->getObjectUrl($bucket, $key);
+                    } catch (Exception $e) {
+                        Log::error('Profile image upload failed during update: ' . $e->getMessage());
+                    }
+                }
+
+                // Update employee details
+                if ($empdetails) {
+                    $empdetails->update([
+                        'emp_name' => $request->name ?? $empdetails->emp_name,
+                        'role_location' => $request->role_location ?? $empdetails->role_location,
+                        'gender' => $request->gender ?? $empdetails->gender,
+                        'personal_contact_no' => $request->personal_contact_no ?? $empdetails->personal_contact_no,
+                        'emergency_contact_no' => $request->emergency_contact_no ?? $empdetails->emergency_contact_no,
+                        'official_contact_no' => $request->official_contact_no ?? $empdetails->official_contact_no,
+                        'designation' => $request->designation ?? $empdetails->designation,
+                        'department' => $request->department ?? $empdetails->department,
+                        'employment_type' => $request->employment_type ?? $empdetails->employment_type,
+                        'blood_group' => $request->blood_group ?? $empdetails->blood_group,
+                        'dob' => $request->dob ?? $empdetails->dob,
+                        'work_module' => $request->work_module ?? $empdetails->work_module,
+                        'date_of_joining' => $request->date_of_joining ?? $empdetails->date_of_joining,
+                        'reporting_manager_id' => $request->reporting_manager_id ?? $empdetails->reporting_manager_id,
+                        'reporting_manager_name' => $request->reporting_manager_name ?? $empdetails->reporting_manager_name,
+                        'place' => $request->place ?? $empdetails->place,
+                        'profile_photo' => $profilePhotoPath,
+                    ]);
+                }
 
                 // Delete old payroll and insert updated
                 Payroll::where('web_user_id', $webUser->id)->delete();
 
-                $allComponents = collect($request->earnings)->map(function ($comp) {
-                    return array_merge($comp, ['type' => 'Earnings']);
-                })->merge(
-                    collect($request->deductions)->map(function ($comp) {
-                        return array_merge($comp, ['type' => 'Deductions']);
-                    })
-                );
+                // Handle earnings
+                if (!empty($request->earnings)) {
+                    foreach ($request->earnings as $earning) {
+                        Payroll::create([
+                            'web_user_id' => $webUser->id,
+                            'emp_name' => $webUser->name,
+                            'emp_id' => $webUser->emp_id,
+                            'designation' => $request->designation ?? ($empdetails ? $empdetails->designation : null),
+                            'salary_component' => $earning['salary_component'],
+                            'type' => 'Earnings',
+                            'amount' => $earning['amount'],
+                            'ctc' => $request->ctc,
+                            'monthly_salary' => $request->actual_salary,
+                        ]);
+                    }
+                }
 
-                foreach ($allComponents as $component) {
-                    Payroll::create([
-                        'web_user_id' => $webUser->id,
-                        'emp_name' => $webUser->name,
-                        'emp_id' => $webUser->emp_id,
-                        'designation' => $request->designation,
-                        'salary_component' => $component['salary_component'],
-                        'type' => $component['type'],
-                        'amount' => $component['amount'],
-                        'ctc' => $request->ctc,
-                        'monthly_salary' => $request->actual_salary,
-                    ]);
+                // Handle deductions
+                if (!empty($request->deductions)) {
+                    foreach ($request->deductions as $deduction) {
+                        Payroll::create([
+                            'web_user_id' => $webUser->id,
+                            'emp_name' => $webUser->name,
+                            'emp_id' => $webUser->emp_id,
+                            'designation' => $request->designation ?? ($empdetails ? $empdetails->designation : null),
+                            'salary_component' => $deduction['salary_component'],
+                            'type' => 'Deductions',
+                            'amount' => $deduction['amount'],
+                            'ctc' => $request->ctc,
+                            'monthly_salary' => $request->actual_salary,
+                        ]);
+                    }
                 }
 
                 DB::commit();
@@ -284,12 +426,13 @@ class WebpageUserController extends Controller
                 'status' => 'error',
                 'message' => 'Invalid action provided.'
             ], 400);
-
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Error in saveWebUser: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             return response()->json([
                 'status' => 'error',
-                'message' => 'Something went wrong',
+                'message' => 'Something went wrong: ' . $e->getMessage(),
                 'error' => $e->getMessage()
             ], 500);
         }

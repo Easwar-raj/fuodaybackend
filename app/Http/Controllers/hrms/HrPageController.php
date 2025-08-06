@@ -678,6 +678,7 @@ class HrPageController extends Controller
             ], 500);
         }
     }
+
     public function getAllEmployeesWithUser()
     {
         $user = Auth::user();

@@ -308,6 +308,63 @@ class AttendancePageController extends Controller
             'data' => $serverTime->format('h:i A')
         ], 200);
     }
+    
+    public function processExpiredSessions()
+    {
+        try {
+            $yesterday = Carbon::yesterday()->toDateString();
+            
+            // Find all attendance records from yesterday that don't have checkout time
+            $expiredSessions = Attendance::where('date', $yesterday)
+                ->whereNull('checkout')
+                ->get();
+
+            $processedCount = 0;
+
+            foreach ($expiredSessions as $attendance) {
+                if (!$attendance->checkin) {
+                    continue; // Skip if no check-in
+                }
+
+                $dateOnly = Carbon::parse($attendance->date)->format('Y-m-d');
+
+                // Correctly formatted checkout time
+                $checkoutTime = Carbon::parse($dateOnly . ' 23:59:00');
+
+                // Parse checkin time safely
+                $checkin = Carbon::parse($dateOnly . ' ' . $attendance->checkin);
+
+                $diffInSeconds = $checkin->diffInSeconds($checkoutTime);
+                $hours = floor($diffInSeconds / 3600);
+                $minutes = floor(($diffInSeconds % 3600) / 60);
+                $workedHours = sprintf('%02d:%02d hours', $hours, $minutes);
+
+                $attendance->checkout = '23:59:00';
+                $attendance->worked_hours = $workedHours;
+                $attendance->status = 'Auto Logout';
+                $attendance->save();
+
+                $processedCount++;
+            }
+            return response()->json([
+                'message' => "Processed {$processedCount} expired sessions",
+                'status' => 'Success',
+                'processed_count' => $processedCount
+            ], 200);
+
+        } catch (Exception $e) {
+            Log::error('Error processing expired sessions', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Error processing expired sessions',
+                'status' => 'error',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
     public function updateAttendance(Request $request)
     {
@@ -327,7 +384,24 @@ class AttendancePageController extends Controller
         }
 
         $checkin = Carbon::parse($attendance->checkin);
-        $checkout = Carbon::now();
+        
+        // Use the checkout time from request if provided (for auto-logout), otherwise use current time
+        if ($request->has('checkout')) {
+            // Parse the time string from frontend (e.g., "11:59 PM")
+            $checkoutTimeString = $request->checkout;
+            
+            if (strpos($checkoutTimeString, 'AM') !== false || strpos($checkoutTimeString, 'PM') !== false) {
+                // Convert 12-hour format to 24-hour format
+                $checkout = Carbon::createFromFormat('g:i A', $checkoutTimeString);
+            } else {
+                $checkout = Carbon::createFromFormat('H:i', $checkoutTimeString);
+            }
+            
+            // Set the date to today
+            $checkout->setDate($checkin->year, $checkin->month, $checkin->day);
+        } else {
+            $checkout = Carbon::now();
+        }
 
         $diffInSeconds = $checkin->diffInSeconds($checkout);
         $hours = floor($diffInSeconds / 3600);
@@ -337,9 +411,14 @@ class AttendancePageController extends Controller
 
         $attendance->checkout = $checkout->toTimeString();
         $attendance->worked_hours = $workedHours;
+        
+        // Set status based on request parameters
         if ($request->has('timeout') && $request->timeout) {
-            $attendance->status = 'Timeout';
+            $attendance->status = $request->has('reason') && $request->reason === '11:59 PM auto-logout' 
+                ? 'Auto Logout' 
+                : 'Timeout';
         }
+        
         $attendance->save();
 
         return response()->json([
@@ -348,8 +427,6 @@ class AttendancePageController extends Controller
             'data' => $checkout->format('h:i A')
         ], 200);
     }
-
-
 
     public function getAttendanceByRole($id)
     {
@@ -1261,11 +1338,13 @@ class AttendancePageController extends Controller
 
             $attendances = DB::table('attendances')
                 ->where('web_user_id', $id)
+                ->whereNotNull('checkin')
                 ->select([
                     DB::raw('MIN(id) as id'),
                     'date',
                     DB::raw('MIN(status) as status'),
                     DB::raw('MIN(emp_name) as emp_name'),
+                    DB::raw('MIN(checkin) as checkin'),
                 ])
                 ->groupBy('date')
                 ->orderBy('date', 'desc')

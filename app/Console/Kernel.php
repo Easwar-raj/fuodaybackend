@@ -17,8 +17,14 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         $schedule->command('attendance:verify')->dailyAt('23:00');
+        // Add this new line for processing expired sessions
+        $schedule->call(function () {
+            $controller = new \App\Http\Controllers\hrms\AttendancePageController();
+            $controller->processExpiredSessions();
+        })->dailyAt('00:01');
         // $schedule->command('inspire')->hourly();
     }
+ 
 
     /**
      * Register the commands for the application.
