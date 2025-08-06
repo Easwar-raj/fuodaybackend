@@ -22,6 +22,7 @@ use App\Models\Incentives;
 use App\Models\Payroll;
 use Exception;
 use NumberToWords\NumberToWords;
+use App\Models\EmployeeDetails;
 
 class HrPageController extends Controller
 {
@@ -676,5 +677,31 @@ class HrPageController extends Controller
                 'message' => 'Failed to update regulation status: ' . $e->getMessage(),
             ], 500);
         }
+    }
+    public function getAllEmployeesWithUser()
+    {
+        $user = Auth::user();
+        $webUserIds = WebUser::where('admin_user_id', $user->admin_user_id)->pluck('id');
+        $employees = EmployeeDetails::whereIn('web_user_id', $webUserIds)
+            ->select(
+                'id',
+                'web_user_id',
+                'emp_name',
+                'emp_id',
+                'dob',
+                'official_contact_no',
+                'official_email',
+                'designation',
+                'department',
+                'personal_contact_no',
+                'profile_photo'
+            )
+            ->with(['webUser:id,name,email,role'])
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $employees
+        ], 200);
     }
 }

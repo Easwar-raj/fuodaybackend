@@ -180,6 +180,7 @@ Route::prefix('hrms')->group(function () {
             Route::get('/payroll-summary/{id}', [HrPageController::class, 'getEmployeePayrollSummaryById']);
             Route::get('/regulations/{id}', [HrPageController::class, 'getRegulations']);
             Route::post('/update-regulation-status', [HrPageController::class, 'updateRegulationStatus']);
+            Route::get('/employees-with-user', [HrPageController::class, 'getAllEmployeesWithUser']);
         });
         Route::prefix('payroll')->group(function () {
             Route::get('/getpayroll/{id}', [PayrollPageController::class, 'getPayrollDetails']);
