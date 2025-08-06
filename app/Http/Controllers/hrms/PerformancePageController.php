@@ -34,6 +34,7 @@ class PerformancePageController extends Controller
         // Format tasks
         $mappedTasks = $tasks->map(function ($task) {
             return [
+                'id'              => $task->id,
                 'description'     => $task->description,
                 'assigned_by'     => $task->assigned_by ?? null,
                 'project'         => $task->project ?? null,
@@ -41,6 +42,7 @@ class PerformancePageController extends Controller
                 'status'          => $task->status,
                 'progress_note'   => $task->progress_note,
                 'deadline'        => optional($task->deadline)->format('Y-m-d'),
+                'comment'         => $task->comment,
                 'date'            => optional($task->date)->format('Y-m-d'),
             ];
         });

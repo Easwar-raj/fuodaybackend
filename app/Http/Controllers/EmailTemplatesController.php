@@ -40,7 +40,7 @@ class EmailTemplatesController extends Controller
 
             $templates = EmailTemplates::where('admin_user_id', $adminUserId)
                 ->whereIn('type', $types)
-                ->get();
+                ->get(['id', 'type', 'subject', 'body']);
 
             if ($templates->isEmpty()) {
                 return response()->json([
@@ -94,11 +94,21 @@ class EmailTemplatesController extends Controller
     public function sendCustomEmail(Request $request)
     {
         $validated = $request->validate([
+            'web_user_id' => 'required|integer|exists:web_users,id',
             'to' => 'required|array|min:1',
             'to.*' => 'email',
             'subject' => 'required|string',
             'body' => 'required|string',
         ]);
+
+        $webUser = WebUser::find($request->web_user_id);
+
+        if (!$webUser || !$validated) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invalid details'
+            ], 403);
+        }
 
         $toEmails = $validated['to'];
         $subject = $validated['subject'];
@@ -109,7 +119,7 @@ class EmailTemplatesController extends Controller
 
         foreach ($toEmails as $email) {
             Mail::send([], [], function ($message) use ($email, $subject, $htmlBody) {
-                $message->to($email)->subject($subject)->setBody($htmlBody, 'text/html');
+                $message->to($email)->subject($subject)->html($htmlBody);
             });
         }
 

@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Models\AdminUser;
 use App\Models\EmployeeDetails;
 use App\Models\WebUser;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Skills;
@@ -16,7 +15,6 @@ use App\Models\Education;
 use App\Models\Onboarding;
 use Aws\S3\S3Client;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class ProfilePageController extends Controller
 {

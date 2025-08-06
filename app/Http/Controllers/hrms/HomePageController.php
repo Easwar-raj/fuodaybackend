@@ -191,7 +191,7 @@ class HomePageController extends Controller
             'project_id' => $request->project_id ?? null,
             'project' => $request->project ?? null,
             'priority' => $request->priority,
-            'status' => 'pending',
+            'status' => 'Pending',
             'deadline' => $request->deadline,
             'comment' => $request->comment ?? null
         ]);

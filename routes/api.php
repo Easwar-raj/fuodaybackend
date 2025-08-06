@@ -233,7 +233,6 @@ Route::prefix('ats')->group(function () {
         Route::prefix('tracker')->group(function () {
             Route::get('/gettracker/{id}', [TrackerPageController::class, 'getTrackerData']);
             Route::get('/getinterview/{id}', [TrackerPageController::class, 'getInterviewStats']);
-            Route::post('/sendemail', [EmailTemplatesController::class, 'sendCustomEmail']);
         });
         Route::prefix('hiring')->group(function () {
             Route::get('/getoverview/{id}', [HiringPageController::class, 'getInterviewOverview']);
@@ -241,8 +240,9 @@ Route::prefix('ats')->group(function () {
             Route::get('/getonboarding/{id}', [HiringPageController::class, 'getOnboarding']);
         });
         Route::prefix('template')->group(function () {
-            Route::get('/get', [EmailTemplatesController::class, 'getTemplatesByType']);
+            Route::post('/get', [EmailTemplatesController::class, 'getEmailTemplateByType']);
             Route::post('/add', [EmailTemplatesController::class, 'addEmailTemplate']);
+            Route::post('/sendemail', [EmailTemplatesController::class, 'sendCustomEmail']);
         });
     });
 });
