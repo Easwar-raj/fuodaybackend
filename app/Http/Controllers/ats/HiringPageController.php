@@ -27,7 +27,7 @@ class HiringPageController extends Controller
         $interviewsToday = Candidate::where('web_user_id', $id)->whereDate('interview_date', $today)->pluck('name');
         $techDoneHrNotStarted = Candidate::with('details')
             ->where('web_user_id', $id)
-            ->where('technical_status', 'Selected')
+            ->whereIn('technical_status', ['Selected', 'Shortlisted'])
             ->whereNull('hr_status')
             ->get();
 

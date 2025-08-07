@@ -13,14 +13,12 @@ class TrackerPageController extends Controller
     public function getTrackerData(Request $request, $id)
     {
         $webUser = WebUser::find($id);
- 
-            if (!$webUser) {
-                return response()->json([
-                    'error' => 'Invalid web_user_id',
-                    'message' => 'User not found'
-                ], 404);
-            }
- 
+        if (!$webUser) {
+            return response()->json([
+                'error' => 'Invalid web_user_id',
+                'message' => 'User not found'
+            ], 404);
+        }
         $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
         $query = Candidate::with('details')->where('web_user_id', $id)->whereNotNull('L1')->whereNull('L2');
 
@@ -41,9 +39,7 @@ class TrackerPageController extends Controller
         }
 
         if ($request->filled('location')) {
-            $query->whereHas('details', function ($q) use ($request) {
-                $q->where('nationality', 'LIKE', "%{$request->location}%");
-            });
+            $query->whereHas('details', function ($q) use ($request) { $q->where('nationality', 'LIKE', "%{$request->location}%");});
         }
 
         $candidates = $query->get();
@@ -73,14 +69,12 @@ class TrackerPageController extends Controller
     public function getInterviewStats($id)
     {
         $webUser = WebUser::find($id);
- 
-            if (!$webUser) {
-                return response()->json([
-                    'error' => 'Invalid web_user_id',
-                    'message' => 'User not found'
-                ], 404);
-            }
- 
+        if (!$webUser) {
+            return response()->json([
+                'error' => 'Invalid web_user_id',
+                'message' => 'User not found'
+            ], 404);
+        }
         $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
         $today = Carbon::today();
         $interviewsToday = Candidate::whereDate('interview_date', $today)->where('web_user_id', $id)->get();

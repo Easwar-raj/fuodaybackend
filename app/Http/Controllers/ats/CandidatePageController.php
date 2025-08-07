@@ -175,7 +175,7 @@ class CandidatePageController extends Controller
                 'call_status' => 'nullable|string|max:255'
             ]);
 
-             if (!$validated) {
+            if (!$validated) {
                 return response()->json([
                     'message' => 'Invalid data'
                 ], 400);
