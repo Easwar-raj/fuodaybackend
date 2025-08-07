@@ -315,12 +315,8 @@ class AttendancePageController extends Controller
             $yesterday = Carbon::yesterday()->toDateString();
             
             // Find all attendance records from yesterday that don't have checkout time
-            $expiredSessions = Attendance::where('date', $yesterday)
-                ->whereNull('checkout')
-                ->get();
-
+            $expiredSessions = Attendance::where('date', $yesterday)->whereNull('checkout')->whereNull('checkin')->get();
             $processedCount = 0;
-
             foreach ($expiredSessions as $attendance) {
                 if (!$attendance->checkin) {
                     continue; // Skip if no check-in

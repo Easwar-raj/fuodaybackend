@@ -48,6 +48,9 @@ jobs:
           sudo chmod -R 775 /var/www/fuodaybackend/storage
           sudo chmod -R 775 /var/www/fuodaybackend/bootstrap/cache
 
+          #schedule 
+          php artisan schedule:run >> /dev/null 2>&1
+
           # Run these
           php artisan cache:clear
           php artisan config:clear

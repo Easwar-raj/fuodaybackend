@@ -1230,7 +1230,7 @@ class AdminUserController extends Controller
 
         // Fetch all web user
         $webUsers = WebUser::with([
-            'employeeDetails:id,web_user_id,emp_name,emp_id,profile_photo,role_location,designation,department,employment_type,work_module,date_of_joining,reporting_manager_id,reporting_manager_name',
+            'employeeDetails:id,web_user_id,emp_name,emp_id,profile_photo,role_location,designation,department,employment_type,work_module,date_of_joining,reporting_manager_id,reporting_manager_name,personal_contact_no',
             'payroll:id,web_user_id,emp_name,emp_id,designation,ctc,monthly_salary,salary_component,type,amount'
         ])
         ->where('admin_user_id', $id)
