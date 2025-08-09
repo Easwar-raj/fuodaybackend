@@ -91,7 +91,8 @@ class HomePageController extends Controller
         $tasks = Task::with(['projectTeamTo.project', 'projectTeamBy.project'])->get();
 
         $assignedTo = $tasks->where('assigned_to_id', $id)->map(function ($task) {
-            $project = optional($task->projectTeamTo->project ?? $task->projectTeamBy->project);
+            $projectTeam = $task->projectTeamTo ?? $task->projectTeamBy;
+            $project = optional($projectTeam ? $projectTeam->project : null);
             return [
                 'date' => Carbon::parse($task->date)->format('d-m-Y'),
                 'id' => $task->id,
@@ -109,7 +110,8 @@ class HomePageController extends Controller
         })->values();
 
         $assignedBy = $tasks->where('assigned_by_id', $id)->map(function ($task) {
-            $project = optional($task->projectTeamTo->project ?? $task->projectTeamBy->project);
+            $projectTeam = $task->projectTeamTo ?? $task->projectTeamBy;
+            $project = optional($projectTeam ? $projectTeam->project : null);
             return [
                 'date' => Carbon::parse($task->date)->format('d-m-Y'),
                 'id' => $task->id,
