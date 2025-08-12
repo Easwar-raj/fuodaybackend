@@ -9,6 +9,7 @@ use App\Models\Payroll;
 use App\Models\Payslip;
 use App\Models\Policies;
 use App\Models\Schedule;
+use App\Models\TotalLeaves;
 use App\Models\WebUser;
 use Carbon\Carbon;
 
@@ -18,7 +19,6 @@ class AttendanceService
     {
         $today = Carbon::today();
         $weekday = strtolower($today->format('l'));
-
         $webUsers = WebUser::all()->groupBy('admin_user_id');
 
         foreach ($webUsers as $adminUserId => $usersGroup) {
@@ -26,13 +26,13 @@ class AttendanceService
             $policies = Policies::where('admin_user_id', $adminUserId)
                 ->whereIn('title', [
                     "general_shift", // 09:00 - 06:00
-                    "What are the total weekly working hours in your organization?",
+                    // "What are the total weekly working hours in your organization?",
                     "daily_work_hours", // 8
                     "daily_break_hours", // 1
-                    "Do employees receive LOP for late arrivals? If yes, after how many warnings?",
-                    "Is LOP applied for unauthorized leaves?",
-                    "Is LOP applied when employees exhaust their leave quota?",
-                    "Which days are considered weekly holidays in your organization?",
+                    "is_late_and_count",
+                    // "Is LOP applied for unauthorized leaves?",
+                    // "Is LOP applied when employees exhaust their leave quota?",
+                    "weekoff",
                     "salary_period", // 26To25
                     "salary_date"
                 ])->pluck('policy', 'title');
@@ -52,18 +52,14 @@ class AttendanceService
             $breakTimeHours = (int) filter_var($policies["daily_break_hours"] ?? '1', FILTER_SANITIZE_NUMBER_INT);
 
             $lateArrivalWarnings = null;
-            if (!empty($policies["Do employees receive LOP for late arrivals? If yes, after how many warnings?"])) {
-                preg_match('/\d+/', $policies["Do employees receive LOP for late arrivals? If yes, after how many warnings?"], $matches);
+            if (!empty($policies["is_late_and_count"])) {
+                preg_match('/\d+/', $policies["is_late_and_count"], $matches);
                 $lateArrivalWarnings = $matches[0] ?? null;
             }
 
-            $weeklyHolidays = array_map('strtolower', array_map('trim',
-                explode(',', $policies["Which days are considered weekly holidays in your organization?"] ?? '')
-            ));
-
             $salaryPeriod = $policies['salary_period'] ?? null;
             $salaryDateDay = $policies['salary_date'] ?? null;
-            
+
             if ($salaryPeriod && $salaryDateDay) {
                 $startDay = (int) explode('To', $salaryPeriod)[0];
                 if ((int)$today->format('d') === ($startDay)) {
@@ -80,8 +76,7 @@ class AttendanceService
                         $basic = (float) $payroll->monthy_salary ?? 0;
                         $earnings = Payroll::where('web_user_id', $userId)->where('type', 'earnings')->sum('amount');
                         $deductions = Payroll::where('web_user_id', $userId)->where('type', 'deductions')->sum('amount');
-                        $gross = $basic + $earnings;
-                        $totalSalary = $gross - $deductions;
+                        $totalSalary = $earnings - $deductions;
 
                         Payslip::create([
                             'payroll_id' => $payroll->id,
@@ -92,7 +87,7 @@ class AttendanceService
                             'overtime' => null,
                             'total_paid_days' => $periodDays,
                             'lop' => 0,
-                            'gross' => $gross,
+                            'gross' => $earnings,
                             'total_deductions' => $deductions,
                             'total_salary' => $totalSalary,
                             'status' => 'unpaid',
@@ -104,50 +99,35 @@ class AttendanceService
             // === Attendance Verification ===
             $userIds = $usersGroup->pluck('id');
             $attendances = Attendance::whereIn('web_user_id', $userIds)->whereDate('date', $today)->get();
-            $isCompanyHoliday = Holidays::whereDate('date', $today)->where('admin_user_id', $adminUserId)->exists();
 
             foreach ($attendances as $attendance) {
                 $userId = $attendance->user_id;
                 $attendanceStatus = 'Absent';
+                $schedule = Schedule::where('web_user_id', $userId)->whereDate('date', $today)->first();
+                $actualShiftStart = $schedule ? Carbon::parse($schedule->start_time)->format('H:i') : $shiftStart;
+                $checkin = $attendance->checkin ? Carbon::parse($attendance->checkin) : null;
+                $checkout = $attendance->checkout ? Carbon::parse($attendance->checkout) : null;
 
-                if ($isCompanyHoliday || in_array($weekday, $weeklyHolidays)) {
-                    $attendanceStatus = 'Holiday';
-                } else {
-                    $leave = LeaveRequest::where('web_user_id', $userId)
-                        ->whereDate('from', '<=', $today)
-                        ->whereDate('to', '>=', $today)
-                        ->where('status', 'Approved')->first();
+                if ($checkin && $checkout) {
+                    $hoursWorked = $checkout->diffInMinutes($checkin) / 60 - $breakTimeHours;
+                    $lateThreshold = Carbon::createFromFormat('H:i', $actualShiftStart)->addMinutes(15);
 
-                    if ($leave) {
-                        $attendanceStatus = $leave->type === 'Permission' ? 'Permission' : 'Leave';
-                    } else {
-                        $schedule = Schedule::where('web_user_id', $userId)->whereDate('date', $today)->first();
-                        $actualShiftStart = $schedule ? Carbon::parse($schedule->start_time)->format('H:i') : $shiftStart;
-                        $checkin = $attendance->checkin ? Carbon::parse($attendance->checkin) : null;
-                        $checkout = $attendance->checkout ? Carbon::parse($attendance->checkout) : null;
-
-                        if ($checkin && $checkout) {
-                            $hoursWorked = $checkout->diffInMinutes($checkin) / 60 - $breakTimeHours;
-                            $lateThreshold = Carbon::createFromFormat('H:i', $actualShiftStart)->addMinutes(15);
-
-                            if ($hoursWorked >= $dailyWorkHours) {
-                                if ($checkin->gt($lateThreshold)) {
-                                    $attendance->late_warnings = ($attendance->late_warnings ?? 0) + 1;
-                                    $attendanceStatus = ($lateArrivalWarnings && $attendance->late_warnings > $lateArrivalWarnings) ? 'LOP' : 'Late Present';
-                                } else {
-                                    $attendanceStatus = 'Present';
-                                }
-                            } elseif ($hoursWorked >= ($dailyWorkHours / 2)) {
-                                $attendanceStatus = 'Half Day';
-                            } else {
-                                $attendanceStatus = 'LOP';
-                            }
-                        } elseif ($checkin && !$checkout) {
-                            $attendanceStatus = 'Checkout Missing';
-                        } elseif (!$checkin && $checkout) {
-                            $attendanceStatus = 'Checkin Missing';
+                    if ($hoursWorked >= $dailyWorkHours) {
+                        if ($checkin->gt($lateThreshold)) {
+                            $attendance->late_warnings = ($attendance->late_warnings ?? 0) + 1;
+                            $attendanceStatus = ($lateArrivalWarnings && $attendance->late_warnings > $lateArrivalWarnings) ? 'LOP' : 'Late Present';
+                        } else {
+                            $attendanceStatus = 'Present';
                         }
+                    } elseif ($hoursWorked >= ($dailyWorkHours / 2)) {
+                        $attendanceStatus = 'Half Day';
+                    } else {
+                        $attendanceStatus = 'LOP';
                     }
+                } elseif ($checkin && !$checkout) {
+                    $attendanceStatus = 'Checkout Missing';
+                } elseif (!$checkin && $checkout) {
+                    $attendanceStatus = 'Checkin Missing';
                 }
 
                 $attendance->status = $attendanceStatus;
@@ -158,9 +138,7 @@ class AttendanceService
                     $payroll = Payroll::where('web_user_id', $userId)->first();
                     if (!$payroll) continue;
 
-                    $payslip = Payslip::where('payroll_id', $payroll->id)
-                        ->where('month', $today->format('F'))
-                        ->whereYear('date', $today->year)->first();
+                    $payslip = Payslip::where('payroll_id', $payroll->id)->where('month', $today->format('F'))->whereYear('date', $today->year)->first();
                     if (!$payslip) continue;
 
                     $payslip->lop += 1;
@@ -170,6 +148,95 @@ class AttendanceService
                     $payslip->save();
                 }
             }
+
+            $existingUserIds = $attendances->pluck('web_user_id')->toArray();
+            $allUserIds = $userIds->toArray();
+            $missingUserIds = array_diff($allUserIds, $existingUserIds);
+            $weeklyHolidays = array_map('strtolower', array_map('trim', explode(',', $policies["weekoff"] ?? '')));
+            $isCompanyHoliday = Holidays::whereDate('date', $today)->where('admin_user_id', $adminUserId)->exists();
+            $status = in_array($weekday, $weeklyHolidays) ? 'Weekoff' : ( $isCompanyHoliday ? 'Holiday' : 'Absent' );
+            $leaveQuery = LeaveRequest::where('web_user_id', $userId)->whereDate('from', '<=', $today)->whereDate('to', '>=', $today);
+            $LopLeave = $leaveQuery->where('status', 'Pending')->orWhere('status', 'Approved')->first();
+            $totalAllowed = TotalLeaves::where('admin_user_id', $userId)->sum('total');
+            $lopCount = 0;
+            if ($LopLeave) {
+                $startDate = null;
+                $endDate = null;
+                switch ($LopLeave->period) {
+                    case 'yearly':
+                        $startDate = Carbon::now()->startOfYear();
+                        $endDate = Carbon::now()->endOfYear();
+                        break;
+                    case 'half-yearly':
+                        $month = Carbon::now()->month;
+                        if ($month <= 6) {
+                            $startDate = Carbon::now()->startOfYear();
+                            $endDate = Carbon::now()->startOfYear()->addMonths(5)->endOfMonth();
+                        } else {
+                            $startDate = Carbon::now()->startOfYear()->addMonths(6);
+                            $endDate = Carbon::now()->endOfYear();
+                        }
+                        break;
+                    case 'quarterly':
+                        $startDate = Carbon::now()->firstOfQuarter();
+                        $endDate = Carbon::now()->lastOfQuarter();
+                        break;
+                }
+
+                $leavesTaken = LeaveRequest::where('web_user_id', $userId)
+                    ->where('status', '!=', 'Rejected')
+                    ->where(function ($query) use ($startDate, $endDate) {
+                        $query->whereBetween('from', [$startDate, $endDate])->orWhereBetween('to', [$startDate, $endDate]);
+                    })
+                    ->get()
+                    ->reduce(function ($count, $leave) {
+                        $from = Carbon::parse($leave->from);
+                        $to = Carbon::parse($leave->to);
+                        return $count + $from->diffInDays($to) + 1;
+                    }, 0);
+                if ($leavesTaken >= $totalAllowed) {
+                    $lopCount = 1;
+                    $payroll = Payroll::where('web_user_id', $userId)->first();
+                    if (!$payroll) continue;
+
+                    $payslip = Payslip::where('payroll_id', $payroll->id)->where('month', $today->format('F'))->whereYear('date', $today->year)->first();
+                    if (!$payslip) continue;
+
+                    $payslip->lop += 1;
+                    $perDay = $payslip->total_paid_days ? ($payslip->gross / $payslip->total_paid_days) : 0;
+                    $payslip->total_deductions += $perDay;
+                    $payslip->total_salary -= $perDay;
+                    $payslip->save();
+                }
+            }
+            foreach ($missingUserIds as $userId) {
+                $leave = $leaveQuery->where('status', 'Approved')->first();
+                $status = $status == 'Absent' && $leave ? ( $leave->type == 'Permission' ? 'Permission' : 'Leave' )  : 'Absent';
+                Attendance::create([
+                    'web_user_id' => $userId,
+                    'emp_id' => WebUser::find($userId)->values('emp_id'),
+                    'emp_name' => WebUser::find($userId)->values('name'),
+                    'date' => $today,
+                    'checkin' => null,
+                    'checkout' => null,
+                    'location' => null,
+                    'status' => $status
+                ]);
+                if ($status == 'Absent' && $lopCount == 0) {
+                    $payroll = Payroll::where('web_user_id', $userId)->first();
+                    if (!$payroll) continue;
+
+                    $payslip = Payslip::where('payroll_id', $payroll->id)->where('month', $today->format('F'))->whereYear('date', $today->year)->first();
+                    if (!$payslip) continue;
+
+                    $payslip->lop += 1;
+                    $perDay = $payslip->total_paid_days ? ($payslip->gross / $payslip->total_paid_days) : 0;
+                    $payslip->total_deductions += $perDay;
+                    $payslip->total_salary -= $perDay;
+                    $payslip->save();
+                }
+            }
+            
         }
     }
 }

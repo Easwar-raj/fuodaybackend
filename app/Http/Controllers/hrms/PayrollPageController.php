@@ -53,12 +53,7 @@ class PayrollPageController extends Controller
         $grouped = $payrollComponents->groupBy('type');
         $earnings = $grouped->get('Earnings', collect());
         $deductions = $grouped->get('Deductions', collect());
-    
         $totalEarnings = $earnings->sum(fn($item) => (float) $item->amount);
-        $totalDeductions = $deductions->sum(fn($item) => (float) $item->amount);
-        $basic = (float) $earnings->firstWhere('salary_component', 'Basic')?->amount ?? 0;
-        $totalGross = $basic + $totalEarnings;
-    
         $latestPayroll = $payrollComponents->sortByDesc('created_at')->first();
         $incentives = Incentives::where('web_user_id', $id)->sum('amount');
     
@@ -70,7 +65,7 @@ class PayrollPageController extends Controller
                 'total_ctc'            => (string) ($latestPayroll->ctc ?? 0),
                 'total_salary'         => (string) ($latestPayroll->monthly_salary ?? 0),
                 'current_month_salary' => (string) ($latestPayroll->monthly_salary ?? 0),
-                'total_gross'          => (string) $totalGross,
+                'total_gross'          => (string) $totalEarnings,
                 'payrolls'             => $payrollSummary,
                 'incentives'           => (float) $incentives,
                 'salary_components' => [
@@ -175,10 +170,10 @@ class PayrollPageController extends Controller
                 ],
 
                 'onboarding_details' => [
-                    'pf_account_no'    => $onboarding->pf_account_no ?? null,
-                    'uan'              => $onboarding->uan ?? null,
-                    'esi_no'           => $onboarding->esi_no ?? null,
-                    'bank_account_no'  => $onboarding->account_no ?? null,
+                    'pf_account_no'    => $employeeDetail->pf_account_no ?? null,
+                    'uan'              => $employeeDetail->uan ?? null,
+                    'esi_no'           => $employeeDetail->esi_no ?? null,
+                    'bank_account_no'  => $employeeDetail->account_no ?? null,
                 ],
             ]
         ], 200);
