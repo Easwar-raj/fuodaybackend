@@ -16,10 +16,17 @@ return new class extends Migration
             $table->foreignId('web_user_id')->nullable()->constrained('web_users')->onDelete('cascade');
             $table->string('emp_name')->nullable();
             $table->string('emp_id')->nullable();
+            $table->string('department')->nullable();
+            $table->string('team_name')->nullable();
             $table->date('date');
             $table->string('shift_start')->nullable();
             $table->string('shift_end')->nullable();
             $table->string('event')->nullable();
+            $table->string('shift_status')->nullable();
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
+            $table->enum('saturday_type', ['odd', 'even', 'all'])->nullable();
+            $table->json('saturday_dates')->nullable();
             $table->timestamps();
         });
     }

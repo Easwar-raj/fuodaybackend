@@ -4,7 +4,6 @@ namespace App\Http\Controllers\hrms;
 
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Models\WebUser;
 use App\Models\Policies;
@@ -12,8 +11,9 @@ use App\Models\Attendance;
 use App\Models\Projects;
 use App\Models\ProjectTeam;
 use App\Models\Task;
-use App\Models\Schedule;
 use Carbon\CarbonInterval;
+use Exception;
+use Illuminate\Support\Facades\DB;
 class TimeTrackerPageController extends Controller
 {
     public function getTimeTracker($id)
@@ -94,70 +94,98 @@ class TimeTrackerPageController extends Controller
         ], 200);
     }
 
-    public function addShiftSchedule(Request $request)
+    public function getSchedulesForWebUser($id)
     {
-        $validated = $request->validate([
-            'web_user_id' => 'required|exists:web_users,id',
-            'date' => 'required|date',
-            'shift_start' => 'required|string',
-            'shift_end' => 'required|string',
-        ]);
+        try {
+            $webUser = WebUser::find($id);
+            if (!$webUser || !$webUser->admin_user_id) {
+                return response()->json([
+                    'status' => 'Error',
+                    'message' => 'Web user not found or admin user not linked.'
+                ], 404);
+            }
 
-        $webUser = WebUser::find($request->web_user_id);
+            $schedules = DB::table('schedules')
+                ->select(
+                    'team_name',
+                    'date',
+                    'shift_status',
+                    'shift_start',
+                    'shift_end',
+                    'start_date',
+                    'end_date',
+                    'saturday_type',
+                    'saturday_dates',
+                    DB::raw('GROUP_CONCAT(id) as schedule_ids'),
+                    DB::raw('GROUP_CONCAT(web_user_id) as web_user_ids'),
+                    DB::raw('GROUP_CONCAT(emp_name) as emp_names'),
+                    DB::raw('GROUP_CONCAT(emp_id) as emp_ids'),
+                    DB::raw('GROUP_CONCAT(department) as departments')
+                )
+                ->where('web_user_id', $id)
+                ->groupBy(
+                    'team_name',
+                    'date',
+                    'shift_status',
+                    'shift_start',
+                    'shift_end',
+                    'start_date',
+                    'end_date',
+                    'saturday_type',
+                    'saturday_dates'
+                )
+                ->get();
 
-        if (!$validated || !$webUser) {
+            $formattedSchedules = $schedules->map(function ($schedule) {
+                $webUserIds = explode(',', $schedule->web_user_ids);
+                $empNames = explode(',', $schedule->emp_names);
+                $empIds = explode(',', $schedule->emp_ids);
+                $scheduleIds = explode(',', $schedule->schedule_ids);
+                $departments = explode(',', $schedule->departments);
+
+                $employees = [];
+                for ($i = 0; $i < count($webUserIds); $i++) {
+                    $employees[] = [
+                        'id' => (int) $webUserIds[$i],
+                        'name' => $empNames[$i] ?? '',
+                        'emp_id' => $empIds[$i] ?? '',
+                        'schedule_id' => (int) $scheduleIds[$i]
+                    ];
+                }
+
+                // Decode saturday dates
+                $saturdayDates = null;
+                if (!empty($schedule->saturday_dates)) {
+                    $saturdayDates = json_decode($schedule->saturday_dates, true);
+                }
+
+                return [
+                    'team_name' => $schedule->team_name,
+                    'department' => $departments[0] ?? '',
+                    'date' => $schedule->date,
+                    'shift_status' => $schedule->shift_status,
+                    'shift_start' => $schedule->shift_start,
+                    'shift_end' => $schedule->shift_end,
+                    'start_date' => $schedule->start_date,
+                    'end_date' => $schedule->end_date,
+                    'saturday_type' => $schedule->saturday_type,
+                    'saturday_dates' => $saturdayDates,
+                    'schedule_ids' => array_map('intval', explode(',', $schedule->schedule_ids)),
+                    'employees' => $employees,
+                ];
+            });
             return response()->json([
-                'message' => 'Invalid data or user not found'
-            ], 400);
-        }
+                'status' => 'Success',
+                'message' => 'Schedules fetched successfully.',
+                'data' => $formattedSchedules
+            ], 200);
 
-        $schedule = Schedule::create([
-            'web_user_id' => $webUser->id,
-            'emp_name' => $webUser->name,
-            'emp_id' => $webUser->emp_id,
-            'date' => $request->date,
-            'shift_start' => $request->shift_start,
-            'shift_end' => $request->shift_end,
-        ]);
-
-        return response()->json([
-            'message' => 'Shift schedule added successfully.',
-            'status' => 'Success',
-        ], 201);
-    }
-
-    public function getMonthlyShifts(Request $request)
-    {
-        $validated = $request->validate([
-            'web_user_id' => 'required|exists:web_users,id',
-            'month' => 'nullable|date_format:Y-m' // e.g., "2025-04"
-        ]);
-
-        if (!$validated) {
+        } catch (Exception $e) {
             return response()->json([
-                'message' => 'Invalid data or user not found'
-            ], 400);
+                'status' => 'Error',
+                'message' => 'Failed to fetch schedules.',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $webUserId = $request->web_user_id;
-        $month = $request->month ?? Carbon::now()->format('Y-m');
-
-        $startDate = Carbon::parse($month . '-01')->startOfMonth();
-        $endDate = Carbon::parse($month . '-01')->endOfMonth();
-
-        $shifts = Schedule::where('web_user_id', $webUserId)
-            ->whereBetween('date', [$startDate, $endDate])
-            ->orderBy('date')
-            ->get();
-
-        return response()->json([
-            'message' => 'Monthly Shifts Retrieved Successfully',
-            'status' => 'Success',
-            'data' => [
-                'month' => $month,
-                'shifts' => $shifts
-            ]
-        ]);
     }
-
 }

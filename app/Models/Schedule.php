@@ -14,13 +14,22 @@ class Schedule extends Model
         'web_user_id',
         'emp_name',
         'emp_id',
+        'department',
+        'team_name',
         'date',
         'shift_start',
         'shift_end',
-        'event'
+        'event',
+        'shift_status',
+        'start_date',
+        'end_date',
+        'saturday_type',
+        'saturday_dates'
     ];
 
     protected $casts = [
         'date' => 'date:Y-m-d',
+        'start_date' => 'date:Y-m-d',
+        'end_date' => 'date:Y-m-d'
     ];
 }

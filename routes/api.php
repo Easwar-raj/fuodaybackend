@@ -47,6 +47,14 @@ Route::prefix('admin-users')->group(function () {
         Route::get('/getadmindata/{id}', [AdminUserController::class, 'getAllAdminPanelData']);
         Route::get('/getallwebusers/{id}', [AdminUserController::class, 'getAllWebUsers']);
         Route::get('/get/abouts', [AdminUserController::class, 'getAboutByWebUserId']);
+        // Schedule routes
+        Route::get('/dynamic-shift-types', [AdminUserController::class, 'getDynamicShiftTypes']);
+        // New Added
+        Route::get('/getSchedules', [AdminUserController::class, 'getSchedules']);
+        Route::post('/schedules', [AdminUserController::class, 'createorupdateSchedule']);
+        Route::put('/updateschedules/{scheduleId}', [AdminUserController::class, 'createorupdateSchedule']);
+        Route::delete('/deleteschedules', [AdminUserController::class, 'deleteSchedule']);
+        Route::put('/move-employee-shift', [AdminUserController::class, 'moveEmployeeToShift']);
         Route::prefix('save')->group(function () {
             Route::post('/heirarchy', [AdminUserController::class, 'saveHeirarchy']);
             Route::post('/holiday', [AdminUserController::class, 'saveHoliday']);
@@ -111,6 +119,7 @@ Route::prefix('hrms')->group(function () {
             Route::get('/getdashboard/{id}', [HomePageController::class, 'getDashboardDetails']);
             Route::get('/getannouncements/{id}/{type}', [HomePageController::class, 'getAnnouncements']);
             Route::get('/getschedules/{id}', [HomePageController::class, 'getSchedules']);
+            Route::get('/getdynamic', [HomePageController::class, 'getDynamicShiftTypes']);
 
             Route::get('/getreportees/{id}', [HomePageController::class, 'getAllReportees']);
             Route::get('/getprojects/{id}', [HomePageController::class, 'getHandledProjects']);
@@ -157,7 +166,6 @@ Route::prefix('hrms')->group(function () {
             Route::get('/punctual-arrivals-all', [AttendancePageController::class, 'getAllPunctualArrivals']);
             Route::get('/absent-days/{id}', [AttendancePageController::class, 'calculateAbsentDays']);
             Route::post('/requestregulation', [AttendancePageController::class, 'submitRegulationRequest']);
-            Route::post('/process-expired-sessions', [AttendancePageController::class, 'processExpiredSessions']);
         });
         Route::prefix('leave')->group(function () {
             Route::get('/getleave/{id}', [LeaveTrackerPageController::class, 'getLeaveStatus']);
@@ -167,8 +175,7 @@ Route::prefix('hrms')->group(function () {
         });
         Route::prefix('timetracker')->group(function () {
             Route::get('/gettracker/{id}', [TimeTrackerPageController::class, 'gettimetracker']);
-            Route::post('/addschedule', [TimeTrackerPageController::class, 'addShiftSchedule']);
-            Route::post('/getschedules', [TimeTrackerPageController::class, 'getMonthlyShifts']);
+            Route::get('/getSchedules/{id}', [TimeTrackerPageController::class, 'getSchedulesForWebUser']);
         });
         Route::prefix('hr')->group(function () {
             Route::get('/gethr/{id}', [HrPageController::class, 'getHr']);

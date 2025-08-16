@@ -20,7 +20,6 @@ class AttendanceService
         $today = Carbon::today();
         $weekday = strtolower($today->format('l'));
         $webUsers = WebUser::all()->groupBy('admin_user_id');
-
         foreach ($webUsers as $adminUserId => $usersGroup) {
             // === Fetch Policies for this Admin ===
             $policies = Policies::where('admin_user_id', $adminUserId)
@@ -109,21 +108,15 @@ class AttendanceService
 
                 if ($checkin && !$checkout) {
                     $dateOnly = Carbon::parse($attendance->date)->format('Y-m-d');
-
-                    // Correctly formatted checkout time
                     $checkoutTime = Carbon::parse($dateOnly . ' 23:59:00');
-
-                    // Parse checkin time safely
                     $checkin = Carbon::parse($dateOnly . ' ' . $attendance->checkin);
-
                     $diffInSeconds = $checkin->diffInSeconds($checkoutTime);
                     $hours = floor($diffInSeconds / 3600);
                     $minutes = floor(($diffInSeconds % 3600) / 60);
                     $workedHours = sprintf('%02d:%02d hours', $hours, $minutes);
-
                     $attendance->checkout = '23:59:00';
                     $attendance->worked_hours = $workedHours;
-                    $attendance->status = 'Auto Logout';
+                    $attendance->status = "$attendance->status(Auto Logged Off)";
                     $attendance->save();
                 }
 
@@ -166,7 +159,7 @@ class AttendanceService
 
             $weeklyHolidays = array_map('strtolower', array_map('trim', explode(',', $policies["weekoff"] ?? '')));
             $isCompanyHoliday = Holidays::whereDate('date', $today)->where('admin_user_id', $adminUserId)->exists();
-            $status = in_array($weekday, $weeklyHolidays) ? 'Weekoff' : ( $isCompanyHoliday ? 'Holiday' : 'Absent Lop' );
+            $status = $isCompanyHoliday ? 'Holiday'  : ( in_array($weekday, $weeklyHolidays) ? 'Weekoff' : 'Absent Lop' );
             $existingUserIds = $attendances->pluck('web_user_id')->toArray();
             $allUserIds = $userIds->toArray();
             $missingUserIds = array_diff($allUserIds, $existingUserIds);
@@ -227,21 +220,19 @@ class AttendanceService
                 $parts = explode(' ', $status);
                 if (isset($parts[1]) && $parts[1] === 'Lop') {
                     $payroll = Payroll::where('web_user_id', $userId)->first();
-                    if (!$payroll) continue;
-
-                    $payslip = Payslip::where('payroll_id', $payroll->id)->where('month', $today->format('F'))->whereYear('date', $today->year)->first();
-                    if (!$payslip) continue;
-
-                    $payslip->lop += 1;
-                    $perDay = $payslip->total_paid_days ? ($payslip->gross / $payslip->total_paid_days) : 0;
-                    $payslip->total_deductions += $perDay;
-                    $payslip->total_salary -= $perDay;
-                    $payslip->save();
+                    $payslip = $payroll ? Payslip::where('payroll_id', $payroll->id)->where('month', $today->format('F'))->whereYear('date', $today->year)->first() : null;
+                    if ($payslip) {
+                        $payslip->lop += 1;
+                        $perDay = $payslip->total_paid_days ? ($payslip->gross / $payslip->total_paid_days) : 0;
+                        $payslip->total_deductions += $perDay;
+                        $payslip->total_salary -= $perDay;
+                        $payslip->save();
+                    }
                 }
                 Attendance::create([
                     'web_user_id' => $userId,
-                    'emp_id' => WebUser::find($userId)->values('emp_id'),
-                    'emp_name' => WebUser::find($userId)->values('name'),
+                    'emp_id' => WebUser::find($userId)?->emp_id,
+                    'emp_name' => WebUser::find($userId)?->name,
                     'date' => $today,
                     'checkin' => null,
                     'checkout' => null,

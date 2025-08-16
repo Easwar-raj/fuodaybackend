@@ -24,9 +24,11 @@ use App\Models\Achievement;
 use App\Models\TotalLeaves;
 use App\Models\Event;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use App\Models\Policies;
 use App\Models\PolicyQuestions;
 use Aws\S3\S3Client;
+use Exception;
 
 class AdminUserController extends Controller
 {
@@ -1246,5 +1248,402 @@ class AdminUserController extends Controller
                 'user_data' => $webUsers
             ]
         ], 200);
+    }
+
+    public function getDynamicShiftTypes()
+    {
+        $shiftTypes = DB::table('schedules')
+            ->select(
+                'shift_status as name',
+                'shift_start as start_time',
+                'shift_end as end_time',
+                'start_date',
+                'end_date'
+            )
+            ->whereNotNull('shift_status')
+            ->distinct()
+            ->get();
+
+        $formattedShiftTypes = $shiftTypes->map(function ($shift) {
+            return [
+                'value' => strtolower(str_replace(' ', '', $shift->name)),
+                'label' => $shift->name,
+                'time' => "{$shift->start_time} - {$shift->end_time}",
+                'start_date' => $shift->start_date,
+                'end_date' => $shift->end_date,
+                'icon' => $this->getShiftIcon($shift->name),
+            ];
+        });
+
+        return response()->json([
+            'status' => 'Success',
+            'data' => $formattedShiftTypes
+        ]);
+    }
+
+    private function getShiftIcon(string $shiftName): string
+    {
+        switch (strtolower($shiftName)) {
+            case 'morning':
+                return 'fas fa-sun';
+            case 'afternoon':
+                return 'fas fa-cloud-sun';
+            case 'night':
+                return 'fas fa-moon';
+            case 'general':
+                return 'fas fa-clock';
+            default:
+                return 'fas fa-clock';
+        }
+    }
+
+    public function getSchedules()
+    {
+        try {
+            $schedules = DB::table('schedules')
+                ->select(
+                    'team_name',
+                    'date',
+                    'shift_status',
+                    'shift_start',
+                    'shift_end',
+                    'start_date',
+                    'end_date',
+                    'saturday_type',
+                    'saturday_dates',
+                    DB::raw('GROUP_CONCAT(id) as schedule_ids'),
+                    DB::raw('GROUP_CONCAT(web_user_id) as web_user_ids'),
+                    DB::raw('GROUP_CONCAT(emp_name) as emp_names'),
+                    DB::raw('GROUP_CONCAT(emp_id) as emp_ids'),
+                    DB::raw('GROUP_CONCAT(department) as departments')
+                )
+                ->groupBy('team_name', 'date', 'shift_status', 'shift_start', 'shift_end', 'start_date', 'end_date', 'saturday_type', 'saturday_dates')
+                ->get();
+                
+            $formattedSchedules = $schedules->map(function ($schedule) {
+                $webUserIds = explode(',', $schedule->web_user_ids);
+                $empNames = explode(',', $schedule->emp_names);
+                $empIds = explode(',', $schedule->emp_ids);
+                $scheduleIds = explode(',', $schedule->schedule_ids);
+                $departments = explode(',', $schedule->departments);
+
+                $employees = [];
+                for ($i = 0; $i < count($webUserIds); $i++) {
+                    $employees[] = [
+                        'id' => (int) $webUserIds[$i],
+                        'name' => $empNames[$i],
+                        'emp_id' => $empIds[$i],
+                        'schedule_id' => (int) $scheduleIds[$i]
+                    ];
+                }
+
+                // Parse Saturday dates if they exist
+                $saturdayDates = null;
+                if ($schedule->saturday_dates) {
+                    $saturdayDates = json_decode($schedule->saturday_dates, true);
+                }
+
+                return [
+                    'team_name' => $schedule->team_name,
+                    'department' => $departments[0], // Take first department
+                    'date' => $schedule->date,
+                    'shift_status' => $schedule->shift_status,
+                    'shift_start' => $schedule->shift_start,
+                    'shift_end' => $schedule->shift_end,
+                    'start_date' => $schedule->start_date,
+                    'end_date' => $schedule->end_date,
+                    'saturday_type' => $schedule->saturday_type,
+                    'saturday_dates' => $saturdayDates,
+                    'schedule_ids' => array_map('intval', explode(',', $schedule->schedule_ids)),
+                    'employees' => $employees,
+                ];
+            });
+
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'Schedules fetched successfully.',
+                'data' => $formattedSchedules
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'Error',
+                'message' => 'Failed to fetch schedules.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function createorupdateSchedule(Request $request, $scheduleId = null)
+    {
+        // Determine if this is create or update operation
+        $isUpdate = !is_null($scheduleId);
+        
+        if (!$isUpdate) {
+            // Validation for create operation
+            $request->validate([
+                'employees' => 'required|array',
+                'employees.*.web_user_id' => 'required|integer',
+                'employees.*.emp_name' => 'required|string',
+                'employees.*.emp_id' => 'required|string',
+                'team_name' => 'required|string',
+                'shift_status' => 'required|string|in:general,morning,afternoon,night',
+                'shift_start' => 'required|date_format:H:i',
+                'shift_end' => 'required|date_format:H:i',
+                'start_date' => 'required|date',
+                'end_date' => 'required|date',
+                'include_saturdays' => 'boolean',
+                'saturday_type' => 'required_if:include_saturdays,true|string|in:odd,even,all',
+                'saturday_dates' => 'array'
+            ]);
+        }
+
+        try {
+            if ($isUpdate) {
+                // UPDATE OPERATION
+                $existingSchedule = DB::table('schedules')->where('id', $scheduleId)->first();
+
+                if (!$existingSchedule) {
+                    return response()->json(['message' => 'Schedule not found.'], 404);
+                }
+
+                // Common schedule update fields
+                $updateData = [
+                    'team_name' => $request->input('team_name', $existingSchedule->team_name),
+                    'shift_status' => $request->input('shift_status', $existingSchedule->shift_status),
+                    'shift_start' => $request->input('shift_start', $existingSchedule->shift_start),
+                    'shift_end' => $request->input('shift_end', $existingSchedule->shift_end),
+                    'start_date' => $request->input('start_date', $existingSchedule->start_date),
+                    'end_date' => $request->input('end_date', $existingSchedule->end_date),
+                    'updated_at' => now()
+                ];
+
+                // Handle Saturday scheduling
+                if ($request->has('include_saturdays') && $request->input('include_saturdays')) {
+                    $updateData['saturday_type'] = $request->input('saturday_type');
+                    $updateData['saturday_dates'] = json_encode($request->input('saturday_dates', []));
+                } else {
+                    $updateData['saturday_type'] = null;
+                    $updateData['saturday_dates'] = null;
+                }
+
+                // Check if request contains employees array
+                if ($request->has('employees')) {
+                    foreach ($request->input('employees') as $employee) {
+                        $existingEmpSchedule = DB::table('schedules')
+                            ->where('web_user_id', $employee['web_user_id'])
+                            ->where('start_date', $updateData['start_date'])
+                            ->where('end_date', $updateData['end_date'])
+                            ->where('shift_status', $updateData['shift_status'])
+                            ->where('team_name', $updateData['team_name'])
+                            ->first();
+
+                        if ($existingEmpSchedule) {
+                            // Update existing record
+                            DB::table('schedules')->where('id', $existingEmpSchedule->id)->update([
+                                'team_name' => $updateData['team_name'],
+                                'shift_status' => $updateData['shift_status'],
+                                'shift_start' => $updateData['shift_start'],
+                                'shift_end' => $updateData['shift_end'],
+                                'start_date' => $updateData['start_date'],
+                                'end_date' => $updateData['end_date'],
+                                'saturday_type' => $updateData['saturday_type'],
+                                'saturday_dates' => $updateData['saturday_dates'],
+                            ]);
+                        } else {
+                            // Get employee department
+                            $empUser = DB::table('web_users')
+                                ->join('employee_details', 'web_users.id', '=', 'employee_details.web_user_id')
+                                ->where('web_users.id', $employee['web_user_id'])
+                                ->select('employee_details.department')
+                                ->first();
+
+                            // Insert new record
+                            DB::table('schedules')->insert([
+                                'web_user_id' => $employee['web_user_id'],
+                                'emp_name' => $employee['emp_name'],
+                                'emp_id' => $employee['emp_id'],
+                                'department' => $empUser->department ?? 'Unknown',
+                                'team_name' => $updateData['team_name'],
+                                'shift_status' => $updateData['shift_status'],
+                                'shift_start' => $updateData['shift_start'],
+                                'shift_end' => $updateData['shift_end'],
+                                'start_date' => $updateData['start_date'],
+                                'end_date' => $updateData['end_date'],
+                                'saturday_type' => $updateData['saturday_type'],
+                                'saturday_dates' => $updateData['saturday_dates'],
+                                'date' => now()->format('Y-m-d')
+                            ]);
+                        }
+                    }
+
+                    return response()->json(['message' => 'Schedule(s) updated successfully']);
+                }
+
+                // If no employees array, update the current schedule only
+                DB::table('schedules')->where('id', $scheduleId)->update($updateData);
+
+                return response()->json(['message' => 'Schedule updated successfully']);
+
+            } else {
+                // CREATE OPERATION
+                $scheduleData = [];
+                $employees = $request->input('employees');
+                
+                // Handle Saturday scheduling
+                $saturdayType = null;
+                $saturdayDates = null;
+                
+                if ($request->input('include_saturdays', false)) {
+                    $saturdayType = $request->input('saturday_type');
+                    $saturdayDates = json_encode($request->input('saturday_dates', []));
+                }
+                
+                foreach ($employees as $employee) {
+                    // Get employee department
+                    $empUser = DB::table('web_users')
+                        ->join('employee_details', 'web_users.id', '=', 'employee_details.web_user_id')
+                        ->where('web_users.id', $employee['web_user_id'])
+                        ->select('employee_details.department')
+                        ->first();
+
+                    $scheduleData[] = [
+                        'web_user_id' => $employee['web_user_id'],
+                        'emp_name' => $employee['emp_name'],
+                        'emp_id' => $employee['emp_id'],
+                        'department' => $empUser->department ?? 'Unknown',
+                        'team_name' => $request->input('team_name'),
+                        'shift_status' => $request->input('shift_status'),
+                        'shift_start' => $request->input('shift_start'),
+                        'shift_end' => $request->input('shift_end'),
+                        'start_date' => $request->input('start_date'),
+                        'end_date' => $request->input('end_date'),
+                        'saturday_type' => $saturdayType,
+                        'saturday_dates' => $saturdayDates,
+                        'date' => now()->format('Y-m-d'),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+
+                DB::table('schedules')->insert($scheduleData);
+
+                $responseMessage = 'Schedule created successfully for ' . count($employees) . ' employees.';
+                if ($saturdayType) {
+                    $saturdayCount = count(json_decode($saturdayDates, true));
+                    $responseMessage .= " Including {$saturdayCount} {$saturdayType} Saturday(s).";
+                }
+
+                return response()->json([
+                    'status' => 'Success',
+                    'message' => $responseMessage,
+                    'data' => [
+                        'team_name' => $request->input('team_name'),
+                        'shift_status' => $request->input('shift_status'),
+                        'employee_count' => count($employees),
+                        'saturday_type' => $saturdayType,
+                        'saturday_count' => $saturdayType ? count(json_decode($saturdayDates, true)) : 0
+                    ]
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            $operation = $isUpdate ? 'update' : 'create';
+            return response()->json([
+                'status' => 'Error',
+                'message' => "Failed to {$operation} schedule.",
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteSchedule(Request $request)
+    {
+        $request->validate([
+            'type' => 'required|string|in:single,team,bulk',
+            'schedule_ids' => 'required_if:type,single,bulk|array',
+            'schedule_ids.*' => 'integer',
+            'team_info' => 'required_if:type,team|array',
+            'team_info.team_name' => 'required_if:type,team|string',
+            'team_info.department' => 'required_if:type,team|string',
+            'team_info.start_date' => 'required_if:type,team|date',
+            'team_info.end_date' => 'required_if:type,team|date',
+        ]);
+
+        try {
+            $deletedCount = 0;
+            $type = $request->input('type');
+
+            switch ($type) {
+                case 'single':
+                case 'bulk':
+                    // Delete specific schedule IDs
+                    $scheduleIds = $request->input('schedule_ids');
+                    $deletedCount = DB::table('schedules')
+                        ->whereIn('id', $scheduleIds)
+                        ->delete();
+                    break;
+
+                case 'team':
+                    // Delete entire team
+                    $teamInfo = $request->input('team_info');
+                    $deletedCount = DB::table('schedules')
+                        ->where('team_name', $teamInfo['team_name'])
+                        ->where('department', $teamInfo['department'])
+                        ->where('start_date', $teamInfo['start_date'])
+                        ->where('end_date', $teamInfo['end_date'])
+                        ->delete();
+                    break;
+            }
+
+            return response()->json([
+                'status' => 'Success',
+                'message' => "Successfully deleted {$deletedCount} schedule record(s).",
+                'deleted_count' => $deletedCount
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'Error',
+                'message' => 'Failed to delete schedule.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function moveEmployeeToShift(Request $request)
+    {
+        $request->validate([
+            'schedule_id' => 'required|integer',
+            'new_shift_status' => 'required|string',
+            'new_shift_start' => 'nullable|date_format:H:i',
+            'new_shift_end' => 'nullable|date_format:H:i',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date'
+        ]);
+
+        try {
+            DB::table('schedules')
+                ->where('id', $request->input('schedule_id'))
+                ->update([
+                    'shift_status' => ucfirst(strtolower($request->input('new_shift_status'))),
+                    'shift_start' => $request->input('new_shift_start'),
+                    'shift_end' => $request->input('new_shift_end'),
+                    'start_date' => $request->input('start_date'),
+                    'end_date' => $request->input('end_date'),
+                    'updated_at' => now(),
+                ]);
+
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'Employee moved to new shift successfully.'
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'Error',
+                'message' => 'Failed to move employee to new shift.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
