@@ -46,7 +46,7 @@ Route::prefix('admin-users')->group(function () {
         Route::post('/logout', [AdminUserController::class, 'logout']);
         Route::get('/getadmindata/{id}', [AdminUserController::class, 'getAllAdminPanelData']);
         Route::get('/getallwebusers/{id}', [AdminUserController::class, 'getAllWebUsers']);
-        Route::get('/get/abouts', [AdminUserController::class, 'getAboutByWebUserId']);
+        Route::get('/get/abouts/{id}', [AdminUserController::class, 'getAboutByAdminUser']);
         // Schedule routes
         Route::get('/dynamic-shift-types', [AdminUserController::class, 'getDynamicShiftTypes']);
         // New Added

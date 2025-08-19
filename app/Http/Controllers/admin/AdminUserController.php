@@ -542,22 +542,18 @@ class AdminUserController extends Controller
         return response()->json(['message' => 'About information updated successfully.', 'status' => 'Success'], 200);
     }
 
-    public function getAboutByWebUserId(Request $request)
+    public function getAboutByAdminUser($id)
     {
-        $validated = $request->validate([
-            'web_user_id' => 'required|integer|exists:web_users,id',
-        ]);
+        $adminUser = AdminUser::find($id);
 
-        $webUser = WebUser::find($request->web_user_id);
-
-        if (!$webUser || !$validated) {
+        if (!$adminUser) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Web user not found.'
+                'message' => 'User not found.'
             ], 404);
         }
 
-        $about = About::where('admin_user_id', $webUser->admin_user_id)->first();
+        $about = About::where('admin_user_id', $id)->first();
 
         if (!$about) {
             return response()->json([
@@ -1300,7 +1296,11 @@ class AdminUserController extends Controller
     public function getSchedules()
     {
         try {
+            $user = Auth::user();
+            $webUser = WebUser::find($user->id);
+            $employeeIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
             $schedules = DB::table('schedules')
+                ->whereIn('web_user_id', $employeeIds)
                 ->select(
                     'team_name',
                     'date',
