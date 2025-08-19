@@ -54,9 +54,11 @@ jobs:
           php artisan config:cache
         EOF
     
-    - name: Ensure Laravel scheduler cron is installed
-      run: ssh -o StrictHostKeyChecking=no ubuntu@13.235.183.64 " \
-        (crontab -l -u www-data 2>/dev/null; echo '* * * * * cd /var/www/fuodaybackend && php artisan schedule:run >> /dev/null 2>&1') | sort -u | sudo crontab -u www-data - \
-        "
+    - name: "Ensure Laravel scheduler cron is installed"
+      run: |
+        ssh -o StrictHostKeyChecking=no ubuntu@13.235.183.64 'bash -c "
+          (crontab -l -u www-data 2>/dev/null; echo \"* * * * * cd /var/www/fuodaybackend && php artisan schedule:run >> /dev/null 2>&1\") | sort -u | sudo crontab -u www-data -
+        "'
+
 
 
