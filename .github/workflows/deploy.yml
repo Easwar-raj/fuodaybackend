@@ -49,10 +49,15 @@ jobs:
           sudo chmod -R 775 /var/www/fuodaybackend/bootstrap/cache
 
           #schedule 
-          cd /var/www/fuodaybackend && php artisan schedule:run >> /dev/null 2>&1
+          * * * * * cd /var/www/fuodaybackend && php artisan schedule:run >> /dev/null 2>&1
 
           # Run these
           php artisan cache:clear
           php artisan config:clear
           php artisan config:cache
         EOF
+    
+    # - name: "Ensure Laravel scheduler cron is installed"
+    #   run: |
+    #     (crontab -l -u www-data 2>/dev/null; echo "* * * * * cd /var/www/fuodaybackend && php artisan schedule:run >> /dev/null 2>&1") | sort -u | sudo crontab -u www-data -
+
