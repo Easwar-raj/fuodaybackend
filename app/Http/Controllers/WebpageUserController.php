@@ -249,34 +249,53 @@ class WebpageUserController extends Controller
 
                 $policy = DB::table('policies')->where('admin_user_id', $request->admin_user_id)->where('title', 'salary_period')->first();
                 $salaryPeriod = $policy ? ($policy->policy ?? '26To25') : '26To25';
-
-                preg_match('/To(\d{1,2})/', $salaryPeriod, $matches);
-                $endDay = isset($matches[1]) ? (int)$matches[1] : 25;
-
+                [$periodStart, $periodEnd] = explode('To', $salaryPeriod);
+                $periodStartDay = (int) trim($periodStart);
                 $today = Carbon::today();
                 $year = $today->year;
                 $month = $today->month;
-                $day = $today->day;
-
-                if ($day <= $endDay) {
-                    $endDate = Carbon::create($year, $month, $endDay);
+                if (strtolower(trim($periodEnd)) === 'monthend') {
+                    $startDate = Carbon::create($year, $month, $periodStartDay);
+                    if ($today->lt($startDate)) {
+                        $startDate = $startDate->subMonth();
+                    }
+                    $endDate = (clone $startDate)->addMonth()->endOfMonth();
                 } else {
-                    $nextMonth = $month == 12 ? 1 : $month + 1;
-                    $nextYear = $month == 12 ? $year + 1 : $year;
-                    $daysInNextMonth = Carbon::create($nextYear, $nextMonth, 1)->daysInMonth;
-                    $validEndDay = min($endDay, $daysInNextMonth);
-                    $endDate = Carbon::create($nextYear, $nextMonth, $validEndDay);
-                }
+                    $periodEndDay = (int) trim($periodEnd);
+                    $startDate = Carbon::create($year, $month, $periodStartDay);
+                    $endDate = Carbon::create($year, $month, $periodEndDay);
 
-                $totalPaidDays = $today->diffInDays($endDate) + 1;
+                    if ($periodEndDay < $periodStartDay) {
+                        if ($today->gt($endDate)) {
+                            $startDate = $startDate->addMonth();
+                            $endDate = $endDate->addMonth();
+                        } elseif ($today->lt($startDate)) {
+                            $startDate = $startDate->subMonth();
+                            $endDate = $endDate;
+                        }
+                    } else {
+                        if ($today->lt($startDate)) {
+                            $startDate = $startDate->subMonth();
+                            $endDate = $endDate->subMonth();
+                        } elseif ($today->gt($endDate)) {
+                            $startDate = $startDate->addMonth();
+                            $endDate = $endDate->addMonth();
+                        }
+                    }
+                }
+                if ($today->gt($endDate)) {
+                    $daysRemaining = 0;
+                } else {
+                    $daysRemaining = $endDate->diffInDays($today) + 1;
+                }
 
                 Payslip::create([
                     'payroll_id' => $lastPayroll ? $lastPayroll->id : null,
                     'date' => now()->toDateString(),
                     'time' => now()->format('H:i:s'),
-                    'month' => now()->format('F'),
+                    'month' => $today->gt($endDate) ? $today->copy()->addMonth()->format('F') : $today->format('F'),
                     'basic' => $basic,
-                    'total_paid_days' => $totalPaidDays,
+                    'total_paid_days' => $daysRemaining,
                     'gross' => $gross,
                     'total_deductions' => $total_deductions,
                     'total_salary' => $total_salary,
@@ -354,7 +373,6 @@ class WebpageUserController extends Controller
                     }
                 }
 
-                // Update employee details
                 if ($empdetails) {
                     $empdetails->update([
                         'emp_name' => $request->name ?? $empdetails->emp_name,
@@ -380,7 +398,6 @@ class WebpageUserController extends Controller
                 // Delete old payroll and insert updated
                 Payroll::where('web_user_id', $webUser->id)->delete();
 
-                // Handle earnings
                 if (!empty($request->earnings)) {
                     foreach ($request->earnings as $earning) {
                         Payroll::create([
@@ -426,7 +443,7 @@ class WebpageUserController extends Controller
                 'status' => 'error',
                 'message' => 'Invalid action provided.'
             ], 400);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
             Log::error('Error in saveWebUser: ' . $e->getMessage());
             Log::error('Stack trace: ' . $e->getTraceAsString());

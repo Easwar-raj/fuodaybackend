@@ -69,8 +69,23 @@ class AttendanceService
                         if (!$payroll) continue;
 
                         [$periodStart, $periodEnd] = explode('To', $salaryPeriod);
-                        $periodDays = Carbon::createFromFormat('d', trim($periodEnd))
-                            ->diffInDays(Carbon::createFromFormat('d', trim($periodStart))) + 1;
+                        $periodStart = trim($periodStart);
+                        $periodEnd = trim($periodEnd);
+                        $now = Carbon::now();
+                        $year = $now->year;
+                        $month = $now->month;
+                        $startDate = Carbon::create($year, $month, (int) $periodStart);
+                        if (strtolower($periodEnd) === 'monthend') {
+                            $endDate = (clone $startDate)->addMonth()->endOfMonth();
+                        } else {
+                            $endDay = (int) $periodEnd;
+                            if ($endDay < (int) $periodStart) {
+                                $endDate = Carbon::create($year, $month, 1)->addMonth()->day($endDay);
+                            } else {
+                                $endDate = Carbon::create($year, $month, $endDay);
+                            }
+                        }
+                        $periodDays = $endDate->diffInDays($startDate) + 1;
 
                         $basic = (float) $payroll->monthy_salary ?? 0;
                         $earnings = Payroll::where('web_user_id', $userId)->where('type', 'earnings')->sum('amount');
