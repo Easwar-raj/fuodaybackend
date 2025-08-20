@@ -10,77 +10,34 @@ use Illuminate\Http\Request;
 
 class SupportPageController extends Controller
 {
-    
-public function getAllTicketsByStatus($id)
-{
-    // Step 1: Get the admin_user_id of the given web_user
-    $adminId = WebUser::where('id', $id)->value('admin_user_id');
+    public function getAllTicketsByStatus($id)
+    {
+        $webUser = WebUser::find($id);
+        $type = ($webUser->role !== 'employee' && $webUser->role !== 'hr') ? 'ats' : 'hrms';
+        $tickets = Ticket::where('type', $type)
+            ->where(function($query) use ($id) {
+                $query->where('web_user_id', $id)->orWhere('assigned_to_id', $id);
+            })->get();
 
-    if (!$adminId) {
+        $groupedTickets = $tickets->groupBy(function ($ticket) {
+            $status = strtolower($ticket->status ?? 'unassigned');
+            if (in_array($status, ['unassigned', 'assigned', 'in_progress', 'completed'])) {
+                return $status;
+            }
+            return 'unassigned';
+        });
+
+        $employeeNames = WebUser::where('admin_user_id', $webUser->admin_user_id)->select('id', 'name', 'emp_id')->get();
+
         return response()->json([
-            'status' => 'error',
-            'message' => 'Invalid admin user',
-        ], 400);
+            'message' => 'Successfully fetched tickets',
+            'status' => 'success',
+            'data' => [
+                'groupedTickets' => $groupedTickets,
+                'assignees' => $employeeNames
+            ],
+        ], 200);
     }
-
-    // Step 2: Get all tickets where the related web_user has the same admin_user_id
-    $tickets = Ticket::whereHas('webUser.employeeDetails', function ($query) use ($adminId, $id) {
-        $query->where('admin_user_id', $adminId)->where(function ($q) use ($id) { $q->where('web_user_id', $id)->orWhere('assigned_to_id', $id); });
-    })->with('webUser')->get();
-
-    // Step 3: Group tickets by normalized status
-    $groupedTickets = $tickets->groupBy(function ($ticket) {
-        $status = strtolower($ticket->status ?? 'unassigned');
-        return in_array($status, ['unassigned', 'assigned', 'in progress', 'completed']) ? $status : 'unassigned';
-    });
-
-    // Step 4: Get all employees under the same admin with emp_id
-    $employeeNames = WebUser::where('admin_user_id', $adminId)->select('id', 'name', 'emp_id')->get();
-
-    // Step 5: Return the response
-    return response()->json([
-        'message' => 'Successfully fetched tickets',
-        'status' => 'success',
-        'data' => [
-            'groupedTickets' => $groupedTickets,
-            'assignees' => $employeeNames
-        ],
-    ], 200);
-}
-
-    // public function getAllTicketsByStatus($id, $type)
-    // {
-    //     // Step 1: Get admin_user_id of the given web_user
-    //     $adminId = WebUser::where('id', $id)->value('admin_user_id');
-
-    //     // Step 2: Get all tickets where the related web_user has the same admin_user_id
-    //     $tickets = Ticket::whereHas('webUser.employeeDetails', function ($query) use ($adminId, $type) {
-    //         $query->where('admin_user_id', $adminId)->where('system_type', $type);
-    //     })->get();
-
-    //     // Step 3: Normalize status and group by it
-    //     $groupedTickets = $tickets->groupBy(function ($ticket) {
-    //         $status = strtolower($ticket->status ?? 'unassigned');
-
-    //         // Normalize any unexpected status values
-    //         if (in_array($status, ['unassigned', 'assigned', 'in_progress', 'completed'])) {
-    //             return $status;
-    //         }
-
-    //         return 'unassigned'; // fallback
-    //     });
-
-    //     $employeeNames = WebUser::where('admin_user_id', $adminId)->select('id', 'name', 'emp_id')->get();
-
-    //     return response()->json([
-    //         'message' => 'Successfully fetched tickets',
-    //         'status' => 'success',
-    //         'data' => [
-    //             'groupedTickets' => $groupedTickets,
-    //             'assignees' => $employeeNames
-    //         ],
-    //     ], 200);
-    // }
 
     public function addTicket(Request $request)
     {
@@ -117,7 +74,7 @@ public function getAllTicketsByStatus($id)
             $status = 'assigned';
         }
 
-        $systemType = $webUser->role == 'recruiter' ? 'ats' : 'hrms';
+        $systemType = ($webUser->role !== 'employee' && $webUser->role !== 'hr') ? 'ats' : 'hrms';
 
         // Step 3: Create a new ticket
         Ticket::create([
