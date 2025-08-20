@@ -14,7 +14,7 @@ class SupportPageController extends Controller
     {
         $webUser = WebUser::find($id);
         $type = ($webUser->role !== 'employee' && $webUser->role !== 'hr') ? 'ats' : 'hrms';
-        $tickets = Ticket::where('type', $type)
+        $tickets = Ticket::where('system_type', $type)
             ->where(function($query) use ($id) {
                 $query->where('web_user_id', $id)->orWhere('assigned_to_id', $id);
             })->get();
