@@ -129,7 +129,7 @@ class TimeTrackerPageController extends Controller
                 if ($request->filled('month')) {
                     $monthYear = $request->month;
                     if (preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $monthYear)) {
-                        [$month, $year] = explode('-', $monthYear);
+                        [$year, $month] = explode('-', $monthYear);
                         $monthStart = Carbon::createFromDate($year, $month, 1)->startOfDay();
                         $monthEnd = Carbon::createFromDate($year, $month, 1)->endOfMonth()->endOfDay();
                         $query->where(function($q) use ($monthStart, $monthEnd) {
