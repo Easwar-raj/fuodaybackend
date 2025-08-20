@@ -175,7 +175,7 @@ Route::prefix('hrms')->group(function () {
         });
         Route::prefix('timetracker')->group(function () {
             Route::get('/gettracker/{id}', [TimeTrackerPageController::class, 'gettimetracker']);
-            Route::get('/getSchedules/{id}', [TimeTrackerPageController::class, 'getSchedulesForWebUser']);
+            Route::post('/getSchedules/{id}', [TimeTrackerPageController::class, 'getSchedulesForWebUser']);
         });
         Route::prefix('hr')->group(function () {
             Route::get('/gethr/{id}', [HrPageController::class, 'getHr']);
