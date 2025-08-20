@@ -34,6 +34,8 @@ class HomePageController extends Controller
         $today = Carbon::today()->toDateString();
 
         $selectColumns = [
+            'attendances.checkin',
+            'attendances.checkout',
             'attendances.status',
             'attendances.location',
             'schedules.shift_start',
