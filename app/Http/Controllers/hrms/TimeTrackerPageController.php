@@ -14,6 +14,8 @@ use App\Models\Task;
 use Carbon\CarbonInterval;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
+
 class TimeTrackerPageController extends Controller
 {
     public function getTimeTracker($id)
@@ -94,7 +96,7 @@ class TimeTrackerPageController extends Controller
         ], 200);
     }
 
-    public function getSchedulesForWebUser($id)
+    public function getSchedulesForWebUser(Request $request, $id)
     {
         try {
             $webUser = WebUser::find($id);
@@ -105,7 +107,7 @@ class TimeTrackerPageController extends Controller
                 ], 404);
             }
 
-            $schedules = DB::table('schedules')
+            $query = DB::table('schedules')
                 ->select(
                     'team_name',
                     'date',
@@ -122,8 +124,27 @@ class TimeTrackerPageController extends Controller
                     DB::raw('GROUP_CONCAT(emp_id) as emp_ids'),
                     DB::raw('GROUP_CONCAT(department) as departments')
                 )
-                ->where('web_user_id', $id)
-                ->groupBy(
+                ->where('web_user_id', $id);
+
+                if ($request->filled('month')) {
+                    $monthYear = $request->month;
+                    if (preg_match('/^(0[1-9]|1[0-2])-\d{4}$/', $monthYear)) {
+                        [$month, $year] = explode('-', $monthYear);
+                        $monthStart = Carbon::createFromDate($year, $month, 1)->startOfDay();
+                        $monthEnd = Carbon::createFromDate($year, $month, 1)->endOfMonth()->endOfDay();
+                        $query->where(function($q) use ($monthStart, $monthEnd) {
+                            $q->where('start_date', '<=', $monthEnd)
+                            ->where('end_date', '>=', $monthStart);
+                        });
+                    } else {
+                        return response()->json([
+                            'status' => 'Error',
+                            'message' => 'Invalid month format. Expected MM-YYYY.'
+                        ], 400);
+                    }
+                }
+
+                $schedules = $query->groupBy(
                     'team_name',
                     'date',
                     'shift_status',
