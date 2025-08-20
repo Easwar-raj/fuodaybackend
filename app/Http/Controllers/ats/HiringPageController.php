@@ -10,7 +10,7 @@ use Carbon\Carbon;
 
 class HiringPageController extends Controller
 {
-    public function getInterviewOverview($id)
+    public function getHiringOverview($id)
     {
         $webUser = WebUser::find($id);
  
@@ -20,8 +20,6 @@ class HiringPageController extends Controller
                 'message' => 'User not found'
             ], 404);
         }
- 
-        $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
         $today = Carbon::today();
         $availablePositions = JobOpening::where('admin_user_id', $webUser->admin_user_id)->whereIn('status', ['Open'])->select('id', 'title', 'position', 'no_of_openings', 'company_name', 'status')->get();
         $interviewsToday = Candidate::where('web_user_id', $id)->whereDate('interview_date', $today)->pluck('name');
@@ -29,6 +27,7 @@ class HiringPageController extends Controller
             ->where('web_user_id', $id)
             ->whereIn('technical_status', ['Selected', 'Shortlisted'])
             ->whereNull('hr_status')
+            ->orderBy('interview_date', 'desc')
             ->get();
 
         return response()->json([
@@ -64,16 +63,14 @@ class HiringPageController extends Controller
     public function getOnboarding($id)
     {
         $webUser = WebUser::find($id);
- 
-            if (!$webUser) {
-                return response()->json([
-                    'error' => 'Invalid web_user_id',
-                    'message' => 'User not found'
-                ], 404);
-            }
- 
+        if (!$webUser) {
+            return response()->json([
+                'error' => 'Invalid web_user_id',
+                'message' => 'User not found'
+            ], 404);
+        }
         $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
-        $hrCompleted = Candidate::whereNotNull('hr_status')->where('web_user_id', $id)->get();
+        $hrCompleted = Candidate::where('web_user_id', $id)->whereNotNull('hr_status')->orderBy('interview_date', 'desc')->get();
         $selectedCount = Candidate::where('hiring_status', 'Selected')->where('web_user_id', $id)->count();
 
         return response()->json([

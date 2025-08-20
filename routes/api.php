@@ -245,7 +245,7 @@ Route::prefix('ats')->group(function () {
             Route::get('/getinterview/{id}', [TrackerPageController::class, 'getInterviewStats']);
         });
         Route::prefix('hiring')->group(function () {
-            Route::get('/getoverview/{id}', [HiringPageController::class, 'getInterviewOverview']);
+            Route::get('/getoverview/{id}', [HiringPageController::class, 'getHiringOverview']);
             Route::get('/getcandidatedetails/{id}', [HiringPageController::class, 'getCandidateWithDetails']);
             Route::get('/getonboarding/{id}', [HiringPageController::class, 'getOnboarding']);
         });

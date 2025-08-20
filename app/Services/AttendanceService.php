@@ -60,15 +60,12 @@ class AttendanceService
             $salaryDateDay = $policies['salary_date'] ?? null;
 
             if ($salaryPeriod && $salaryDateDay) {
-                $startDay = (int) explode('To', $salaryPeriod)[0];
-                if ((int)$today->format('d') === ($startDay)) {
+                [$periodStart, $periodEnd] = explode('To', $salaryPeriod);
+                if ((int)$today->format('d') === ($periodEnd)) {
                     foreach ($usersGroup as $webUser) {
                         $userId = $webUser->id;
-
                         $payroll = Payroll::where('web_user_id', $userId)->first();
                         if (!$payroll) continue;
-
-                        [$periodStart, $periodEnd] = explode('To', $salaryPeriod);
                         $periodStart = trim($periodStart);
                         $periodEnd = trim($periodEnd);
                         $now = Carbon::now();
@@ -131,7 +128,7 @@ class AttendanceService
                     $workedHours = sprintf('%02d:%02d hours', $hours, $minutes);
                     $attendance->checkout = '23:59:00';
                     $attendance->worked_hours = $workedHours;
-                    $attendance->status = "$attendance->status(Auto Logged Off)";
+                    $attendance->status = "{$attendance->status}(Auto Logged Off)";
                     $attendance->save();
                 }
 

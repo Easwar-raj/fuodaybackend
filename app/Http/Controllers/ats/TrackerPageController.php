@@ -19,8 +19,7 @@ class TrackerPageController extends Controller
                 'message' => 'User not found'
             ], 404);
         }
-        $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
-        $query = Candidate::with('details')->where('web_user_id', $id)->whereNotNull('L1')->whereNull('L2');
+        $query = Candidate::with('details')->where('web_user_id', $id);
 
         if ($request->filled('role')) {
             $query->where('role', $request->role);
@@ -35,19 +34,50 @@ class TrackerPageController extends Controller
         }
 
         if ($request->filled('ats_score')) {
-            $query->where('ats_score', $request->ats_score);
+            $atsScore = strtolower($request->ats_score);
+
+            if (str_contains($atsScore, 'above')) {
+                // e.g. "above 80"
+                preg_match('/\d+/', $atsScore, $matches);
+                if ($matches) {
+                    $query->where('ats_score', '>', (int) $matches[0]);
+                }
+
+            } elseif (str_contains($atsScore, 'below')) {
+                // e.g. "below 50"
+                preg_match('/\d+/', $atsScore, $matches);
+                if ($matches) {
+                    $query->where('ats_score', '<', (int) $matches[0]);
+                }
+
+            } elseif (str_contains($atsScore, '-')) {
+                // e.g. "60-80"
+                $range = explode('-', $atsScore);
+                if (count($range) === 2) {
+                    $min = (int) trim($range[0]);
+                    $max = (int) trim($range[1]);
+                    $query->whereBetween('ats_score', [$min, $max]);
+                }
+            } else {
+                // Fallback for exact match (e.g. just "75")
+                if (is_numeric($atsScore)) {
+                    $query->where('ats_score', '=', (int) $atsScore);
+                }
+            }
+        } else {
+            $query->where('ats_score', '>=', 50);
         }
 
         if ($request->filled('location')) {
             $query->whereHas('details', function ($q) use ($request) { $q->where('nationality', 'LIKE', "%{$request->location}%");});
         }
 
-        $candidates = $query->get();
+        $candidates = $query->orderBy('ats_score', 'desc')->get();
 
-        $resumeDownloadedList = Candidate::where('web_user_id', $id)->whereNotNull('resume')->get();
-        $above80List = Candidate::where('web_user_id', $id)->where('ats_score', '>=', 80)->get();
-        $between50_80List = Candidate::where('web_user_id', $id)->whereBetween('ats_score', [50, 79])->get();
-        $below40List = Candidate::where('web_user_id', $id)->where('ats_score', '<', 40)->get();
+        $resumeDownloadedList = Candidate::where('web_user_id', $id)->whereNotNull('resume')->orderBy('ats_score', 'desc')->get();
+        $above80List = Candidate::where('web_user_id', $id)->where('ats_score', '>=', 80)->orderBy('ats_score', 'desc')->get();
+        $between50_80List = Candidate::where('web_user_id', $id)->whereBetween('ats_score', [50, 79])->orderBy('ats_score', 'desc')->get();
+        $below40List = Candidate::where('web_user_id', $id)->where('ats_score', '<', 40)->orderBy('ats_score', 'desc')->get();
 
         return response()->json([
             'status' => 'Success',
@@ -75,15 +105,12 @@ class TrackerPageController extends Controller
                 'message' => 'User not found'
             ], 404);
         }
-        $webuserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
         $today = Carbon::today();
         $interviewsToday = Candidate::whereDate('interview_date', $today)->where('web_user_id', $id)->get();
         $technicalCompleted = Candidate::whereNotNull('technical_status')->where('web_user_id', $id)->get();
         $finalRoundCompleted = Candidate::whereNotNull('hr_status')->where('web_user_id', $id)->get();
         $notScheduled = Candidate::whereNull('interview_date')->where('web_user_id', $id)->get();
-        $attendedRounds = Candidate::where('web_user_id', $id)->where(function ($query) {
-            $query->whereNotNull('L1')->whereNotNull('L2')->orWhereNotNull('technical_status')->whereNull('hr_status');
-        })->get();
+        $attendedRounds = Candidate::where('web_user_id', $id)->whereNotNull('L1')->whereNull('hr_status')->orderBy('interview_date', 'desc')->get();
 
         return response()->json([
             'status' => 'Success',
