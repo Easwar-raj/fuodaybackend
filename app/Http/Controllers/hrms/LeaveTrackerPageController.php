@@ -243,24 +243,32 @@ class LeaveTrackerPageController extends Controller
     public function regulateLeave(Request $request)
     {
         $request->validate([
-            'id' => 'required|exists:leave_requests,id',
+            'web_user_id' => 'nullable|exists:web_users,id',
+            'id' => 'nullable|exists:leave_requests,id',
             'type' => 'nullable|string',
             'from' => 'nullable|date',
             'to' => 'nullable|date|after_or_equal:from',
             'status' => 'nullable|string|max:255',
-            'regulation_date' => 'required|date',
+            'regulation_date' => 'nullable|date',
             'regulation_reason' => 'nullable|string',
             'regulation_status' => 'nullable|string|max:255',
             'regulation_comment' => 'nullable|string'
         ]);
 
-        $webUser = auth()->user();
-        $leave = LeaveRequest::find($request->id);
-
-        if (!$webUser || !$leave) {
-            return response()->json(['message' => 'User or Leave not found.'], 404);
+        $user = Auth::user();
+        if(!$user) {
+            return response()->json([
+                'message' => 'Unauthorized',
+                'status' => 'error'
+            ], 401);
         }
 
+        $query = LeaveRequest::where('from', $request->from)->where('to', $request->to);
+        if ($request->has('web_user_id')) {
+            $query->where('web_user_id', $request->web_user_id);
+        }
+        $leave = $query->first();
+        $today = Carbon::today()->toDateString();
         $from = $request->from ?? $leave->from;
         $to = $request->to ?? $leave->to;
 
@@ -269,7 +277,7 @@ class LeaveTrackerPageController extends Controller
         $leave->to = $to;
         $leave->days = Carbon::parse($from)->diffInDays($to) + 1;
         $leave->status = $request->status ?? $leave->status;
-        $leave->regulation_date = $request->regulation_date;
+        $leave->regulation_date = $request->regulation_date ?? $today;
         $leave->regulation_reason = $request->regulation_reason ?? $leave->regulation_reason;
         if ($request->has('regulation_status') && !empty(trim($request->regulation_status))) {
             $leave->regulation_status = $request->regulation_status;

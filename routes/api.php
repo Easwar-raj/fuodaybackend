@@ -90,15 +90,13 @@ Route::prefix('admin-users')->group(function () {
 });
 
 Route::prefix('web-users')->group(function () {
-    Route::post('/login', [WebpageUserController::class, 'userlogin']);   // Login
+    Route::post('/login', [WebpageUserController::class, 'userlogin']);
     Route::middleware('auth:sanctum')->group(function () {
-        Route::get('/', [WebpageUserController::class, 'getAllUsers']); // Get all users
-        Route::post('/save', [WebpageUserController::class, 'saveWebUser']); // Create a new web user
-        Route::post('/all', [WebpageUserController::class, 'index']); // Get all users with optional filtering by role
-
-
-        Route::delete('/{id}', [WebpageUserController::class, 'destroy']); // Delete user
-        Route::post('/logout', [WebpageUserController::class, 'logout']);  // Logout
+        Route::get('/', [WebpageUserController::class, 'getAllUsers']);
+        Route::post('/save', [WebpageUserController::class, 'saveWebUser']);
+        Route::post('/all', [WebpageUserController::class, 'index']);
+        Route::delete('/{id}', [WebpageUserController::class, 'destroy']);
+        Route::post('/logout', [WebpageUserController::class, 'logout']);
         Route::get('/getemployeesbymanagers/{id}', [WebpageUserController::class, 'getEmployeesGroupedByManager']);
         Route::post('/payroll/update/{id}', [WebpageUserController::class, 'updatePayrollDetails']);
     });
