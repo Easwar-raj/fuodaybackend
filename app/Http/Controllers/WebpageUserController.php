@@ -872,17 +872,14 @@ class WebpageUserController extends Controller
 
     public function getEmployeesByAdminUser($id)
     {
-        // Step 1: Get the admin_user_id of the provided web_user_id
-        $webUser = WebUser::findOrFail($id);
-        $adminUserId = $webUser->admin_user_id;
-
-        // Step 2: Fetch all employees under the same admin_user_id
-        $employees = EmployeeDetails::whereHas('webUser', function ($query) use ($adminUserId) {
-            $query->where('admin_user_id', $adminUserId);
-        })
-        ->select('web_user_id', 'emp_name', 'emp_id')
-        ->get();
-
+        $adminUser = AdminUser::find($id);
+        if (!$adminUser) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invalid user id.',
+            ], 401);
+        }
+        $employees = WebUser::where('admin_user_id', $id)->select('id', 'name', 'emp_id')->get();
         return response()->json([
             'message' => 'Employees fetched successfully.',
             'status'  => 'Success',
