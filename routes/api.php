@@ -43,10 +43,10 @@ Route::prefix('admin-users')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/save-selection', [AdminUserController::class, 'saveSelection']);
         Route::post('/get-selections', [AdminUserController::class, 'getSelectedSections']);
-        Route::post('/logout', [AdminUserController::class, 'logout']);
         Route::get('/getadmindata/{id}', [AdminUserController::class, 'getAllAdminPanelData']);
         Route::get('/getallwebusers/{id}', [AdminUserController::class, 'getAllWebUsers']);
         Route::get('/get/abouts/{id}', [AdminUserController::class, 'getAboutByAdminUser']);
+        Route::get('/getemployeesname/{id}', [WebpageUserController::class, 'getEmployeesByAdminUser']);
         // Schedule routes
         Route::get('/dynamic-shift-types', [AdminUserController::class, 'getDynamicShiftTypes']);
         // New Added
@@ -85,6 +85,7 @@ Route::prefix('admin-users')->group(function () {
             Route::delete('/totalleaves', [AdminUserController::class, 'deleteTotalLeaves']);
             Route::delete('/policies', [AdminUserController::class, 'deletePolicies']);
         });
+        Route::post('/logout', [AdminUserController::class, 'logout']);
     });
 });
 
@@ -101,7 +102,6 @@ Route::prefix('web-users')->group(function () {
         Route::get('/getemployeesbymanagers/{id}', [WebpageUserController::class, 'getEmployeesGroupedByManager']);
         Route::post('/payroll/update/{id}', [WebpageUserController::class, 'updatePayrollDetails']);
     });
-    Route::get('/getemployeesbyadmin/{id}', [WebpageUserController::class, 'getEmployeesByAdminUser']);
     Route::get('/getwebuserbyid/{id}', [WebpageUserController::class, 'getWebUserById']);
     Route::post('/update/{id}', [WebpageUserController::class, 'update']); // Update user
 });
@@ -213,7 +213,6 @@ Route::prefix('hrms')->group(function () {
             Route::get('/getallauditreport/{id}', [PerformancePageController::class, 'getAllAuditReport']);
         });
         Route::prefix('support')->group(function () {
-            // Route::get('/gettickets/{id}/{type}', [SupportPageController::class, 'getAllTicketsByStatus']);
             Route::get('/gettickets/{id}', [SupportPageController::class, 'getAllTicketsByStatus']);
             Route::post('/addticket', [SupportPageController::class, 'addTicket']);
             Route::post('/updateticket/{ticketId}', [SupportPageController::class, 'updateTicket']);
