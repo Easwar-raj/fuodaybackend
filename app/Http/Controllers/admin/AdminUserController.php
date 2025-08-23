@@ -268,6 +268,34 @@ class AdminUserController extends Controller
         ], 200);
     }
 
+    public function getHeirarchiesByAdminUser($id)
+    {
+        $adminUser = AdminUser::find($id);
+
+        if (!$adminUser) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User not found.'
+            ], 404);
+        }
+
+        $heirarchies = Heirarchies::where('admin_user_id', $id)->get();
+
+        if ($heirarchies->isEmpty()) {
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'No hierarchy records found for this admin user.',
+                'data' => []
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Heirarchy records retrieved successfully',
+            'data' => $heirarchies
+        ]);
+    }
+
     public function saveHeirarchy(Request $request)
     {
         $validated = $request->validate([
@@ -312,6 +340,34 @@ class AdminUserController extends Controller
         return response()->json(['message' => 'Hierarchy updated successfully.', 'status' => 'Success'], 200);
     }
 
+    public function getHolidaysByAdminUser($id)
+    {
+        $adminUser = AdminUser::find($id);
+
+        if (!$adminUser) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User not found.'
+            ], 404);
+        }
+
+        $holidays = Holidays::where('admin_user_id', $id)->get();
+
+        if ($holidays->isEmpty()) {
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'No holiday records found for this admin user.',
+                'data' => []
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Holiday records retrieved successfully',
+            'data' => $holidays
+        ]);
+    }
+
     public function saveHoliday(Request $request)
     {
         $validated = $request->validate([
@@ -353,6 +409,34 @@ class AdminUserController extends Controller
         return response()->json(['message' => 'Holiday updated successfully.', 'status' => 'Success'], 200);
     }
 
+    public function getIndustriesByAdminUser($id)
+    {
+        $adminUser = AdminUser::find($id);
+
+        if (!$adminUser) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User not found.'
+            ], 404);
+        }
+
+        $industries = Industries::where('admin_user_id', $id)->get();
+
+        if ($industries->isEmpty()) {
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'No industry records found for this admin user.',
+                'data' => []
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Industry records retrieved successfully',
+            'data' => $industries
+        ]);
+    }
+
     public function saveIndustry(Request $request)
     {
         $validated = $request->validate([
@@ -389,6 +473,34 @@ class AdminUserController extends Controller
         ]);
 
         return response()->json(['message' => 'Industry updated successfully.', 'status' => 'Success'], 200);
+    }
+
+    public function getClientsByAdminUser($id)
+    {
+        $adminUser = AdminUser::find($id);
+
+        if (!$adminUser) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User not found.'
+            ], 404);
+        }
+
+        $clients = Client::where('admin_user_id', $id)->get();
+
+        if ($clients->isEmpty()) {
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'No client records found for this admin user.',
+                'data' => []
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Client records retrieved successfully',
+            'data' => $clients
+        ]);
     }
 
     public function saveClient(Request $request)
@@ -462,7 +574,33 @@ class AdminUserController extends Controller
 
         return response()->json(['message' => 'Client updated successfully.', 'status' => 'Success'], 200);
     }
+    public function getServicesByAdminUser($id)
+    {
+        $adminUser = AdminUser::find($id);
 
+        if (!$adminUser) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User not found.'
+            ], 404);
+        }
+
+        $services = Service::where('admin_user_id', $id)->get();
+
+        if ($services->isEmpty()) {
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'No service records found for this admin user.',
+                'data' => []
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Service records retrieved successfully',
+            'data' => $services
+        ]);
+    }
     public function saveService(Request $request)
     {
         $validated = $request->validate([
@@ -553,19 +691,48 @@ class AdminUserController extends Controller
             ], 404);
         }
 
-        $about = About::where('admin_user_id', $id)->first();
+        $about = About::where('admin_user_id', $id)->get(); // Correctly returns a collection
 
-        if (!$about) {
+        if ($about->isEmpty()) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'About data not found for this admin user.'
-            ], 404);
+                'status' => 'Success', // Changed from error to success for a valid empty response
+                'message' => 'About data not found for this admin user.',
+                'data' => []
+            ], 200); // Return 200 OK for a successful but empty result
         }
 
         return response()->json([
             'status' => 'Success',
             'message' => 'About data retrieved successfully',
             'data' => $about
+        ]);
+    }
+
+    public function getEventsByAdminUser($id)
+    {
+        $adminUser = AdminUser::find($id);
+
+        if (!$adminUser) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User not found.'
+            ], 404);
+        }
+
+        $events = Event::where('admin_user_id', $id)->get();
+
+        if ($events->isEmpty()) {
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'No events found for this admin user.',
+                'data' => []
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Events retrieved successfully',
+            'data' => $events
         ]);
     }
 
@@ -622,36 +789,80 @@ class AdminUserController extends Controller
     {
         $validated = $request->validate([
             'admin_user_id' => 'required|exists:admin_users,id',
-            'achievement' => 'nullable|string',
-            'values' => 'nullable|string',
+            'achievement' => 'nullable|string|max:255',
+            'values' => 'nullable|string|max:255',
             'action' => 'required|in:create,update',
             'id' => 'required_if:action,update|exists:achievements,id'
         ]);
 
-        $adminUser = AdminUser::find($request->admin_user_id);
-        if (!$adminUser) {
-            return response()->json(['message' => 'Invalid admin user'], 400);
-        }
+        $adminUser = AdminUser::find($validated['admin_user_id']);
 
-        if ($request->action === 'create') {
+        if ($validated['action'] === 'create') {
             Achievement::create([
-                'admin_user_id' => $request->admin_user_id,
+                'admin_user_id' => $validated['admin_user_id'],
                 'company_name' => $adminUser->company_name,
-                'achievement' => $request->achievement ?? null,
-                'values' => $request->values ?? null,
+                'achievement' => $validated['achievement'] ?? null,
+                'values' => $validated['values'] ?? null,
             ]);
 
-            return response()->json(['message' => 'Achievement created successfully.', 'status' => 'Success'], 201);
+            return response()->json(['message' => 'Achievement created successfully.'], 201);
+
+        } elseif ($validated['action'] === 'update') {
+            $achievement = Achievement::find($validated['id']);
+            
+            // Ensure the user is updating their own achievement
+            if ($achievement->admin_user_id != $validated['admin_user_id']) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            $achievement->update([
+                'achievement' => $validated['achievement'] ?? $achievement->achievement,
+                'values' => $validated['values'] ?? $achievement->values,
+            ]);
+
+            return response()->json(['message' => 'Achievement updated successfully.'], 200);
         }
-
-        $achievement = Achievement::find($request->id);
-        $achievement->update([
-            'achievement' => $request->achievement ?? $achievement->achievement,
-            'values' => $request->values ?? $achievement->values,
-        ]);
-
-        return response()->json(['message' => 'Achievement updated successfully.', 'status' => 'Success'], 200);
     }
+
+    public function getAchievements(Request $request)
+    {
+        $adminUserId = auth()->user()->id;
+    
+        $achievements = Achievement::where('admin_user_id', $adminUserId)
+                                ->orderBy('created_at', 'desc')
+                                ->get();
+
+        return response()->json($achievements, 200);
+    }
+
+    public function getFeedbackQuestionsByAdminUser($id)
+{
+    $adminUser = AdminUser::find($id);
+
+    if (!$adminUser) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'User not found.'
+        ], 404);
+    }
+
+    $questions = FeedbackQuestions::where('admin_user_id', $id)->get();
+
+    if ($questions->isEmpty()) {
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'No feedback questions found for this admin user.',
+            'data' => []
+        ], 200);
+    }
+
+    return response()->json([
+        'status' => 'Success',
+        'message' => 'Feedback questions retrieved successfully',
+        'data' => $questions
+    ]);
+}
+
 
     public function saveFeedbackQuestions(Request $request)
     {
@@ -793,6 +1004,34 @@ class AdminUserController extends Controller
         ]);
 
         return response()->json(['message' => 'Project updated successfully.', 'status' => 'Success'], 200);
+    }
+
+    public function getTotalLeavesByAdminUser($id)
+    {
+        $adminUser = AdminUser::find($id);
+
+        if (!$adminUser) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User not found.'
+            ], 404);
+        }
+
+        $leaves = TotalLeaves::where('admin_user_id', $id)->get();
+
+        if ($leaves->isEmpty()) {
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'No leave records found for this admin user.',
+                'data' => []
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Leave records retrieved successfully',
+            'data' => $leaves
+        ]);
     }
 
     public function saveTotalLeaves(Request $request)
@@ -994,6 +1233,7 @@ class AdminUserController extends Controller
     {
         $validated = $request->validate([
             'admin_user_id' => 'required|exists:admin_users,id',
+            'id' => 'required|exists:abouts,id' // Validate the specific ID to be deleted
         ]);
 
         $adminUser = AdminUser::find($request->admin_user_id);
@@ -1002,9 +1242,10 @@ class AdminUserController extends Controller
             return response()->json(['message' => 'Invalid admin user'], 400);
         }
 
-        $about = About::where('admin_user_id', $request->admin_user_id)->get();
+        $about = About::where('admin_user_id', $request->admin_user_id)->where('id', $request->id)->first();
+
         if (!$about) {
-            return response()->json(['message' => 'About section not found'], 404);
+            return response()->json(['message' => 'About section not found or does not belong to this user.'], 404);
         }
 
         $about->delete();
@@ -1130,28 +1371,31 @@ class AdminUserController extends Controller
         return response()->json(['message' => 'Project and related team deleted successfully.', 'status' => 'Success'], 200);
     }
 
-    public function deleteTotalLeave(Request $request)
+    public function deleteTotalLeaves(Request $request)
     {
         $validated = $request->validate([
             'admin_user_id' => 'required|exists:admin_users,id',
             'id' => 'required|exists:total_leaves,id',
         ]);
 
-        $adminUser = AdminUser::find($request->admin_user_id);
-
-        if (!$adminUser) {
-            return response()->json(['message' => 'Invalid admin user'], 400);
+        if (!$validated) {
+            return response()->json(['message' => 'Invalid data'], 400);
         }
 
-        $leave = TotalLeaves::find($request->id);
+        $leave = TotalLeaves::where('admin_user_id', $request->admin_user_id)->where('id', $request->id)->first();
 
         if (!$leave) {
-            return response()->json(['message' => 'Leave policy not found'], 404);
+            return response()->json([
+                'message' => 'Leave policy not found or does not belong to this user.'
+            ], 404);
         }
 
         $leave->delete();
 
-        return response()->json(['message' => 'Leave policy deleted successfully.', 'status' => 'Success'], 200);
+        return response()->json([
+            'message' => 'Leave policy deleted successfully.',
+            'status' => 'Success'
+        ], 200);
     }
 
     public function deletePolicies(Request $request)
@@ -1645,5 +1889,24 @@ class AdminUserController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function getPolicies($admin_user_id)
+    {
+        $validator = Validator::make(
+            ['admin_user_id' => $admin_user_id],
+            ['admin_user_id' => 'required|exists:admin_users,id']
+        );
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+        }
+
+        $policies = Policies::where('admin_user_id', $admin_user_id)->orderBy('created_at', 'desc')->get();
+
+        return response()->json([
+            'status' => 'Success',
+            'data' => $policies
+        ], 200);
     }
 }

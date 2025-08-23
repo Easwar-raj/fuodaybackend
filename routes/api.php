@@ -55,6 +55,19 @@ Route::prefix('admin-users')->group(function () {
         Route::put('/updateschedules/{scheduleId}', [AdminUserController::class, 'createorupdateSchedule']);
         Route::delete('/deleteschedules', [AdminUserController::class, 'deleteSchedule']);
         Route::put('/move-employee-shift', [AdminUserController::class, 'moveEmployeeToShift']);
+
+        Route::get('/get/abouts/{id}', [AdminUserController::class, 'getAboutByAdminUser']);
+        Route::get('/get/events/{id}', [AdminUserController::class, 'getEventsByAdminUser']);
+        Route::get('/get/feedbackquestions/{id}', [AdminUserController::class, 'getFeedbackQuestionsByAdminUser']);
+        Route::get('/get/heirarchies/{id}', [AdminUserController::class, 'getHeirarchiesByAdminUser']);
+        Route::get('/get/holidays/{id}', [AdminUserController::class, 'getHolidaysByAdminUser']);
+        Route::get('/get/industries/{id}', [AdminUserController::class, 'getIndustriesByAdminUser']);
+        Route::get('/get/services/{id}', [AdminUserController::class, 'getServicesByAdminUser']);
+        Route::get('/get/totalleaves/{id}', [AdminUserController::class, 'getTotalLeavesByAdminUser']);
+        Route::get('/get/client/{id}', [AdminUserController::class, 'getClientsByAdminUser']);
+        Route::get('/get-policies/{admin_user_id}', [AdminUserController::class, 'getPolicies']);
+        Route::get('/getachievements', [AdminUserController::class, 'getAchievements']);
+
         Route::prefix('save')->group(function () {
             Route::post('/heirarchy', [AdminUserController::class, 'saveHeirarchy']);
             Route::post('/holiday', [AdminUserController::class, 'saveHoliday']);
@@ -102,6 +115,7 @@ Route::prefix('web-users')->group(function () {
     });
     Route::get('/getwebuserbyid/{id}', [WebpageUserController::class, 'getWebUserById']);
     Route::post('/update/{id}', [WebpageUserController::class, 'update']); // Update user
+    // Route::post('/password_link', [WebpageUserController::class, 'sendResetLinkEmail']);  // Logout
 });
 
 Route::prefix('hrms')->group(function () {
@@ -206,6 +220,7 @@ Route::prefix('hrms')->group(function () {
             Route::get('/getemployeeaudit/{id}', [PerformancePageController::class, 'getEnployeeAudit']);
             Route::post('/addaudit', [PerformancePageController::class, 'addAudit']);
             Route::post('/updateaudit/{id}', [PerformancePageController::class, 'updateAudit']);
+            Route::post('/approveaudit/{id}', [PerformancePageController::class, 'approveAudit']);
             Route::get('/getauditreport/{id}', [PerformancePageController::class, 'getAuditReport']);
             Route::get('/getauditreportingteam/{id}', [PerformancePageController::class, 'getAuditReportingTeam']);
             Route::get('/getallauditreport/{id}', [PerformancePageController::class, 'getAllAuditReport']);

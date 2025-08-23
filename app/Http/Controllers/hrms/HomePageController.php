@@ -90,9 +90,11 @@ class HomePageController extends Controller
             });
 
         // 2. Tasks for today
-        $tasks = Task::with(['projectTeamTo.project', 'projectTeamBy.project'])->get();
+        $query = Task::with(['projectTeamTo.project', 'projectTeamBy.project']);
+        $assignedToTask = $query->where('assigned_to_id', $id)->where('status', '!=', 'Completed')->orderBy('date', 'desc')->get();
+        $assignedByTask = $query->where('assigned_by_id', $id)->orderBy('date', 'desc')->get();
 
-        $assignedTo = $tasks->where('assigned_to_id', $id)->map(function ($task) {
+        $assignedTo = $assignedToTask->map(function ($task) {
             $projectTeam = $task->projectTeamTo ?? $task->projectTeamBy;
             $project = optional($projectTeam ? $projectTeam->project : null);
             return [
@@ -111,7 +113,7 @@ class HomePageController extends Controller
             ];
         })->values();
 
-        $assignedBy = $tasks->where('assigned_by_id', $id)->map(function ($task) {
+        $assignedBy = $assignedByTask->map(function ($task) {
             $projectTeam = $task->projectTeamTo ?? $task->projectTeamBy;
             $project = optional($projectTeam ? $projectTeam->project : null);
             return [

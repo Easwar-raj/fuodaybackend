@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use App\Models\Attendance;
 use App\Models\WebUser;
 use App\Models\EmployeeDetails;
+use App\Models\LeaveRequest;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log; // Add this import
@@ -44,6 +45,7 @@ class AttendancePageController extends Controller
             }
 
             $analytics = [
+                'total_attendance_days' => 0,
                 'total_worked_hours' => 0,
                 'days' => [],
                 'monthly_counts' => [],
@@ -60,6 +62,7 @@ class AttendancePageController extends Controller
                 'average_checkout_time' => null,
                 'average_attendance_percent' => 0,
                 'best_month' => null,
+                'permission_days' => [],
                 'graph' => []
             ];
 
@@ -142,12 +145,15 @@ class AttendancePageController extends Controller
                         $analytics['monthly_counts'][$monthKey]++;
                     }
 
+                    if (in_array($status, ['present', 'late', 'early', 'half day'])) {
+                        $analytics['total_attendance_days']++;
+                    }
+
                     match ($status) {
                         'present' => $analytics['total_present']++,
                         'absent' => $analytics['total_absent']++,
                         'late' => $analytics['total_late']++,
                         'early' => $analytics['total_early']++,
-                        'permission' => $analytics['total_permission']++,
                         'half day' => $analytics['total_half_day']++,
                         'leave' => $analytics['total_leave']++,
                         'holiday' => $analytics['total_holiday']++,
@@ -250,6 +256,9 @@ class AttendancePageController extends Controller
                 $analytics['best_month'] = Carbon::parse($bestMonthKey . '-01')->format('F Y');
             }
 
+            $permissionDays = LeaveRequest::where('web_user_id', $id)->where('type', 'Permission')->where('status', '!=', 'Rejected')->get();
+            $analytics['permission_days'] = $permissionDays;
+            $analytics['total_permission'] = $permissionDays->count();
             return response()->json([
                 'message' => 'Attendance data retrieved successfully',
                 'status' => 'Success',

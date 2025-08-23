@@ -20,6 +20,7 @@ use App\Models\Payslip;
 use App\Models\Projects;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class PerformancePageController extends Controller
@@ -610,6 +611,48 @@ class PerformancePageController extends Controller
         ], 200);
     }
 
+    public function approveAudit(Request $request, $id)
+    {
+        $validated = $request->validate([
+            "reporting_manager_id" => 'required|exists:web_users,id',
+            'management_assign' => 'nullable|string',
+            'management_remarks' => 'nullable|string',
+        ]);
+
+        $user = Auth::user();
+        $reportingManager = WebUser::find($request->reporting_manager_id);
+        if ($user->id !== $id || !$validated || $user->admin_user_id !== $reportingManager->admin_user_id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invalid data or token'
+            ], 400);
+        }
+
+        $managementAssign  = $request->management_assign;
+        $managementRemarks = $request->management_remarks;
+
+        $managementReview = null;
+
+        if ($managementAssign || $managementRemarks) {
+            $managementReview = trim(($managementAssign ?? '') . '%' . ($managementRemarks ?? ''), '%');
+        }
+
+        $team = EmployeeDetails::where('reporting_manager_id', $id)->pluck('web_user_id')->toArray();
+
+        foreach ($team as $memberId) {
+            $audit = Audits::where('web_user_id', $memberId)->first();
+            if ($audit && $audit->final_remarks) {
+                $audit->management_review = $managementReview;
+                $audit->save();
+            }
+        }
+
+        return response()->json([
+            'message' => 'Audit updated by Management successfully',
+            'status' => 'Success'
+        ], 200);
+    }
+
     public function getAuditReport($id)
     {
         $audit = Audits::where('web_user_id', $id)->first();
@@ -642,9 +685,6 @@ class PerformancePageController extends Controller
 
         $teamWithAuditStatus = $team->map(function ($member) {
             $hasAudit = Audits::where('web_user_id', $member->web_user_id)->exists();
-            if ($hasAudit) {
-                $audit = Audits::where('web_user_id', $member->web_user_id)->first();
-            }
 
             return [
                 'web_user_id' => $member->web_user_id,

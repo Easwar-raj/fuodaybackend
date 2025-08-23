@@ -128,7 +128,7 @@ class AttendanceService
                     $workedHours = sprintf('%02d:%02d hours', $hours, $minutes);
                     $attendance->checkout = '23:59:00';
                     $attendance->worked_hours = $workedHours;
-                    $attendance->status = "{$attendance->status}(Auto Logged Off)";
+                    // $attendance->status = "{$attendance->status}(Auto Logged Off)";
                     $attendance->save();
                 }
 
@@ -249,7 +249,7 @@ class AttendanceService
                     'checkin' => null,
                     'checkout' => null,
                     'location' => null,
-                    'status' => $status
+                    'status' => $parts[0]
                 ]);
             }
         }
