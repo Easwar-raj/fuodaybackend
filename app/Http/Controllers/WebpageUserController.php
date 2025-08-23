@@ -6,6 +6,7 @@ use App\Models\AdminUser;
 use App\Models\Attendance;
 use App\Models\Audits;
 use App\Models\EmployeeDetails;
+use App\Models\LoginLogs;
 use App\Models\SectionSelection;
 use App\Models\Payroll;
 use App\Models\Payslip;
@@ -711,7 +712,15 @@ class WebpageUserController extends Controller
             'role' => 'required|string|in:employee,recruiter,hr',
         ]);
 
+        // Log failed validation
         if ($validator->fails()) {
+            LoginLogs::create([
+                'email' => $request->email,
+                'role' => $request->role,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'status' => 'failed_validation',
+            ]);
             return response()->json([
                 'status' => 'error',
                 'errors' => $validator->errors(),
@@ -728,19 +737,68 @@ class WebpageUserController extends Controller
             ])
             ->first();
 
-        if(($webUser->role === 'hr' && $request->role === 'recruiter') || ($webUser->role !== 'hr_recruiter' && $webUser->role !== 'hr' && $request->role !== $webUser->role)) {
-            return response()->json([
-                'message' => 'Unauthorized',
-                'status' => 'error',
-            ], 403);
-        }
-
-        if (!$webUser || !Hash::check($request->input('password'), $webUser->password)) {
+        // Check if user exists before attempting other checks
+        if (!$webUser) {
+            LoginLogs::create([
+                'email' => $request->email,
+                'role' => $request->role,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'status' => 'failed_login', // Status for "user not found"
+            ]);
             return response()->json([
                 'message' => 'Invalid email or password',
                 'status' => 'error',
             ], 401);
         }
+    
+        // Check for unauthorized role
+        if (($webUser->role === 'hr' && $request->role === 'recruiter') || ($webUser->role !== 'hr_recruiter' && $webUser->role !== 'hr' && $request->role !== $webUser->role)) {
+            LoginLogs::create([
+                'web_user_id' => $webUser->id,
+                'email' => $request->email,
+                'role' => $request->role,
+                'name' => $webUser->name,
+                'emp_id' => $webUser->emp_id,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'status' => 'unauthorized_role',
+            ]);
+            return response()->json([
+                'message' => 'Unauthorized',
+                'status' => 'error',
+            ], 403);
+        }
+    
+        // Check for correct password
+        if (!Hash::check($request->input('password'), $webUser->password)) {
+            LoginLogs::create([
+                'web_user_id' => $webUser->id,
+                'email' => $request->email,
+                'role' => $request->role,
+                'name' => $webUser->name,
+                'emp_id' => $webUser->emp_id,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'status' => 'failed_login', // Status for "wrong password"
+            ]);
+            return response()->json([
+                'message' => 'Invalid email or password',
+                'status' => 'error',
+            ], 401);
+        }
+    
+        // Log successful login before returning the response
+        LoginLogs::create([
+            'web_user_id' => $webUser->id,
+            'email' => $request->email,
+            'role' => $request->role,
+            'name' => $webUser->name,
+            'emp_id' => $webUser->emp_id,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'status' => 'success',
+        ]);
 
         $token = $webUser->createToken('UserAccessToken')->plainTextToken; // use `plainTextToken` instead of `accessToken`
         $selections = SectionSelection::where('admin_user_id', $webUser->admin_user_id)->get();

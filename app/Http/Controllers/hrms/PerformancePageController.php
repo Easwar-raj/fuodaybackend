@@ -57,7 +57,10 @@ class PerformancePageController extends Controller
         $priorityOrder = ['High' => 1, 'Medium' => 2, 'Low' => 3];
 
         $pendingTasks = $tasks
-            ->filter(function ($task) { return strtolower($task->status) === 'pending'; })
+            ->filter(function ($task) {
+                $status = strtolower($task->status);
+                return in_array($status, ['pending', 'in progress']);
+            })
             ->sort(function ($a, $b) use ($priorityOrder) {
                 $priorityA = $priorityOrder[$a->priority] ?? 999;
                 $priorityB = $priorityOrder[$b->priority] ?? 999;
@@ -69,27 +72,25 @@ class PerformancePageController extends Controller
                 return strtotime($a->deadline) <=> strtotime($b->deadline);
             });
 
-        $inProgressTasks = $tasks->filter(function ($task) {
-            return strtolower($task->status) === 'in progress';
+        $goalProgressTasks = $tasks->filter(function ($task) {
+            return strtolower($task->status) === 'completed' && strtolower($task->priority) === 'high';
         });
 
         $totalTasksCount = $tasks->count();
-        $inProgressCount = $inProgressTasks->count();
+        $goalProgressCount = $goalProgressTasks->count();
 
-        $inProgressPercentage = $totalTasksCount > 0 ? round(($inProgressCount / $totalTasksCount) * 100, 2) : 0;
+        $goalProgressPercentage = $totalTasksCount > 0 ? round(($goalProgressCount / $totalTasksCount) * 100, 2) : 0;
 
-        // Task performance
-        $onTimeTasks = 0;
-        foreach ($completedTasks as $task) {
+        $onTimeCompletedTasks = $completedTasks->filter(function ($task) {
             if ($task->deadline && $task->updated_at) {
-                if ($task->updated_at->format('Y-m-d') <= $task->deadline->format('Y-m-d')) {
-                    $onTimeTasks++;
-                }
+                return $task->updated_at->format('Y-m-d') <= $task->deadline->format('Y-m-d');
             }
-        }
+            return false;
+        });
 
         $completedCount = $completedTasks->count();
-        $timelyPerformance = $completedCount > 0 ? round(($onTimeTasks / $completedCount) * 100, 2) : 0;
+        $onTimeCompletedCount = $onTimeCompletedTasks->count();
+        $timelyPerformance = $completedCount > 0 ? round(($onTimeCompletedCount / $completedCount) * 100, 2) : 0;
         $ratingOutOfFive = round(($timelyPerformance / 100) * 5, 2);
 
         // Get all project team entries for this user
@@ -106,12 +107,16 @@ class PerformancePageController extends Controller
         })->values();
 
         $monthlyAttendance = DB::table('attendances')
-            ->selectRaw('YEAR(date) as year, MONTH(date) as month, COUNT(*) as total_days, SUM(CASE WHEN LOWER(status) = "present" THEN 1 ELSE 0 END) as present_days')
+            ->selectRaw('
+                YEAR(date) as year,
+                MONTH(date) as month,
+                COUNT(*) as total_days,
+                SUM(CASE WHEN LOWER(status) IN ("present", "late", "early", "punctual", "half day") THEN 1 ELSE 0 END) as present_days
+            ')
             ->where('web_user_id', $id)
             ->groupByRaw('YEAR(date), MONTH(date)')
             ->get();
 
-        // Step 2: Calculate monthly percentages and overall average
         $monthlyPercentages = $monthlyAttendance->map(function ($record) {
             return $record->total_days > 0 ? round(($record->present_days / $record->total_days) * 100, 2) : 0;
         });
@@ -127,9 +132,10 @@ class PerformancePageController extends Controller
                 'completed_tasks' => $completedTasks->values(),
                 'total_pending' => $pendingTasks->count(),
                 'pending_goals' => $pendingTasks->values(),
-                'goal_progress_percentage' => $inProgressPercentage,
-                'goal_progress' => $inProgressTasks->values(),
+                'goal_progress_percentage' => $goalProgressPercentage,
+                'goal_progress' => $goalProgressTasks->values(),
                 'performance_score' => $timelyPerformance,
+                'performance_score_tasks' => $onTimeCompletedTasks,
                 'performance_rating_out_of_5' => $ratingOutOfFive,
                 'total_completed_projects' => $completedProjects->count(),
                 'completed_projects' => $completedProjects,
