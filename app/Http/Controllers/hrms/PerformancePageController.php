@@ -30,6 +30,7 @@ class PerformancePageController extends Controller
         // Get all tasks assigned to this user
         $tasks = Task::with(['project', 'projectTeamBy'])
             ->where('assigned_to_id', $id)
+            ->orderBy('date', 'desc')
             ->get();
 
         // Format tasks
