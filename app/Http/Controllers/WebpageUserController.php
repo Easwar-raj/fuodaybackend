@@ -720,6 +720,8 @@ class WebpageUserController extends Controller
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
                 'status' => 'failed_validation',
+                'date' => Carbon::now()->toDateString(),
+                'time' => Carbon::now()->toTimeString()
             ]);
             return response()->json([
                 'status' => 'error',
@@ -745,6 +747,8 @@ class WebpageUserController extends Controller
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
                 'status' => 'failed_login', // Status for "user not found"
+                'date' => Carbon::today()->toDateString(),
+                'time' => Carbon::today()->toTimeString()
             ]);
             return response()->json([
                 'message' => 'Invalid email or password',
@@ -763,6 +767,8 @@ class WebpageUserController extends Controller
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
                 'status' => 'unauthorized_role',
+                'date' => Carbon::today()->toDateString(),
+                'time' => Carbon::today()->toTimeString()
             ]);
             return response()->json([
                 'message' => 'Unauthorized',
@@ -781,6 +787,8 @@ class WebpageUserController extends Controller
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
                 'status' => 'failed_login', // Status for "wrong password"
+                'date' => Carbon::today()->toDateString(),
+                'time' => Carbon::today()->toTimeString()
             ]);
             return response()->json([
                 'message' => 'Invalid email or password',
@@ -792,12 +800,14 @@ class WebpageUserController extends Controller
         LoginLogs::create([
             'web_user_id' => $webUser->id,
             'email' => $request->email,
-            'role' => $request->role,
+            'role' => $webUser->role,
             'name' => $webUser->name,
             'emp_id' => $webUser->emp_id,
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
             'status' => 'success',
+            'date' => Carbon::today()->toDateString(),
+            'time' => Carbon::today()->toTimeString()
         ]);
 
         $token = $webUser->createToken('UserAccessToken')->plainTextToken; // use `plainTextToken` instead of `accessToken`

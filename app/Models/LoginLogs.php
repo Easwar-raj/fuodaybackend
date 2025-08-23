@@ -16,6 +16,12 @@ class LoginLogs extends Model
         'ip_address',
         'user_agent',
         'status',
+        'date',
+        'time'
+    ];
+
+    protected $casts = [
+        'date' => 'date:Y-m-d',
     ];
 
     public function webUser()
