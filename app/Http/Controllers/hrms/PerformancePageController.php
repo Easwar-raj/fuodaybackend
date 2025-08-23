@@ -54,9 +54,20 @@ class PerformancePageController extends Controller
             return strtolower($task->status) === 'completed';
         });
 
-        $pendingTasks = $tasks->filter(function ($task) {
-            return strtolower($task->status) === 'pending';
-        });
+        $priorityOrder = ['High' => 1, 'Medium' => 2, 'Low' => 3];
+
+        $pendingTasks = $tasks
+            ->filter(function ($task) { return strtolower($task->status) === 'pending'; })
+            ->sort(function ($a, $b) use ($priorityOrder) {
+                $priorityA = $priorityOrder[$a->priority] ?? 999;
+                $priorityB = $priorityOrder[$b->priority] ?? 999;
+
+                if ($priorityA !== $priorityB) {
+                    return $priorityA <=> $priorityB;
+                }
+
+                return strtotime($a->deadline) <=> strtotime($b->deadline);
+            });
 
         $inProgressTasks = $tasks->filter(function ($task) {
             return strtolower($task->status) === 'in progress';
