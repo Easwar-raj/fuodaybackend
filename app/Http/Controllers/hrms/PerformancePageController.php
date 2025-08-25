@@ -503,7 +503,7 @@ class PerformancePageController extends Controller
             ], 400);
         }
 
-        $webUser = WebUser::find($request->web_user_id);
+        $webUser = WebUser::find($request->web_user_id)->with('employeeDetails');
 
         if (!$webUser || !$webUser->admin_user_id) {
             return response()->json([
@@ -515,6 +515,8 @@ class PerformancePageController extends Controller
             'web_user_id'               => $request->web_user_id,
             'emp_name'                  => $webUser->name,
             'emp_id'                    => $webUser->emp_id,
+            'department'                => $webUser->employeeDetails->department,
+            'date_of_joining'           => $webUser->employeeDetails->date_of_joining,
             'key_tasks_completed'        => $request->key_tasks_completed,
             'challenges_faced'           => $request->challenges_faced,
             'proud_contribution'         => $request->proud_contribution,
@@ -654,6 +656,83 @@ class PerformancePageController extends Controller
             'message' => 'Audit data retrieved successfully',
             'status' => 'Success',
             'data' => $audit
+        ], 200);
+    }
+
+    public function getAllAudits()
+    {
+        $audits = Audits::all();
+
+        if ($audits->isEmpty()) {
+            return response()->json([
+                'message' => 'No audit records found',
+                'status' => 'Error'
+            ], 404);
+        }
+
+        $data = $audits->map(function ($audit) {
+            return [
+                'employee' => [
+                    'web_user_id' => $audit->web_user_id,
+                    'emp_name' => $audit->emp_name,
+                    'emp_id' => $audit->emp_id,
+                    // 'department' => $audit->department,
+                    // 'date_of_joining' => $audit->date_of_joining,
+                    'key_tasks_completed' => $audit->key_tasks_completed,
+                    'challenges_faced' => $audit->challenges_faced,
+                    'proud_contribution' => $audit->proud_contribution,
+                    'training_support_needed' => $audit->training_support_needed,
+                    'rating_technical_knowledge' => $audit->rating_technical_knowledge,
+                    'rating_teamwork' => $audit->rating_teamwork,
+                    'rating_communication' => $audit->rating_communication,
+                    'rating_punctuality' => $audit->rating_punctuality,
+                    'training' => $audit->training,
+                    'hike' => $audit->hike,
+                    'growth_path' => $audit->growth_path,
+                ],
+
+                'manager' => [
+                    'daily_call_attendance' => $audit->daily_call_attendance,
+                    'leads_generated' => $audit->leads_generated,
+                    'targets_assigned' => $audit->targets_assigned,
+                    'targets_achieved' => $audit->targets_achieved,
+                    'conversion_ratio' => $audit->conversion_ratio,
+                    'revenue_contribution' => $audit->revenue_contribution,
+                    'deadline_consistency' => $audit->deadline_consistency,
+                    'discipline_accountability' => $audit->discipline_accountability,
+                    'rating_proactiveness_ownership' => $audit->rating_proactiveness_ownership,
+                    'tasks_completed_on_time' => $audit->tasks_completed_on_time,
+                    'code_quality_bugs_fixed' => $audit->code_quality_bugs_fixed,
+                    'contribution_to_roadmap' => $audit->contribution_to_roadmap,
+                    'innovation_ideas' => $audit->innovation_ideas,
+                    'collaboration_with_teams' => $audit->collaboration_with_teams,
+                    'rating_technical_competency' => $audit->rating_technical_competency,
+                    'employee_strengths' => $audit->employee_strengths,
+                    'areas_of_improvement' => $audit->areas_of_improvement,
+                    'recommendation_probation' => $audit->recommendation_probation,
+                    'is_eligible_for_hike' => $audit->is_eligible_for_hike,
+                    'hike_percentage_suggestion' => $audit->hike_percentage_suggestion,
+                    'manager_approve' => $audit->manager_approve,
+                ],
+
+                'management' => [
+                    'manager_evaluation_validation' => $audit->manager_evaluation_validation,
+                    'cross_team_comparison' => $audit->cross_team_comparison,
+                    'pca_audit_score' => $audit->pca_audit_score,
+                    'hike_decision' => $audit->hike_decision,
+                    'final_hike_percentage' => $audit->final_hike_percentage,
+                    'probation_decision' => $audit->probation_decision,
+                    'future_role_growth_plan' => $audit->future_role_growth_plan,
+                    'management_review' => $audit->management_review,
+                    'final_remarks' => $audit->final_remarks,
+                ]
+            ];
+        });
+
+        return response()->json([
+            'message' => 'All audits retrieved successfully',
+            'status' => 'Success',
+            'data' => $data
         ], 200);
     }
 

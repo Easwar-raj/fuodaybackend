@@ -224,6 +224,7 @@ Route::prefix('hrms')->group(function () {
             Route::get('/getauditreport/{id}', [PerformancePageController::class, 'getAuditReport']);
             Route::get('/getauditreportingteam/{id}', [PerformancePageController::class, 'getAuditReportingTeam']);
             Route::get('/getallauditreport/{id}', [PerformancePageController::class, 'getAllAuditReport']);
+            Route::get('/getall', [PerformancePageController::class, 'getAllAudits']);
         });
         Route::prefix('support')->group(function () {
             Route::get('/gettickets/{id}', [SupportPageController::class, 'getAllTicketsByStatus']);
