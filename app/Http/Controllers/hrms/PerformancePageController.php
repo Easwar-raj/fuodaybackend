@@ -517,7 +517,7 @@ class PerformancePageController extends Controller
             'emp_name'                  => $webUser->name,
             'emp_id'                    => $webUser->emp_id,
             'department'                => $empDetails->department,
-            'date_of_joining'           => $empDetails->date_of_joining,
+            'date_of_joining'           => $empDetails->date_of_joining->format('Y-m-d') ?? null,
             'key_tasks_completed'        => $request->key_tasks_completed,
             'challenges_faced'           => $request->challenges_faced,
             'proud_contribution'         => $request->proud_contribution,
