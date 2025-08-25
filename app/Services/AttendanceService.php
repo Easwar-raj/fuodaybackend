@@ -61,6 +61,7 @@ class AttendanceService
 
             if ($salaryPeriod && $salaryDateDay) {
                 [$periodStart, $periodEnd] = explode('To', $salaryPeriod);
+                $periodEnd = (int) trim($periodEnd);
                 if ((int)$today->format('d') === ($periodEnd)) {
                     foreach ($usersGroup as $webUser) {
                         $userId = $webUser->id;

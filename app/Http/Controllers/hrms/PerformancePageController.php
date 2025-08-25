@@ -662,23 +662,24 @@ class PerformancePageController extends Controller
 
     public function getAllAudits()
     {
-        $audits = Audits::all();
-
+        $audits = Audits::whereNotNull('final_remarks')
+            ->where('final_remarks', '!=', '')
+            ->where('final_remarks', '!=', '(NULL)')
+            ->get();
+    
         if ($audits->isEmpty()) {
             return response()->json([
                 'message' => 'No audit records found',
                 'status' => 'Error'
             ], 404);
         }
-
+    
         $data = $audits->map(function ($audit) {
-            return [
+            $result = [
                 'employee' => [
                     'web_user_id' => $audit->web_user_id,
                     'emp_name' => $audit->emp_name,
                     'emp_id' => $audit->emp_id,
-                    // 'department' => $audit->department,
-                    // 'date_of_joining' => $audit->date_of_joining,
                     'key_tasks_completed' => $audit->key_tasks_completed,
                     'challenges_faced' => $audit->challenges_faced,
                     'proud_contribution' => $audit->proud_contribution,
@@ -691,7 +692,7 @@ class PerformancePageController extends Controller
                     'hike' => $audit->hike,
                     'growth_path' => $audit->growth_path,
                 ],
-
+    
                 'manager' => [
                     'daily_call_attendance' => $audit->daily_call_attendance,
                     'leads_generated' => $audit->leads_generated,
@@ -715,8 +716,11 @@ class PerformancePageController extends Controller
                     'hike_percentage_suggestion' => $audit->hike_percentage_suggestion,
                     'manager_approve' => $audit->manager_approve,
                 ],
-
-                'management' => [
+            ];
+    
+            // Only include management if management_review exists
+            if (!empty($audit->management_review)) {
+                $result['management'] = [
                     'manager_evaluation_validation' => $audit->manager_evaluation_validation,
                     'cross_team_comparison' => $audit->cross_team_comparison,
                     'pca_audit_score' => $audit->pca_audit_score,
@@ -726,10 +730,12 @@ class PerformancePageController extends Controller
                     'future_role_growth_plan' => $audit->future_role_growth_plan,
                     'management_review' => $audit->management_review,
                     'final_remarks' => $audit->final_remarks,
-                ]
-            ];
+                ];
+            }
+    
+            return $result;
         });
-
+    
         return response()->json([
             'message' => 'All audits retrieved successfully',
             'status' => 'Success',
