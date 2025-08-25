@@ -33,38 +33,14 @@ class HomePageController extends Controller
     {
         $today = Carbon::today()->toDateString();
 
-        $selectColumns = [
-            'attendances.checkin',
-            'attendances.checkout',
-            'attendances.status',
-            'attendances.location',
-            'schedules.shift_start',
-            'schedules.shift_end',
-            'schedules.date'
+        $firstLogin = Attendance::where('web_user_id', $id)->where('date', $today)->first();
+        $lastLogout = Attendance::where('web_user_id', $id)->where('date', $today)->latest()->first();
+
+        $data = [
+            'checkin' => $firstLogin->checkin,
+            'checkout' => $lastLogout->checkout,
+            'location' => $firstLogin->location
         ];
-
-        // LEFT JOIN: schedules → attendances
-        $left = DB::table('schedules')
-            ->where('schedules.web_user_id', $id)
-            ->whereDate('schedules.date', $today)
-            ->leftJoin('attendances', function ($join) {
-                $join->on('schedules.web_user_id', '=', 'attendances.web_user_id')
-                    ->on('schedules.date', '=', 'attendances.date');
-            })
-            ->select($selectColumns);
-
-        // RIGHT JOIN: attendances → schedules
-        $right = DB::table('attendances')
-            ->where('attendances.web_user_id', $id)
-            ->whereDate('attendances.date', $today)
-            ->leftJoin('schedules', function ($join) {
-                $join->on('attendances.web_user_id', '=', 'schedules.web_user_id')
-                    ->on('attendances.date', '=', 'schedules.date');
-            })
-            ->select($selectColumns);
-
-        // Union both
-        $data = $left->union($right)->get();
 
         return response()->json([
             'message' => 'Activities data retrieved successfully',
