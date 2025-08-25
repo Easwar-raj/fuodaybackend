@@ -503,7 +503,8 @@ class PerformancePageController extends Controller
             ], 400);
         }
 
-        $webUser = WebUser::find($request->web_user_id)->with('employeeDetails');
+        $webUser = WebUser::find($request->web_user_id);
+        $empDetails = EmployeeDetails::where('web_user_id', $request->web_user_id)->first();
 
         if (!$webUser || !$webUser->admin_user_id) {
             return response()->json([
@@ -515,8 +516,8 @@ class PerformancePageController extends Controller
             'web_user_id'               => $request->web_user_id,
             'emp_name'                  => $webUser->name,
             'emp_id'                    => $webUser->emp_id,
-            'department'                => $webUser->employeeDetails->department,
-            'date_of_joining'           => $webUser->employeeDetails->date_of_joining,
+            'department'                => $empDetails->department,
+            'date_of_joining'           => $empDetails->date_of_joining,
             'key_tasks_completed'        => $request->key_tasks_completed,
             'challenges_faced'           => $request->challenges_faced,
             'proud_contribution'         => $request->proud_contribution,
