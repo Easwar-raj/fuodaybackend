@@ -916,7 +916,7 @@ class WebpageUserController extends Controller
                 'manager_id'   => $managerId,
                 'manager_name' => $manager ? $manager->name : 'Unassigned',
                 'employees'    => $group->map(function ($emp) {
-                    $hasAudit = Audits::where('web_user_id', $emp->id)->exists();
+                    $hasAudit = Audits::where('web_user_id', $emp->web_user_id)->exists();
                     return [
                         'id'            => $emp->id,
                         'emp_name'      => $emp->emp_name,

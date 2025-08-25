@@ -136,7 +136,7 @@ class HomePageController extends Controller
             ->with('project')
             ->get()
             ->pluck('project')
-            ->unique('id') // avoid duplicates if user is in multiple roles on same project
+            ->unique('id')
             ->values()
             ->map(function ($project) {
                 return [

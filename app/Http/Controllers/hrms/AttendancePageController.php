@@ -390,20 +390,21 @@ class AttendancePageController extends Controller
 
         $checkin = Carbon::parse($attendance->checkin);
         
-        // Use the checkout time from request if provided (for auto-logout), otherwise use current time
         if ($request->has('checkout')) {
-            // Parse the time string from frontend (e.g., "11:59 PM")
             $checkoutTimeString = $request->checkout;
-            
-            if (strpos($checkoutTimeString, 'AM') !== false || strpos($checkoutTimeString, 'PM') !== false) {
-                // Convert 12-hour format to 24-hour format
-                $checkout = Carbon::createFromFormat('g:i A', $checkoutTimeString);
-            } else {
-                $checkout = Carbon::createFromFormat('H:i', $checkoutTimeString);
+            try {
+                if (strpos($checkoutTimeString, 'T') !== false) {
+                    $checkout = Carbon::parse($checkoutTimeString);
+                } elseif (strpos($checkoutTimeString, 'AM') !== false || strpos($checkoutTimeString, 'PM') !== false) {
+                    $checkout = Carbon::createFromFormat('g:i A', $checkoutTimeString);
+                    $checkout->setDate($checkin->year, $checkin->month, $checkin->day);
+                } else {
+                    $checkout = Carbon::createFromFormat('H:i', $checkoutTimeString);
+                    $checkout->setDate($checkin->year, $checkin->month, $checkin->day);
+                }
+            } catch (Exception $e) {
+                $checkout = Carbon::now();
             }
-            
-            // Set the date to today
-            $checkout->setDate($checkin->year, $checkin->month, $checkin->day);
         } else {
             $checkout = Carbon::now();
         }
