@@ -483,24 +483,18 @@ class PerformancePageController extends Controller
     public function addAudit(Request $request)
     {
         $validated = $request->validate([
-            'web_user_id'      => 'required|exists:web_users,id',
-            'audit_cycle_type' => 'required|string',
-            'review_period'    => 'required|string',
-            'audit_month'      => 'required|string',
-            'self_rating'      => 'nullable|string',
-            'technical_skills_used' => 'nullable|string',
-            'communication_collaboration' => 'nullable|string',
-            'cross_functional_involvement' => 'nullable|string',
-            'task_highlight'   => 'nullable|string',
-            'personal_highlight' => 'nullable|string',
-            'areas_to_improve' => 'nullable|string',
-            'initiative_taken' => 'nullable|string',
-            'learnings_certifications' => 'nullable|string',
-            'suggestions_to_company' => 'nullable|string',
-            'previous_cycle_goals'       => 'nullable|string',
-            'goal_achievement'          => 'nullable|string',
-            'projects_worked'       => 'nullable|string',
-            'tasks_modules_completed'          => 'nullable|string',
+            'web_user_id'               => 'required|exists:web_users,id',
+            'key_tasks_completed'        => 'nullable|string',
+            'challenges_faced'           => 'nullable|string',
+            'proud_contribution'         => 'nullable|string',
+            'training_support_needed'    => 'nullable|string',
+            'rating_technical_knowledge' => 'nullable|integer|min:0|max:10',
+            'rating_teamwork'            => 'nullable|integer|min:0|max:10',
+            'rating_communication'       => 'nullable|integer|min:0|max:10',
+            'rating_punctuality'         => 'nullable|integer|min:0|max:10',
+            'training'                   => 'nullable|string',
+            'hike'                       => 'nullable|string',
+            'growth_path'                => 'nullable|string',
         ]);
 
         if (!$validated) {
@@ -517,46 +511,21 @@ class PerformancePageController extends Controller
             ], 404);
         }
 
-        // Set date range: 25th of last-before-month to 24th of last month
-        $startDate = Carbon::now()->subMonths(2)->startOfMonth()->addDays(24); // 25th of last-before-month
-        $endDate = Carbon::now()->subMonth()->startOfMonth()->addDays(23); // 24th of last month
-
-        // Get attendance records in that range
-        $attendance = Attendance::where('web_user_id', $request->web_user_id)
-            ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
-            ->get();
-
-        // Count each type
-        $present = $attendance->where('status', 'Present')->count();
-
-        // Total working days considered = total number of attendance records (assuming 1 per working day)
-        $totalDays = $attendance->count();
-
-        // Avoid division by zero
-        $presentPercentage = $totalDays > 0 ? round(($present / $totalDays) * 100, 2) : 0;
-
         Audits::create([
-            'web_user_id'     => $request->web_user_id,
-            'emp_name'        => $webUser->name,
-            'emp_id'          => $webUser->emp_id,
-            'audit_cycle_type' => $request->audit_cycle_type,
-            'review_period' => $request->review_period,
-            'audit_month'     => $request->audit_month,
-            'attendance_percentage' => $presentPercentage,
-            'self_rating'     => $request->self_rating,
-            'technical_skills_used' => $request->technical_skills_used,
-            'communication_collaboration' => $request->communication_collaboration,
-            'cross_functional_involvement' => $request->cross_functional_involvement,
-            'task_highlight'  => $request->task_highlight,
-            'personal_highlight' => $request->personal_highlight,
-            'areas_to_improve' => $request->areas_to_improve,
-            'initiative_taken' => $request->initiative_taken,
-            'learnings_certifications' => $request->learnings_certifications,
-            'suggestions_to_company' => $request->suggestions_to_company,
-            'previous_cycle_goals'      => $request->previous_cycle_goals,
-            'goal_achievement'         => $request->goal_achievement,
-            'projects_worked'      => $request->projects_worked,
-            'tasks_modules_completed'         => $request->tasks_modules_completed,
+            'web_user_id'               => $request->web_user_id,
+            'emp_name'                  => $webUser->name,
+            'emp_id'                    => $webUser->emp_id,
+            'key_tasks_completed'        => $request->key_tasks_completed,
+            'challenges_faced'           => $request->challenges_faced,
+            'proud_contribution'         => $request->proud_contribution,
+            'training_support_needed'    => $request->training_support_needed,
+            'rating_technical_knowledge' => $request->rating_technical_knowledge,
+            'rating_teamwork'            => $request->rating_teamwork,
+            'rating_communication'       => $request->rating_communication,
+            'rating_punctuality'         => $request->rating_punctuality,
+            'training'                   => $request->training,
+            'hike'                       => $request->hike,
+            'growth_path'                => $request->growth_path,
         ]);
 
         return response()->json([
@@ -568,17 +537,43 @@ class PerformancePageController extends Controller
     public function updateAudit(Request $request, $id)
     {
         $validated = $request->validate([
-            'manager_review_comments' => 'nullable|string',
-            'execution_rating' => 'nullable|string',
-            'innovation_rating' => 'nullable|string',
-            'attendance_discipline_score' => 'nullable|string',
-            'delivery_quality' => 'nullable|string',
-            'ownership_initiative' => 'nullable|string',
-            'team_growth_contribution' => 'nullable|string',
-            'promotion_action_suggested' => 'nullable|string',
+            // Reporting Manager (Evaluation Fields)
+            'daily_call_attendance' => 'nullable|boolean',
+            'leads_generated' => 'nullable|string',
+            'targets_assigned' => 'nullable|string',
+            'targets_achieved' => 'nullable|string',
+            'conversion_ratio' => 'nullable|string',
+            'revenue_contribution' => 'nullable|string',
+            'deadline_consistency' => 'nullable|boolean',
+            'discipline_accountability' => 'nullable|string',
+            'rating_proactiveness_ownership' => 'nullable|integer',
+
+            // Tech Development team
+            'tasks_completed_on_time' => 'nullable|boolean',
+            'code_quality_bugs_fixed' => 'nullable|string',
+            'contribution_to_roadmap' => 'nullable|string',
+            'innovation_ideas' => 'nullable|string',
+            'collaboration_with_teams' => 'nullable|boolean',
+            'rating_technical_competency' => 'nullable|integer',
+
+            // Manager’s Final Inputs
+            'employee_strengths' => 'nullable|string',
+            'areas_of_improvement' => 'nullable|string',
+            'recommendation_probation' => 'nullable|string',
+            'is_eligible_for_hike' => 'nullable|boolean',
+            'hike_percentage_suggestion' => 'nullable|string',
+            'manager_approve' => 'nullable|boolean',
+
+            // Higher Authority / Management (Final Review Fields)
+            'manager_evaluation_validation' => 'nullable|string',
+            'cross_team_comparison' => 'nullable|string',
+            'pca_audit_score' => 'nullable|numeric',
+            'hike_decision' => 'nullable|string',
+            'final_hike_percentage' => 'nullable|numeric',
+            'probation_decision' => 'nullable|string',
+            'future_role_growth_plan' => 'nullable|string',
+            'management_review' => 'nullable|integer',
             'final_remarks' => 'nullable|string',
-            'management_assign' => 'nullable|string',
-            'management_remarks' => 'nullable|string',
             'auditor_review' => 'nullable|string',
         ]);
 
@@ -594,34 +589,7 @@ class PerformancePageController extends Controller
             return response()->json(['message' => 'Audit record not found'], 404);
         }
 
-        $managementAssign  = $request->input('management_assign');
-        $managementRemarks = $request->input('management_remarks');
-
-        $managementReview = null;
-
-        if ($managementAssign || $managementRemarks) {
-            $managementReview = trim(($managementAssign ?? '') . '%' . ($managementRemarks ?? ''), '%');
-        }
-
-        // Only update if fields are provided
-        $updatedData = $request->only([
-            'manager_review_comments',
-            'execution_rating',
-            'innovation_rating',
-            'attendance_discipline_score',
-            'delivery_quality',
-            'ownership_initiative',
-            'team_growth_contribution',
-            'promotion_action_suggested',
-            'final_remarks',
-            'auditor_review'
-        ]);
-
-        if ($managementReview !== null) {
-            $updatedData['management_review'] = $managementReview;
-        }
-
-        $audit->update($updatedData);
+        $audit->update($validated);
 
         return response()->json([
             'message' => 'Audit updated successfully',
@@ -708,6 +676,7 @@ class PerformancePageController extends Controller
                 'web_user_id' => $member->web_user_id,
                 'emp_name' => $member->emp_name,
                 'emp_id' => $member->emp_id,
+                'department' => $member->department,
                 'status' => $hasAudit ? 'Submitted' : 'Not Submitted',
             ];
         });
