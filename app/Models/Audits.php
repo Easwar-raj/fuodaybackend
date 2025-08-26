@@ -67,7 +67,7 @@ class Audits extends Model
     ];
 
     protected $casts = [
-        'date_of_joining' => 'date',
+        'date_of_joining' => 'date:Y-m-d',
         'daily_call_attendance' => 'boolean',
         'deadline_consistency' => 'boolean',
         'tasks_completed_on_time' => 'boolean',

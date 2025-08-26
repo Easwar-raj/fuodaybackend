@@ -504,7 +504,6 @@ class PerformancePageController extends Controller
         }
 
         $webUser = WebUser::find($request->web_user_id);
-        $empDetails = EmployeeDetails::where('web_user_id', $request->web_user_id)->first();
 
         if (!$webUser || !$webUser->admin_user_id) {
             return response()->json([
@@ -512,12 +511,23 @@ class PerformancePageController extends Controller
             ], 404);
         }
 
+        // 🔹 Fetch employee details
+        $employeeDetails = EmployeeDetails::where('web_user_id', $webUser->id)->first();
+
+        if (!$employeeDetails) {
+            return response()->json([
+                'message' => 'Employee details not found.'
+            ], 404);
+        }
+
+        // 🔹 Create audit with formatted date_of_joining
         Audits::create([
             'web_user_id'               => $request->web_user_id,
             'emp_name'                  => $webUser->name,
             'emp_id'                    => $webUser->emp_id,
-            'department'                => $empDetails->department,
-            'date_of_joining'           => $empDetails->date_of_joining->format('Y-m-d') ?? null,
+            'post'                      => $employeeDetails->post,
+            'department'                => $employeeDetails->department,
+            'date_of_joining'           => Carbon::parse($employeeDetails->date_of_joining)->format('Y-m-d'),
             'key_tasks_completed'        => $request->key_tasks_completed,
             'challenges_faced'           => $request->challenges_faced,
             'proud_contribution'         => $request->proud_contribution,
@@ -666,14 +676,14 @@ class PerformancePageController extends Controller
             ->where('final_remarks', '!=', '')
             ->where('final_remarks', '!=', '(NULL)')
             ->get();
-    
+
         if ($audits->isEmpty()) {
             return response()->json([
                 'message' => 'No audit records found',
                 'status' => 'Error'
             ], 404);
         }
-    
+
         $data = $audits->map(function ($audit) {
             $result = [
                 'employee' => [
@@ -692,7 +702,7 @@ class PerformancePageController extends Controller
                     'hike' => $audit->hike,
                     'growth_path' => $audit->growth_path,
                 ],
-    
+
                 'manager' => [
                     'daily_call_attendance' => $audit->daily_call_attendance,
                     'leads_generated' => $audit->leads_generated,
@@ -717,7 +727,7 @@ class PerformancePageController extends Controller
                     'manager_approve' => $audit->manager_approve,
                 ],
             ];
-    
+
             // Only include management if management_review exists
             if (!empty($audit->management_review)) {
                 $result['management'] = [
@@ -732,10 +742,10 @@ class PerformancePageController extends Controller
                     'final_remarks' => $audit->final_remarks,
                 ];
             }
-    
+
             return $result;
         });
-    
+
         return response()->json([
             'message' => 'All audits retrieved successfully',
             'status' => 'Success',
