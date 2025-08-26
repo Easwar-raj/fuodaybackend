@@ -590,12 +590,6 @@ class PerformancePageController extends Controller
             'auditor_review' => 'nullable|string',
         ]);
 
-        if (!$validated) {
-            return response()->json([
-                'message' => 'Invalid data'
-            ], 400);
-        }
-
         $audit = Audits::find($id);
 
         if (!$audit) {
@@ -690,6 +684,8 @@ class PerformancePageController extends Controller
                     'web_user_id' => $audit->web_user_id,
                     'emp_name' => $audit->emp_name,
                     'emp_id' => $audit->emp_id,
+                    'department' => $audit->department,
+                    'date_of_joining' => $audit->date_of_joining,
                     'key_tasks_completed' => $audit->key_tasks_completed,
                     'challenges_faced' => $audit->challenges_faced,
                     'proud_contribution' => $audit->proud_contribution,
