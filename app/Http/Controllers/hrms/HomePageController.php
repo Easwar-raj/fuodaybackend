@@ -37,9 +37,9 @@ class HomePageController extends Controller
         $lastLogout = Attendance::where('web_user_id', $id)->where('date', $today)->latest()->first();
 
         $data = [
-            'checkin' => $firstLogin->checkin,
-            'checkout' => $lastLogout->checkout,
-            'location' => $firstLogin->location
+            'checkin' => $firstLogin->checkin ?? null,
+            'checkout' => $lastLogout->checkout ?? null,
+            'location' => $firstLogin->location ?? null
         ];
 
         return response()->json([
