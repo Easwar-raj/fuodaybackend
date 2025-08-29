@@ -114,8 +114,10 @@ Route::prefix('web-users')->group(function () {
         Route::post('/payroll/update/{id}', [WebpageUserController::class, 'updatePayrollDetails']);
     });
     Route::get('/getwebuserbyid/{id}', [WebpageUserController::class, 'getWebUserById']);
-    Route::post('/update/{id}', [WebpageUserController::class, 'update']); // Update user
-    // Route::post('/password_link', [WebpageUserController::class, 'sendResetLinkEmail']);  // Logout
+    Route::post('/update/{id}', [WebpageUserController::class, 'update']);
+    Route::post('/password_link', [WebpageUserController::class, 'sendResetLinkEmail']);
+    Route::get('/reset-password/{token}', [WebpageUserController::class, 'showResetForm'])->name('password.reset');
+    Route::post('/reset-password', [WebpageUserController::class, 'reset'])->name('password.update');
 });
 
 Route::prefix('hrms')->group(function () {
@@ -269,7 +271,3 @@ Route::prefix('ats')->group(function () {
         });
     });
 });
-
-Route::post('/forgot-password', [WebpageUserController::class, 'sendResetLinkEmail'])->name('password.email');
-Route::post('/reset-password', [WebpageUserController::class, 'reset'])->name('password.update');
-Route::get('/verify-attendance', [PayrollPageController::class, 'runAttendanceVerification']);

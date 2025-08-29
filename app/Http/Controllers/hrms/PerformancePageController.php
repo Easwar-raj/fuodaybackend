@@ -81,7 +81,7 @@ class PerformancePageController extends Controller
 
         $goalProgressPercentage = $totalTasksCount > 0 ? round(($goalProgressCount / $totalTasksCount) * 100, 2) : 0;
 
-        $onTimeCompletedTasks = $completedTasks->filter(function ($task) {
+        $onTimeCompletedTasks = $completedTasks->where('status', 'Completed')->filter(function ($task) {
             if ($task->deadline && $task->updated_at) {
                 return $task->updated_at->format('Y-m-d') <= $task->deadline->format('Y-m-d');
             }

@@ -1016,4 +1016,12 @@ public function reset(Request $request)
     return response()->json(['message' => 'Failed to reset password, invalid token or email.'], 400);
 }
 
+public function showResetForm(Request $request, $token)
+{
+    return view('auth.reset-password', [
+        'token' => $token,
+        'email' => $request->email,
+    ]);
+}
+
 }
