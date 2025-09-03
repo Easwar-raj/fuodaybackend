@@ -5,6 +5,7 @@ namespace App\Http\Controllers\hrms;
 
 use App\Http\Controllers\Controller;
 use App\Models\About;
+use App\Models\AdminUser;
 use App\Models\Achievement;
 use App\Models\Attendance;
 use App\Models\Client;
@@ -26,6 +27,11 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\Task;
 use Illuminate\Http\Request;
+use App\Models\Recognitions;
+use Aws\S3\S3Client;
+use Exception;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class HomePageController extends Controller
 {
@@ -833,4 +839,168 @@ class HomePageController extends Controller
         ], 200);
     }
 
+    public function getRecognitions($id)
+    {
+        try {
+            $recognitions = Recognitions::where('web_user_id', $id)->get();
+
+            foreach ($recognitions as $recognition) {
+                if ($recognition->image_url && !str_starts_with($recognition->image_url, 'http') && str_starts_with($recognition->image_url, 'storage/')) {
+                    $recognition->image_url = url($recognition->image_url);
+                }
+            }
+
+            return response()->json([
+                'message' => 'Recognitions retrieved successfully',
+                'status' => 'Success',
+                'data' => $recognitions
+            ], 200);
+
+        } catch (Exception $e) {
+            Log::error('Error retrieving recognitions', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'message' => 'Error retrieving recognitions',
+                'status' => 'Error'
+            ], 500);
+        }
+    }
+
+    public function saveRecognitions(Request $request)
+    {
+        $validated = $request->validate([
+            'web_user_id'     => 'required|exists:web_users,id',
+            'badges'   => 'required|array|min:1',
+            'badges.*.title' => 'required|string|max:255',
+            'badges.*.count' => 'required|integer|min:1',
+            'badges.*.image' => 'sometimes|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'badges.*.existing_image' => 'sometimes|string',
+            'badges.*.id' => 'nullable|exists:recognitions,id'
+        ]);
+
+        $webUser = WebUser::find($request->web_user_id);
+
+        if (!$validated || !$webUser) {
+            return response()->json([
+                'message' => 'Invalid data or user not found'
+            ], 400);
+        }
+
+        try {
+            $adminUser = AdminUser::find($webUser->admin_user_id);
+            $processedIds = [];
+
+            foreach ($request->badges as $index => $badgeData) {
+                $imagePath = null;
+
+                if (isset($badgeData['image'])) {
+                    try {
+                        $image = $badgeData['image'];
+                        $imageExtension = $image->getClientOriginalExtension();
+
+                        $existingFiles = Storage::disk('s3')->files("{$adminUser->company_name}/recognitions/{$request->web_user_id}/badge_{$index}");
+
+                        if ($existingFiles) {
+                            foreach ($existingFiles as $existingFile) {
+                                if (basename($existingFile, '.' . pathinfo($existingFile, PATHINFO_EXTENSION)) === "badge_{$index}") {
+                                    Storage::disk('s3')->delete($existingFile);
+                                }
+                            }
+                        }
+
+                        $s3 = new S3Client([
+                            'region' => config('filesystems.disks.s3.region'),
+                            'version' => 'latest',
+                            'credentials' => [
+                                'key'    => config('filesystems.disks.s3.key'),
+                                'secret' => config('filesystems.disks.s3.secret'),
+                            ],
+                        ]);
+
+                        $bucket = config('filesystems.disks.s3.bucket');
+                        $key = "{$adminUser->company_name}/recognitions/{$request->web_user_id}/badge_{$index}" . ".{$imageExtension}";
+
+                        $s3->putObject([
+                            'Bucket' => $bucket,
+                            'Key'    => $key,
+                            'Body'   => $image->get(),
+                            'ContentType' => $image->getMimeType(),
+                        ]);
+
+                        $imagePath = $s3->getObjectUrl($bucket, $key);
+
+                    } catch (Exception) {
+                        $imagePath = $image->store('recognitions', 'public');
+                        $imagePath = 'storage/' . $imagePath;
+                    }
+                } elseif (isset($badgeData['existing_image'])) {
+                    $imagePath = $badgeData['existing_image'];
+                }
+
+                if (empty($imagePath)) {
+                    continue;
+                }
+
+                if (isset($badgeData['id'])) {
+                    $recognition = Recognitions::where('id', $badgeData['id'])
+                        ->where('web_user_id', $request->web_user_id)
+                        ->first();
+
+                    if ($recognition) {
+                        $recognition->update([
+                            'title' => $badgeData['title'],
+                            'count' => $badgeData['count'],
+                            'image_url' => $imagePath,
+                        ]);
+                        $processedIds[] = $recognition->id;
+                        continue;
+                    }
+                }
+
+                $newRecognition = Recognitions::create([
+                    'web_user_id' => $request->web_user_id,
+                    'title' => $badgeData['title'],
+                    'count' => $badgeData['count'],
+                    'image_url' => $imagePath,
+                ]);
+
+                $processedIds[] = $newRecognition->id;
+            }
+
+            return response()->json(['message' => 'Recognitions stored/updated successfully!'], 201);
+
+        } catch (Exception $e) {
+            Log::error('Error storing recognitions: ' . $e->getMessage());
+            return response()->json(['message' => 'An unexpected server error occurred.'], 500);
+        }
+    }
+
+    public function deleteRecognition($id)
+    {
+        try {
+            $recognition = Recognitions::find($id);
+            
+            if (!$recognition) {
+                return response()->json([
+                    'message' => 'Recognition badge not found',
+                    'status' => 'Error'
+                ], 404);
+            }
+
+            $recognition->delete();
+
+            return response()->json([
+                'message' => 'Recognition badge deleted successfully',
+                'status' => 'Success'
+            ], 200);
+
+        } catch (Exception) {
+            return response()->json([
+                'message' => 'Error deleting recognition badge',
+                'status' => 'Error'
+            ], 500);
+        }
+    }
 }

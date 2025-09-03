@@ -1541,8 +1541,7 @@ class AdminUserController extends Controller
     {
         try {
             $user = Auth::user();
-            $webUser = WebUser::find($user->id);
-            $employeeIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
+            $employeeIds = WebUser::where('admin_user_id', $user->id)->pluck('id');
             $schedules = DB::table('schedules')
                 ->whereIn('web_user_id', $employeeIds)
                 ->select(
@@ -1908,5 +1907,232 @@ class AdminUserController extends Controller
             'status' => 'Success',
             'data' => $policies
         ], 200);
+    }
+
+    public function getAssets()
+    {
+        try {
+            $user = Auth::user();
+            $employeeIds = WebUser::where('admin_user_id', $user->id)->pluck('id');
+            
+            $assets = DB::table('assets')
+                ->whereIn('web_user_id', $employeeIds)
+                ->select(
+                    'web_user_id',
+                    'emp_name',
+                    'emp_id',
+                    'department',
+                    DB::raw('GROUP_CONCAT(id) as asset_ids'),
+                    DB::raw('GROUP_CONCAT(components) as components_list'),
+                    DB::raw('GROUP_CONCAT(serial_number) as serial_numbers'),
+                    DB::raw('GROUP_CONCAT(status) as statuses')
+                )
+                ->groupBy('web_user_id', 'emp_name', 'emp_id', 'department')
+                ->get();
+            $formattedAssets = $assets->map(function ($asset) {
+                $assetIds = explode(',', $asset->asset_ids);
+                $componentsList = explode(',', $asset->components_list);
+                $serialNumbers = explode(',', $asset->serial_numbers);
+                $statuses = explode(',', $asset->statuses);
+
+                $assetDetails = [];
+                for ($i = 0; $i < count($assetIds); $i++) {
+                    $assetDetails[] = [
+                        'id' => (int) $assetIds[$i],
+                        'components' => $componentsList[$i],
+                        'serial_number' => $serialNumbers[$i],
+                        'status' => $statuses[$i]
+                    ];
+                }
+
+                return [
+                    'web_user_id' => (int) $asset->web_user_id,
+                    'emp_name' => $asset->emp_name,
+                    'emp_id' => $asset->emp_id,
+                    'department' => $asset->department,
+                    'asset_ids' => array_map('intval', explode(',', $asset->asset_ids)),
+                    'assets' => $assetDetails,
+                ];
+            });
+
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'Assets fetched successfully.',
+                'data' => $formattedAssets
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'Error',
+                'message' => 'Failed to fetch assets.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function createOrUpdateAssets(Request $request, $assetId = null)
+    {
+        $isUpdate = !is_null($assetId);
+
+        if (!$isUpdate) {
+            $request->validate([
+                'employees' => 'required|array',
+                'employees.*.web_user_id' => 'required|integer',
+                'employees.*.emp_name' => 'required|string',
+                'employees.*.emp_id' => 'required|string',
+                'employees.*.assets' => 'required|array',
+                'employees.*.assets.*.components' => 'required|string',
+                'employees.*.assets.*.serial_number' => 'required|string',
+                'employees.*.assets.*.status' => 'required|string|in:assigned,returned,damaged',
+            ]);
+        }
+
+        try {
+            if ($isUpdate) {
+                // UPDATE OPERATION
+                $existingAsset = DB::table('assets')->where('id', $assetId)->first();
+
+                if (!$existingAsset) {
+                    return response()->json(['message' => 'Asset record not found.'], 404);
+                }
+
+                if ($request->has('employees')) {
+                    foreach ($request->input('employees') as $employee) {
+                        foreach ($employee['assets'] as $asset) {
+                            $existingEmpAsset = DB::table('assets')
+                                ->where('web_user_id', $employee['web_user_id'])
+                                ->where('serial_number', $asset['serial_number'])
+                                ->first();
+
+                            if ($existingEmpAsset) {
+                                // Update existing asset record
+                                DB::table('assets')->where('id', $existingEmpAsset->id)->update([
+                                    'components'     => $asset['components'],
+                                    'status'        => $asset['status'],
+                                    'updated_at'    => now()
+                                ]);
+                            } else {
+                                // Get employee department
+                                $empUser = DB::table('web_users')
+                                    ->join('employee_details', 'web_users.id', '=', 'employee_details.web_user_id')
+                                    ->where('web_users.id', $employee['web_user_id'])
+                                    ->select('employee_details.department')
+                                    ->first();
+
+                                // Insert new asset for employee
+                                DB::table('assets')->insert([
+                                    'web_user_id'   => $employee['web_user_id'],
+                                    'emp_name'      => $employee['emp_name'],
+                                    'emp_id'        => $employee['emp_id'],
+                                    'department'    => $empUser->department ?? 'Unknown',
+                                    'components'     => $asset['components'],
+                                    'serial_number' => $asset['serial_number'],
+                                    'status'        => $asset['status'],
+                                    'created_at'    => now(),
+                                    'updated_at'    => now()
+                                ]);
+                            }
+                        }
+                    }
+
+                    return response()->json(['message' => 'Employee assets updated successfully']);
+                }
+
+                return response()->json(['message' => 'No employee assets provided for update.']);
+
+            } else {
+                // CREATE OPERATION
+                $employees = $request->input('employees');
+                $assetData = [];
+
+                foreach ($employees as $employee) {
+                    // Get employee department
+                    $empUser = DB::table('web_users')
+                        ->join('employee_details', 'web_users.id', '=', 'employee_details.web_user_id')
+                        ->where('web_users.id', $employee['web_user_id'])
+                        ->select('employee_details.department')
+                        ->first();
+
+                    foreach ($employee['assets'] as $asset) {
+                        $assetData[] = [
+                            'web_user_id'   => $employee['web_user_id'],
+                            'emp_name'      => $employee['emp_name'],
+                            'emp_id'        => $employee['emp_id'],
+                            'department'    => $empUser->department ?? 'Unknown',
+                            'components'     => $asset['components'],
+                            'serial_number' => $asset['serial_number'],
+                            'status'        => $asset['status'],
+                            'created_at'    => now(),
+                            'updated_at'    => now(),
+                        ];
+                    }
+                }
+
+                DB::table('assets')->insert($assetData);
+
+                return response()->json([
+                    'status' => 'Success',
+                    'message' => 'Assets assigned successfully for ' . count($employees) . ' employees.',
+                    'employee_count' => count($employees)
+                ]);
+            }
+        } catch (Exception $e) {
+            $operation = $isUpdate ? 'update' : 'create';
+            return response()->json([
+                'status' => 'Error',
+                'message' => "Failed to {$operation} assets.",
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteAssets(Request $request)
+    {
+        $request->validate([
+            'type' => 'required|string|in:single,employee,bulk',
+            'asset_ids' => 'required_if:type,single,bulk|array',
+            'asset_ids.*' => 'integer',
+            'employee_info' => 'required_if:type,employee|array',
+            'employee_info.web_user_id' => 'required_if:type,employee|integer',
+            'employee_info.emp_id' => 'required_if:type,employee|string',
+        ]);
+
+        try {
+            $deletedCount = 0;
+            $type = $request->input('type');
+
+            switch ($type) {
+                case 'single':
+                case 'bulk':
+                    // Delete specific asset IDs
+                    $assetIds = $request->input('asset_ids');
+                    $deletedCount = DB::table('assets')
+                        ->whereIn('id', $assetIds)
+                        ->delete();
+                    break;
+
+                case 'employee':
+                    // Delete all assets assigned to a specific employee
+                    $employeeInfo = $request->input('employee_info');
+                    $deletedCount = DB::table('assets')
+                        ->where('web_user_id', $employeeInfo['web_user_id'])
+                        ->where('emp_id', $employeeInfo['emp_id'])
+                        ->delete();
+                    break;
+            }
+
+            return response()->json([
+                'status' => 'Success',
+                'message' => "Successfully deleted {$deletedCount} asset record(s).",
+                'deleted_count' => $deletedCount
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'Error',
+                'message' => 'Failed to delete assets.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

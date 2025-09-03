@@ -42,7 +42,10 @@ class EmployeeDetails extends Model
         'pf_account_no',
         'uan',
         'esi_no',
-        'place'
+        'place',
+        'quote',
+        'author',
+        'welcome_image'
     ];
 
     protected $casts = [

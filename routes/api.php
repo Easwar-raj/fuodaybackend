@@ -68,6 +68,12 @@ Route::prefix('admin-users')->group(function () {
         Route::get('/get-policies/{admin_user_id}', [AdminUserController::class, 'getPolicies']);
         Route::get('/getachievements', [AdminUserController::class, 'getAchievements']);
 
+        //New Assets
+        Route::post('/assets', [AdminUserController::class, 'createOrUpdateAssets']);
+        Route::put('/assets/{id}', [AdminUserController::class, 'createOrUpdateAssets']);
+        Route::delete('/assets', [AdminUserController::class, 'deleteAssets']);
+        Route::get('/getAssets', [AdminUserController::class, 'getAssets']);
+
         Route::prefix('save')->group(function () {
             Route::post('/heirarchy', [AdminUserController::class, 'saveHeirarchy']);
             Route::post('/holiday', [AdminUserController::class, 'saveHoliday']);
@@ -150,6 +156,10 @@ Route::prefix('hrms')->group(function () {
 
             Route::get('/getfeeds/{id}', [HomePageController::class, 'getFeeds']);
             Route::post('/addtask', [HomePageController::class, 'createTask']);
+
+            Route::get('/recognitions/{empId}', [HomePageController::class, 'getRecognitions']);
+            Route::post('/recognitions', [HomePageController::class, 'saveRecognitions']);
+            Route::delete('/recognitions/{id}', [HomePageController::class, 'deleteRecognition']);
         });
         Route::prefix('profile')->group(function () {
             Route::get('/getprofile/{id}', [ProfilePageController::class, 'getProfile']);
@@ -162,6 +172,11 @@ Route::prefix('hrms')->group(function () {
             Route::post('/updateexperience', [ProfilePageController::class, 'updateOrCreateExperience']);
             Route::post('/updateonboarding', [ProfilePageController::class, 'updateOrCreateOnboarding']);
             Route::post('/updateemploymentdetails/{id}', [ProfilePageController::class, 'updateEmploymentDetails']);
+            Route::post('/updatewelcomecard', [ProfilePageController::class, 'updateWelcomeCard']);
+            //New Assets
+            Route::get('/getallassets', [ProfilePageController::class, 'getAllAssets']);
+            Route::put('/assets/{id}', [ProfilePageController::class, 'updateAsset']);
+            Route::delete('/assets/{id}', [ProfilePageController::class, 'deleteAsset']);
         });
         Route::prefix('attendance')->group(function () {
             Route::get('/getattendances/{id}', [AttendancePageController::class, 'getAttendance']);

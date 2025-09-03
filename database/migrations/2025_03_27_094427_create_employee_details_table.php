@@ -44,6 +44,9 @@ return new class extends Migration
             $table->string('pf_account_no')->nullable();
             $table->string('uan')->nullable();
             $table->string('esi_no')->nullable();
+            $table->text('quote')->nullable();
+            $table->string('author')->nullable();
+            $table->string('welcome_image')->nullable();
             $table->timestamps();
         });
     }

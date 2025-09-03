@@ -15,6 +15,10 @@ use App\Models\Education;
 use App\Models\Onboarding;
 use Aws\S3\S3Client;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Assets;
+use Exception;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ProfilePageController extends Controller
 {
@@ -38,6 +42,9 @@ class ProfilePageController extends Controller
                 'web_users.name',
                 'web_users.email',
                 'employee_details.personal_contact_no',
+                'employee_details.quote',
+                'employee_details.author',
+                'employee_details.welcome_image',
                 'web_users.emp_id',
                 DB::raw("(
                     SELECT JSON_ARRAYAGG(
@@ -497,5 +504,152 @@ class ProfilePageController extends Controller
             'status'   => 'Success',
             'employee' => $employee
         ], 200);
+    }
+
+    public function updateWelcomeCard(Request $request)
+    {
+        $validated = $request->validate([
+            'web_user_id' => 'required|exists:web_users,id',
+            'quote' => 'nullable|string',
+            'author' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,svg|max:5048',
+        ]);
+
+        $webUser = WebUser::find($request->web_user_id);
+        $empDetails = EmployeeDetails::where('web_user_id', $request->web_user_id)->first();
+        if (!$webUser || !$validated) {
+            return response()->json([
+                'message' => 'Invalid details',
+                'status' => 'error'
+            ], 404);
+        }
+        try {
+            $imageUrl = null;
+
+            if ($request->hasFile('image')) {
+                $file = $request->file('image');
+                $extension = $file->getClientOriginalExtension();
+                $adminUser = AdminUser::find($webUser->admin_user_id);
+
+                $existingFiles = Storage::disk('s3')->files("{$adminUser->company_name}/welcome_cards/{$request->web_user_id}/trophy");
+                if ($existingFiles) {
+                    foreach ($existingFiles as $existingFile) {
+                        if (basename($existingFile, pathinfo($existingFile, PATHINFO_EXTENSION)) == 'trophy') {
+                            Storage::disk('s3')->delete($existingFile);
+                        }
+                    }
+                }
+
+                $s3 = new S3Client([
+                    'region' => config('filesystems.disks.s3.region'),
+                    'version' => 'latest',
+                    'credentials' => [
+                        'key'    => config('filesystems.disks.s3.key'),
+                        'secret' => config('filesystems.disks.s3.secret'),
+                    ],
+                ]);
+
+                $bucket = config('filesystems.disks.s3.bucket');
+                $key = "{$adminUser->company_name}/welcome_cards/{$request->web_user_id}/trophy.{$extension}";
+
+                $s3->putObject([
+                    'Bucket' => $bucket,
+                    'Key'    => $key,
+                    'Body'   => $file->get(),
+                    'ContentType' => $file->getMimeType(),
+                ]);
+
+                $imageUrl = $s3->getObjectUrl($bucket, $key);
+            }
+
+            $empDetails->quote = $request->quote ?? $empDetails->quote;
+            $empDetails->author = $request->author ?? $empDetails->author;
+            $empDetails->welcome_image = $imageUrl ?? $empDetails->welcome_image;
+            $empDetails->save();
+
+            return response()->json([
+                'message' => 'Welcome card updated successfully.',
+                'status' => 'Success'
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error saving welcome card', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Database error: ' . $e->getMessage(),
+                'status' => 'error'
+            ], 500);
+        }
+    }
+
+    public function getAllAssets()
+    {
+        try {
+            $user = Auth::user();
+            $webUserIds = WebUser::where('admin_user_id', $user->admin_user_id)->pluck('id');
+            $assets = Assets::whereIn('web_user_id', $webUserIds)->select(
+                'id',
+                'emp_id',
+                'emp_name',
+                'web_user_id',
+                'department',
+                'components',
+                'serial_number',
+                'status'
+            )->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => $assets
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateAsset(Request $request, $id)
+    {
+        try {
+            $asset = Assets::findOrFail($id);
+
+            $asset->update($request->all());
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Asset updated successfully',
+                'data' => $asset
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteAsset($id)
+    {
+        try {
+            $asset = Assets::findOrFail($id);
+            $asset->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Asset deleted successfully'
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }
