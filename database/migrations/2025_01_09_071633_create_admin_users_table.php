@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('logo')->nullable();
             $table->string('brand_logo')->nullable();
             $table->string('allowed_users');
+            $table->string('address')->nullable();
             $table->timestamps(); // Created at and updated at columns
         });
     }

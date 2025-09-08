@@ -23,7 +23,8 @@ class AdminUser extends Model
         'company_name',
         'logo',
         'brand_logo',
-        'allowed_users'
+        'allowed_users',
+        'address'
     ];
 
     // Hidden attributes for serialization
