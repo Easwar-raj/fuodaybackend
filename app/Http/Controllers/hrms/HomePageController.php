@@ -892,22 +892,23 @@ class HomePageController extends Controller
             $adminUser = AdminUser::find($webUser->admin_user_id);
             $processedIds = [];
 
-            $existingBadgesCount = Recognitions::where('web_user_id', $request->web_user_id)->count();
-            $badgeIndex = $existingBadgesCount;
+            $badgeId = Recognitions::where('web_user_id', $request->web_user_id)->latest()->value('id');
 
             foreach ($request->badges as $badgeData) {
                 $imagePath = null;
-
+                if (isset($badgeData['id'])) {
+                    $badgeId = $badgeData['id'];
+                }
                 if (isset($badgeData['image'])) {
                     try {
                         $image = $badgeData['image'];
                         $imageExtension = $image->getClientOriginalExtension();
 
-                        $existingFiles = Storage::disk('s3')->files("{$adminUser->company_name}/recognitions/{$request->web_user_id}/badge_{$badgeIndex}");
+                        $existingFiles = Storage::disk('s3')->files("{$adminUser->company_name}/recognitions/{$request->web_user_id}/badge_{$badgeId}");
 
                         if ($existingFiles) {
                             foreach ($existingFiles as $existingFile) {
-                                if (basename($existingFile, '.' . pathinfo($existingFile, PATHINFO_EXTENSION)) === "badge_{$badgeIndex}") {
+                                if (basename($existingFile, '.' . pathinfo($existingFile, PATHINFO_EXTENSION)) === "badge_{$badgeId}") {
                                     Storage::disk('s3')->delete($existingFile);
                                 }
                             }
@@ -923,7 +924,7 @@ class HomePageController extends Controller
                         ]);
 
                         $bucket = config('filesystems.disks.s3.bucket');
-                        $key = "{$adminUser->company_name}/recognitions/{$request->web_user_id}/badge_{$badgeIndex}" . ".{$imageExtension}";
+                        $key = "{$adminUser->company_name}/recognitions/{$request->web_user_id}/badge_{$badgeId}" . ".{$imageExtension}";
 
                         $s3->putObject([
                             'Bucket' => $bucket,
