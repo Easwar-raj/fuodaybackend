@@ -892,7 +892,10 @@ class HomePageController extends Controller
             $adminUser = AdminUser::find($webUser->admin_user_id);
             $processedIds = [];
 
-            foreach ($request->badges as $index => $badgeData) {
+            $existingBadgesCount = Recognitions::where('web_user_id', $request->web_user_id)->count();
+            $badgeIndex = $existingBadgesCount;
+
+            foreach ($request->badges as $badgeData) {
                 $imagePath = null;
 
                 if (isset($badgeData['image'])) {
@@ -900,11 +903,11 @@ class HomePageController extends Controller
                         $image = $badgeData['image'];
                         $imageExtension = $image->getClientOriginalExtension();
 
-                        $existingFiles = Storage::disk('s3')->files("{$adminUser->company_name}/recognitions/{$request->web_user_id}/badge_{$index}");
+                        $existingFiles = Storage::disk('s3')->files("{$adminUser->company_name}/recognitions/{$request->web_user_id}/badge_{$badgeIndex}");
 
                         if ($existingFiles) {
                             foreach ($existingFiles as $existingFile) {
-                                if (basename($existingFile, '.' . pathinfo($existingFile, PATHINFO_EXTENSION)) === "badge_{$index}") {
+                                if (basename($existingFile, '.' . pathinfo($existingFile, PATHINFO_EXTENSION)) === "badge_{$badgeIndex}") {
                                     Storage::disk('s3')->delete($existingFile);
                                 }
                             }
@@ -920,7 +923,7 @@ class HomePageController extends Controller
                         ]);
 
                         $bucket = config('filesystems.disks.s3.bucket');
-                        $key = "{$adminUser->company_name}/recognitions/{$request->web_user_id}/badge_{$index}" . ".{$imageExtension}";
+                        $key = "{$adminUser->company_name}/recognitions/{$request->web_user_id}/badge_{$badgeIndex}" . ".{$imageExtension}";
 
                         $s3->putObject([
                             'Bucket' => $bucket,
