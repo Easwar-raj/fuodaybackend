@@ -892,10 +892,12 @@ class HomePageController extends Controller
             $adminUser = AdminUser::find($webUser->admin_user_id);
             $processedIds = [];
 
-            $badgeId = Recognitions::where('web_user_id', $request->web_user_id)->latest()->value('id');
-
-            foreach ($request->badges as $badgeData) {
+            $badgeData = Recognitions::where('web_user_id', $request->web_user_id)->latest()->value('id');
+            $badgeId = $badgeData + 1;
+            Log::info($badgeId);
+            foreach ($request->badges as $index => $badgeData) {
                 $imagePath = null;
+                $badgeId = $badgeId + $index;
                 if (isset($badgeData['id'])) {
                     $badgeId = $badgeData['id'];
                 }
