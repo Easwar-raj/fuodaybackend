@@ -17,70 +17,93 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class PayrollPageController extends Controller
 {
     public function getPayrollDetails($id)
-    {
-        // Fetch all payroll components for the given user
-        $payrollComponents = Payroll::where('web_user_id', $id)->get();
-    
-        if ($payrollComponents->isEmpty()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'No payroll data found.',
-            ], 404);
-        }
-    
-        $user = WebUser::find($id);
-        $empName = $user ? $user->name : 'Unknown';
-    
-        $payrollIds = $payrollComponents->pluck('id');
-        $payslips = Payslip::whereIn('payroll_id', $payrollIds)->orderBy('date', 'asc')->get();
-        
-        $payrollSummary = $payslips->map(function ($payslip) {
-            return [
-                'payroll_id'       => $payslip->payroll_id,
-                'designation'      => optional($payslip->payroll)->designation ?? 'N/A',
-                'date'             => optional($payslip->date)->format('Y-m-d'),
-                'time'             => $payslip->time ?? null,
-                'total_salary'     => (string) $payslip->total_salary,
-                'gross'            => (string) $payslip->gross,
-                'total_deductions' => (string) $payslip->total_deductions,
-                'basic'            => (string) $payslip->basic,
-                'lop'              => (string) $payslip->lop,
-                'total_paid_days'  => (string) $payslip->total_paid_days,
-                'status'           => $payslip->status,
-            ];
-        });
+{
+    // Fetch all payroll components for the given user
+    $payrollComponents = Payroll::where('web_user_id', $id)->get();
 
-        $grouped = $payrollComponents->groupBy('type');
-        $earnings = $grouped->get('Earnings', collect());
-        $deductions = $grouped->get('Deductions', collect());
-        $totalEarnings = $earnings->sum(fn($item) => (float) $item->amount);
-        $latestPayroll = $payrollComponents->sortByDesc('created_at')->first();
-        $incentives = Incentives::where('web_user_id', $id)->sum('amount');
-    
+    if ($payrollComponents->isEmpty()) {
         return response()->json([
-            'status' => 'Success',
-            'message' => 'All payroll details fetched successfully.',
-            'data' => [
-                'emp_name'             => $empName,
-                'total_ctc'            => (string) ($latestPayroll->ctc ?? 0),
-                'total_salary'         => (string) ($latestPayroll->monthly_salary ?? 0),
-                'current_month_salary' => (string) ($latestPayroll->monthly_salary ?? 0),
-                'total_gross'          => (string) $totalEarnings,
-                'payrolls'             => $payrollSummary,
-                'incentives'           => (float) $incentives,
-                'salary_components' => [
-                    'earnings' => $earnings->map(fn($item) => [
-                        'component' => $item->salary_component,
-                        'amount'    => (float) $item->amount,
-                    ])->values(),
-                    'deductions' => $deductions->map(fn($item) => [
-                        'component' => $item->salary_component,
-                        'amount'    => (float) $item->amount,
-                    ])->values(),
-                ]
-            ]
-        ], 200);
+            'status' => 'error',
+            'message' => 'No payroll data found.',
+        ], 404);
     }
+
+    // Fetch related models
+    $webUser = WebUser::with('employeeDetails')->find($id);
+    $employeeDetail = $webUser?->employeeDetails;
+    $adminUser = $webUser ? AdminUser::find($webUser->admin_user_id) : null;
+
+    $empName = $webUser?->name ?? 'Unknown';
+
+    $payrollIds = $payrollComponents->pluck('id');
+    $payslips = Payslip::whereIn('payroll_id', $payrollIds)->orderBy('date', 'asc')->get();
+    $latestPayrollDate = Payroll::where('web_user_id', $id)->orderByDesc('updated_at')->value('updated_at');
+
+    $payrollSummary = $payslips->map(function ($payslip) use ($latestPayrollDate) {
+        return [
+            'month'             => optional($payslip?->date)->format('F Y') ?? $latestPayrollDate?->format('F Y'),
+            'payroll_id'       => $payslip->payroll_id,
+            'designation'      => optional($payslip->payroll)->designation ?? 'N/A',
+            'date'             => optional($payslip->date)->format('Y-m-d'),
+            'time'             => $payslip->time ?? null,
+            'total_salary'     => (string) $payslip->total_salary,
+            'gross'            => (string) $payslip->gross,
+            'total_deductions' => (string) $payslip->total_deductions,
+            'basic'            => (string) $payslip->basic,
+            'lop'              => (string) $payslip->lop,
+            'total_paid_days'  => (string) $payslip->total_paid_days,
+            'status'           => $payslip->status,
+        ];
+    });
+
+    $grouped = $payrollComponents->groupBy('type');
+    $earnings = $grouped->get('Earnings', collect());
+    $deductions = $grouped->get('Deductions', collect());
+    $totalEarnings = $earnings->sum(fn($item) => (float) $item->amount);
+    $latestPayroll = $payrollComponents->sortByDesc('created_at')->first();
+    $incentives = Incentives::where('web_user_id', $id)->sum('amount');
+
+    return response()->json([
+        'status' => 'Success',
+        'message' => 'All payroll details fetched successfully.',
+        'data' => [
+            'emp_name'             => $empName,
+            'total_ctc'            => (string) ($latestPayroll->ctc ?? 0),
+            'total_salary'         => (string) ($latestPayroll->monthly_salary ?? 0),
+            'current_month_salary' => (string) ($latestPayroll->monthly_salary ?? 0),
+            'total_gross'          => (string) $totalEarnings,
+            'payrolls'             => $payrollSummary,
+            'incentives'           => (float) $incentives,
+            'salary_components' => [
+                'earnings' => $earnings->map(fn($item) => [
+                    'component' => $item->salary_component,
+                    'amount'    => (float) $item->amount,
+                ])->values(),
+                'deductions' => $deductions->map(fn($item) => [
+                    'component' => $item->salary_component,
+                    'amount'    => (float) $item->amount,
+                ])->values(),
+            ],
+
+            // Added Employee details
+            'employee_details' => [
+                'name'            => $webUser?->name,
+                'designation'     => $employeeDetail?->designation,
+                'emp_id'          => $webUser?->emp_id,
+                'date_of_joining' => optional($employeeDetail?->date_of_joining)->format('Y-m-d'),
+                'year'            => optional($employeeDetail?->date_of_joining)->format('Y'),
+            ],
+
+            // Added Onboarding details
+            'onboarding_details' => [
+                'pf_account_no'    => $employeeDetail?->pf_account_no,
+                'uan'              => $employeeDetail?->uan,
+                'esi_no'           => $employeeDetail?->esi_no,
+                'bank_account_no'  => $employeeDetail?->account_no,
+            ],
+        ]
+    ], 200);
+}
 
     public function getCurrentPayrollDetails($id)
     {
