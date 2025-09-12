@@ -47,6 +47,7 @@ return new class extends Migration
             $table->text('quote')->nullable();
             $table->string('author')->nullable();
             $table->string('welcome_image')->nullable();
+            $table->string('access')->nullable();
             $table->timestamps();
         });
     }

@@ -45,7 +45,8 @@ class EmployeeDetails extends Model
         'place',
         'quote',
         'author',
-        'welcome_image'
+        'welcome_image',
+        'access'
     ];
 
     protected $casts = [

@@ -23,6 +23,7 @@ use App\Models\WebUser;
 use App\Models\Achievement;
 use App\Models\TotalLeaves;
 use App\Models\Event;
+use App\Models\InterviewRounds;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use App\Models\Policies;
@@ -1983,7 +1984,7 @@ class AdminUserController extends Controller
                 'employees.*.assets' => 'required|array',
                 'employees.*.assets.*.components' => 'required|string',
                 'employees.*.assets.*.serial_number' => 'required|string',
-                'employees.*.assets.*.status' => 'required|string|in:assigned,returned,damaged',
+                'employees.*.assets.*.status' => 'required|string|in:Assigned,Returned,Damaged',
             ]);
         }
 
@@ -2134,5 +2135,77 @@ class AdminUserController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function getInterviewRounds($id)
+    {
+        $adminUser = AdminUser::find($id);
+        
+        if (!$adminUser) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invalid details',
+            ], 404);
+        }
+
+        $rounds = InterviewRounds::where('admin_user_id', $id)->get();
+
+        return response()->json([
+            'status' => 'Success',
+            'data' => $rounds,
+        ]);
+    }
+
+    public function saveInterviewRounds(Request $request)
+    {
+        $validated = $request->validate([
+            'id' => 'nullable|exists:interview_rounds,id',
+            'admin_user_id' => 'nullable|exists:admin_users,id',
+            'company_name' => 'nullable|string',
+            'level' => 'nullable|string',
+            'round_name' => 'nullable|string',
+            'no_of_qns' => 'nullable|string',
+        ]);
+
+        if(!$validated) {
+            return response()->json([
+                'message' => 'Invalid details'
+            ], 400);
+        }
+
+        InterviewRounds::updateOrCreate(
+            ['id' => $validated['id'] ?? null],
+            [
+                'admin_user_id' => $validated['admin_user_id'] ?? null,
+                'company_name' => $validated['company_name'] ?? null,
+                'level' => $validated['level'] ?? null,
+                'round_name' => $validated['round_name'] ?? null,
+                'no_of_qns' => $validated['no_of_qns'] ?? null,
+            ]
+        );
+
+        return response()->json([
+            'status' => 'Success',
+            'message' => $request->id ? 'Interview round updated successfully.' : 'Interview round created successfully.',
+        ]);
+    }
+
+    public function deleteInterviewRound($id)
+    {
+        $round = InterviewRounds::find($id);
+
+        if (!$round) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Interview round not found.'
+            ], 404);
+        }
+
+        $round->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Interview round deleted successfully.'
+        ]);
     }
 }

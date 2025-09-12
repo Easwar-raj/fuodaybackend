@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('emp_name')->nullable();
             $table->string('emp_id')->nullable();
             $table->date('date');
-            $table->string('description');
+            $table->text('description');
             $table->string('assigned_by')->nullable();
             $table->foreignId('assigned_by_id')->nullable()->constrained('web_users')->onDelete('cascade');
             $table->string('assigned_to');

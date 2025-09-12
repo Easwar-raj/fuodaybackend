@@ -65,6 +65,9 @@ class WebpageUserController extends Controller
             'deductions' => 'nullable|array',
             'deductions.*.salary_component' => 'required_with:deductions|string|max:255',
             'deductions.*.amount' => 'required_with:deductions|string',
+
+            'access' => 'nullable|array',
+            'access.*' => 'string',
         ]);
 
         $user = Auth::user();
@@ -171,6 +174,8 @@ class WebpageUserController extends Controller
                     }
                 }
 
+                $access = $request->access ? implode(',', $request->access) : null;
+
                 EmployeeDetails::create([
                     'web_user_id' => $webUser->id,
                     'emp_name' => $webUser->name,
@@ -191,6 +196,7 @@ class WebpageUserController extends Controller
                     'reporting_manager_name' => $request->reporting_manager_name,
                     'place' => $request->place,
                     'profile_photo' => $profilePhotoPath,
+                    'access' => $access,
                 ]);
 
                 if (!empty($request->earnings)) {
@@ -374,6 +380,8 @@ class WebpageUserController extends Controller
                     }
                 }
 
+                $access = $request->access ? implode(',', $request->access) : null;
+
                 if ($empdetails) {
                     $empdetails->update([
                         'emp_name' => $request->name ?? $empdetails->emp_name,
@@ -393,6 +401,7 @@ class WebpageUserController extends Controller
                         'reporting_manager_name' => $request->reporting_manager_name ?? $empdetails->reporting_manager_name,
                         'place' => $request->place ?? $empdetails->place,
                         'profile_photo' => $profilePhotoPath,
+                        'access' => $access ?? $empdetails->access,
                     ]);
                 }
 
@@ -733,7 +742,7 @@ class WebpageUserController extends Controller
         $webUser = WebUser::where('email', $request->input('email'))
             ->with([
                 'employeeDetails' => function ($query) {
-                    $query->select('web_user_id', 'profile_photo', 'designation', 'department');
+                    $query->select('web_user_id', 'profile_photo', 'designation', 'department', 'access');
                 },
                 'adminUser:id,logo,brand_logo,company_name,address'
             ])
