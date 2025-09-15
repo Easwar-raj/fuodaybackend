@@ -22,7 +22,7 @@ class AttendanceService
         $webUsers = WebUser::all()->groupBy('admin_user_id');
 
         foreach ($webUsers as $adminUserId => $usersGroup) {
-            // === Fetch Policies for this Admin ===
+            // === Fetch Policies for this Admin user ===
             $policies = Policies::where('admin_user_id', $adminUserId)
                 ->whereIn('title', [
                     "general_shift",
