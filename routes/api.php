@@ -125,14 +125,49 @@ Route::prefix('web-users')->group(function () {
     });
     Route::get('/getwebuserbyid/{id}', [WebpageUserController::class, 'getWebUserById']);
     Route::post('/update/{id}', [WebpageUserController::class, 'update']);
-    Route::post('/password_link', [WebpageUserController::class, 'sendResetLinkEmail']);
-    Route::get('/reset-password/{token}', [WebpageUserController::class, 'showResetForm'])->name('password.reset');
-    Route::post('/reset-password', [WebpageUserController::class, 'reset'])->name('password.update');
+    // Route::post('/password_link', [WebpageUserController::class, 'sendResetLinkEmail']);
+    // Route::get('/reset-password/{token}', [WebpageUserController::class, 'showResetForm'])->name('password.reset');
+    // Route::post('/reset-password', [WebpageUserController::class, 'reset'])->name('password.update');
+    Route::post('/forgot-password/send-otp', [WebpageUserController::class, 'sendOtp']);
+    Route::post('/forgot-password/verify-otp', [WebpageUserController::class, 'verifyOtp']);
+    Route::post('/forgot-password/reset-password', [WebpageUserController::class, 'resetPasswordWithOtp']);
 });
 
 Route::prefix('hrms')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
-        
+        Route::prefix('home')->group(function () {
+            Route::get('/getactivities/{id}', [HomePageController::class, 'getActivities']);
+
+            // Route::get('/getprofile/{id}', [HomePageController::class, 'getEmployeeData']);
+            // Route::get('/getleaves/{id}', [HomePageController::class, 'getLeaveSummary']);
+            // Route::get('/getattendance/{id}', [HomePageController::class, 'getAttendance']);
+            // Route::get('/getapprovals/{id}', [HomePageController::class, 'getApprovals']);
+
+            Route::get('/getdashboard/{id}', [HomePageController::class, 'getDashboardDetails']);
+            Route::get('/getannouncements/{id}/{type}', [HomePageController::class, 'getAnnouncements']);
+            Route::get('/getschedules/{id}', [HomePageController::class, 'getSchedules']);
+            Route::get('/getdynamic', [HomePageController::class, 'getDynamicShiftTypes']);
+
+            Route::get('/getreportees/{id}', [HomePageController::class, 'getAllReportees']);
+            Route::get('/getprojects/{id}', [HomePageController::class, 'getHandledProjects']);
+            Route::get('/getdepartments/{id}', [HomePageController::class, 'getEmployeesGroupedByDepartment']);
+            Route::get('/getteam/{id}', [HomePageController::class, 'getTeamByDepartment']);
+
+            Route::get('/getabout/{id}', [HomePageController::class, 'getAbout']);
+            Route::get('/getservice/{id}', [HomePageController::class, 'getServices']);
+            Route::get('/getindustries/{id}', [HomePageController::class, 'getIndustries']);
+            Route::get('/getclients/{id}', [HomePageController::class, 'getClients']);
+            Route::get('/getteamdescription/{id}', [HomePageController::class, 'getTeamDescription']);
+            Route::get('/industry_service/{id}', [HomePageController::class, 'getServicesAndIndustries']);
+            Route::get('/about_client/{id}', [HomePageController::class, 'getAboutAndClients']);
+
+            Route::get('/getfeeds/{id}', [HomePageController::class, 'getFeeds']);
+            Route::post('/addtask', [HomePageController::class, 'createTask']);
+
+            Route::get('/recognitions/{empId}', [HomePageController::class, 'getRecognitions']);
+            Route::post('/recognitions', [HomePageController::class, 'saveRecognitions']);
+            Route::delete('/recognitions/{id}', [HomePageController::class, 'deleteRecognition']);
+        });
         Route::prefix('profile')->group(function () {
             Route::get('/getprofile/{id}', [ProfilePageController::class, 'getProfile']);
             Route::post('/updateemployeeprofile', [ProfilePageController::class, 'updateEmployeeProfile']);
@@ -184,7 +219,7 @@ Route::prefix('hrms')->group(function () {
             Route::get('/getallwebusers/{id}', [HrPageController::class, 'getWebUsers']);
             Route::get('/employees/download', [HrPageController::class, 'downloadEmployees']);
             Route::get('/getallleavesbystatus/{status}', [HrPageController::class, 'getAllLeaveRequestsByStatus']);
-            Route::get('/all-attendance', [HrPageController::class, 'getAllEmployeeAttendance']);
+            Route::get('/all-attendance/{id?}', [HrPageController::class, 'getAllEmployeeAttendance']);
             Route::get('/payroll-summary', [HrPageController::class, 'getAllEmployeePayrollSummaries']);
             Route::get('/payroll-summary/{id}', [HrPageController::class, 'getEmployeePayrollSummaryById']);
             Route::get('/regulations/{id}', [HrPageController::class, 'getRegulations']);
@@ -219,45 +254,14 @@ Route::prefix('hrms')->group(function () {
             Route::get('/gettickets/{id}', [SupportPageController::class, 'getAllTicketsByStatus']);
             Route::post('/addticket', [SupportPageController::class, 'addTicket']);
             Route::post('/updateticket/{ticketId}', [SupportPageController::class, 'updateTicket']);
+            Route::post('/assignticket/{ticketId}', [SupportPageController::class, 'assignTicket']);
+            Route::put('/updateworkstatus/{ticketId}', [SupportPageController::class, 'updateWorkStatus']);
         });
     });
     Route::prefix('enquiry')->group(function () {
         Route::post('/addenquiry', [EnquiriesController::class, 'addInquiry']);
         Route::get('/getenquiries', [EnquiriesController::class, 'getInquiry']);
     });
-    Route::prefix('home')->group(function () {
-            Route::get('/getactivities/{id}', [HomePageController::class, 'getActivities']);
-
-            // Route::get('/getprofile/{id}', [HomePageController::class, 'getEmployeeData']);
-            // Route::get('/getleaves/{id}', [HomePageController::class, 'getLeaveSummary']);
-            // Route::get('/getattendance/{id}', [HomePageController::class, 'getAttendance']);
-            // Route::get('/getapprovals/{id}', [HomePageController::class, 'getApprovals']);
-
-            Route::get('/getdashboard/{id}', [HomePageController::class, 'getDashboardDetails']);
-            Route::get('/getannouncements/{id}/{type}', [HomePageController::class, 'getAnnouncements']);
-            Route::get('/getschedules/{id}', [HomePageController::class, 'getSchedules']);
-            Route::get('/getdynamic', [HomePageController::class, 'getDynamicShiftTypes']);
-
-            Route::get('/getreportees/{id}', [HomePageController::class, 'getAllReportees']);
-            Route::get('/getprojects/{id}', [HomePageController::class, 'getHandledProjects']);
-            Route::get('/getdepartments/{id}', [HomePageController::class, 'getEmployeesGroupedByDepartment']);
-            Route::get('/getteam/{id}', [HomePageController::class, 'getTeamByDepartment']);
-
-            Route::get('/getabout/{id}', [HomePageController::class, 'getAbout']);
-            Route::get('/getservice/{id}', [HomePageController::class, 'getServices']);
-            Route::get('/getindustries/{id}', [HomePageController::class, 'getIndustries']);
-            Route::get('/getclients/{id}', [HomePageController::class, 'getClients']);
-            Route::get('/getteamdescription/{id}', [HomePageController::class, 'getTeamDescription']);
-            Route::get('/industry_service/{id}', [HomePageController::class, 'getServicesAndIndustries']);
-            Route::get('/about_client/{id}', [HomePageController::class, 'getAboutAndClients']);
-
-            Route::get('/getfeeds/{id}', [HomePageController::class, 'getFeeds']);
-            Route::post('/addtask', [HomePageController::class, 'createTask']);
-
-            Route::get('/recognitions/{empId}', [HomePageController::class, 'getRecognitions']);
-            Route::post('/recognitions', [HomePageController::class, 'saveRecognitions']);
-            Route::delete('/recognitions/{id}', [HomePageController::class, 'deleteRecognition']);
-        });
 });
 
 Route::prefix('ats')->group(function () {

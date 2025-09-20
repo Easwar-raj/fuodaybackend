@@ -30,6 +30,10 @@ return new class extends Migration
             $table->string('regulation_reason')->nullable();
             $table->string('regulation_status')->nullable();
             $table->string('regulation_comment')->nullable();
+            $table->enum('hr_status', ['Pending', 'Approved', 'Rejected'])->default('Pending');
+            $table->enum('manager_status', ['Pending', 'Approved', 'Rejected'])->default('Pending');
+            $table->enum('hr_regulation_status', ['Pending', 'Approved', 'Rejected'])->default('Pending');
+            $table->enum('manager_regulation_status', ['Pending', 'Approved', 'Rejected'])->default('Pending');
             $table->timestamps();
         });
     }

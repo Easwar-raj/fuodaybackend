@@ -65,7 +65,7 @@ class LeaveTrackerPageController extends Controller
 
         // Added regulation_status and regulation_comment
         $leaveReport = LeaveRequest::where('web_user_id', $id)
-            ->select('id', 'emp_id', 'department', 'date', 'type', 'from', 'to', 'days', 'reason', 'status', 'regulation_date', 'permission_timing', 'regulation_reason', 'regulation_status', 'regulation_comment')
+            ->select('id', 'emp_id', 'department', 'date', 'type', 'from', 'to', 'days', 'reason','manager_status','hr_status', 'status', 'regulation_date', 'hr_regulation_status', 'manager_regulation_status', 'permission_timing', 'regulation_reason', 'regulation_status', 'regulation_comment')
             ->orderBy('date', 'desc')
             ->get()
             ->map(function ($leave) {
@@ -180,25 +180,33 @@ class LeaveTrackerPageController extends Controller
     {
         $validated = $request->validate([
             'leave_request_id' => 'required|integer|exists:leave_requests,id',
+            'access' => 'in:HR,Manager',
             'status' => 'required|in:Approved,Rejected,Cancelled',
             'comment' => 'nullable|string',
         ]);
 
         $leaveRequest = LeaveRequest::find($request->leave_request_id);
-        $user = Auth::user();
 
-        if (!$leaveRequest || !$validated) {
+        if (!$leaveRequest) {
             return response()->json([
                 'message' => 'Leave request not found.',
                 'status' => 'error',
             ], 404);
         }
 
-        if ($request->status === 'Cancelled' && $leaveRequest->web_user_id === $user->id) {
-            $now = now()->startOfDay();
+        // Employee cancel check
+        if ($request->status === 'Cancelled') {
+            $user = Auth::user();
+            if ($leaveRequest->web_user_id !== $user->id) {
+                return response()->json([
+                    'message' => 'Only the employee can cancel their own leave.',
+                    'status' => 'error',
+                ], 403);
+            }
 
-            $fromDate = Carbon::parse($leaveRequest->from_date)->startOfDay();
-            $toDate = Carbon::parse($leaveRequest->to_date)->startOfDay();
+            $now = now()->startOfDay();
+            $fromDate = Carbon::parse($leaveRequest->from)->startOfDay();
+            $toDate = Carbon::parse($leaveRequest->to)->startOfDay();
 
             if ($fromDate <= $now || $toDate <= $now) {
                 return response()->json([
@@ -206,13 +214,54 @@ class LeaveTrackerPageController extends Controller
                     'status' => 'error',
                 ], 400);
             }
+
+            // Directly cancel
+            $leaveRequest->status = 'Cancelled';
+            $leaveRequest->comment = $request->comment ?? $leaveRequest->comment;
+            $leaveRequest->save();
+
+            return response()->json([
+                'message' => 'Leave cancelled successfully.',
+                'status' => 'Success',
+                'data' => $leaveRequest
+            ], 200);
         }
 
-        $leaveRequest->status = $request->status;
+        // HR or Manager action with rule
+        if ($request->access === 'Manager') {
+            $leaveRequest->manager_status = $request->status;
+        } elseif ($request->access === 'HR') {
+            // HR can only approve leaves if Manager already approved (not for permission)
+            if ($leaveRequest->type !== 'Permission' && $request->status === 'Approved' && $leaveRequest->manager_status !== 'Approved') {
+                return response()->json([
+                    'message' => 'HR cannot approve before Manager approves.',
+                    'status' => 'error',
+                ], 403);
+            }
+            $leaveRequest->hr_status = $request->status;
+        }
+
+        // Sync main status
+        if ($leaveRequest->type === 'Permission') {
+            // For permission: HR's decision is final
+            $leaveRequest->status = $leaveRequest->hr_status;
+        } else {
+            // For leave: Both HR & Manager must approve
+            if ($leaveRequest->hr_status === 'Approved' && $leaveRequest->manager_status === 'Approved') {
+                $leaveRequest->status = 'Approved';
+            } elseif ($leaveRequest->hr_status === 'Rejected' || $leaveRequest->manager_status === 'Rejected') {
+                $leaveRequest->status = 'Rejected';
+            } else {
+                $leaveRequest->status = 'Pending';
+            }
+        }
+
+        // Save comment
         $leaveRequest->comment = $request->comment ?? $leaveRequest->comment;
         $leaveRequest->save();
 
-        if ($request->status === 'Approved') {
+        // Update Attendance only if fully approved
+        if ($leaveRequest->status === 'Approved') {
             $period = CarbonPeriod::create($leaveRequest->from, $leaveRequest->to);
 
             foreach ($period as $date) {
@@ -237,6 +286,7 @@ class LeaveTrackerPageController extends Controller
         return response()->json([
             'message' => 'Leave status updated successfully.',
             'status' => 'Success',
+            'data' => $leaveRequest
         ], 200);
     }
 

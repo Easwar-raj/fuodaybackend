@@ -11,7 +11,7 @@ use App\Models\SectionSelection;
 use App\Models\Payroll;
 use App\Models\Payslip;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Password;
+// use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
 use App\Models\WebUser;
 use Illuminate\Support\Facades\Auth;
@@ -22,6 +22,8 @@ use Aws\S3\S3Client;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use App\Models\PasswordResetOtp;
+use Illuminate\Support\Facades\Mail;
 
 class WebpageUserController extends Controller
 {
@@ -68,6 +70,7 @@ class WebpageUserController extends Controller
 
             'access' => 'nullable|array',
             'access.*' => 'string',
+            'team_id' => 'nullable|string|exists:web_users,id',
         ]);
 
         $user = Auth::user();
@@ -120,7 +123,7 @@ class WebpageUserController extends Controller
                     'password' => Hash::make($request->password),
                 ]);
 
-                // Handle profile image upload for create - INTEGRATED DIRECTLY
+                // Handle profile image upload for create
                 $profilePhotoPath = null;
                 $adminUser = AdminUser::find($request->admin_user_id);
                 if ($request->hasFile('profile')) {
@@ -142,7 +145,7 @@ class WebpageUserController extends Controller
                             'region' => config('filesystems.disks.s3.region'),
                             'version' => 'latest',
                             'credentials' => [
-                                'key'    => config('filesystems.disks.s3.key'),
+                                'key' => config('filesystems.disks.s3.key'),
                                 'secret' => config('filesystems.disks.s3.secret'),
                             ],
                         ]);
@@ -151,13 +154,13 @@ class WebpageUserController extends Controller
 
                         $s3->putObject([
                             'Bucket' => $bucket,
-                            'Key'    => $key,
-                            'Body'   => $profileFile->get(),
+                            'Key' => $key,
+                            'Body' => $profileFile->get(),
                             'ContentType' => $profileFile->getClientMimeType(),
                         ]);
 
                         $profilePhotoPath = $s3->getObjectUrl($bucket, $key);
-                        
+
                     } catch (Exception $e) {
                         Log::error('Profile image upload failed: ' . $e->getMessage());
                         // Generate initials-based image as fallback
@@ -197,6 +200,7 @@ class WebpageUserController extends Controller
                     'place' => $request->place,
                     'profile_photo' => $profilePhotoPath,
                     'access' => $access,
+                    'team_id' => $request->team_id,
                 ]);
 
                 if (!empty($request->earnings)) {
@@ -338,7 +342,7 @@ class WebpageUserController extends Controller
 
                 $empdetails = EmployeeDetails::where('web_user_id', $webUser->id)->first();
 
-                // Handle profile image upload for update - INTEGRATED DIRECTLY
+                // Handle profile image upload for update
                 $profilePhotoPath = $empdetails ? $empdetails->profile_photo : null; // Keep existing if no new upload
                 $adminUser = AdminUser::find($request->admin_user_id);
                 if ($request->hasFile('profile')) {
@@ -360,7 +364,7 @@ class WebpageUserController extends Controller
                             'region' => config('filesystems.disks.s3.region'),
                             'version' => 'latest',
                             'credentials' => [
-                                'key'    => config('filesystems.disks.s3.key'),
+                                'key' => config('filesystems.disks.s3.key'),
                                 'secret' => config('filesystems.disks.s3.secret'),
                             ],
                         ]);
@@ -369,8 +373,8 @@ class WebpageUserController extends Controller
 
                         $s3->putObject([
                             'Bucket' => $bucket,
-                            'Key'    => $key,
-                            'Body'   => $profileFile->get(),
+                            'Key' => $key,
+                            'Body' => $profileFile->get(),
                             'ContentType' => $profileFile->getClientMimeType(),
                         ]);
 
@@ -402,6 +406,7 @@ class WebpageUserController extends Controller
                         'place' => $request->place ?? $empdetails->place,
                         'profile_photo' => $profilePhotoPath,
                         'access' => $access ?? $empdetails->access,
+                        'team_id' => $request->team_id ?? $empdetails->team_id,
                     ]);
                 }
 
@@ -949,14 +954,17 @@ class WebpageUserController extends Controller
 
     public function getEmployeesByAdminUser($id)
     {
-        $adminUser = AdminUser::find($id);
-        if (!$adminUser) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Invalid user id.',
-            ], 401);
-        }
-        $employees = WebUser::where('admin_user_id', $id)->select('id', 'name', 'emp_id')->get();
+        // Step 1: Get the admin_user_id of the provided web_user_id
+        $webUser = WebUser::findOrFail($id);
+        $adminUserId = $webUser->admin_user_id;
+
+        // Step 2: Fetch all employees under the same admin_user_id
+        $employees = EmployeeDetails::whereHas('webUser', function ($query) use ($adminUserId) {
+            $query->where('admin_user_id', $adminUserId);
+        })
+        ->select('web_user_id', 'emp_name', 'emp_id')
+        ->get();
+
         return response()->json([
             'message' => 'Employees fetched successfully.',
             'status'  => 'Success',
@@ -964,73 +972,251 @@ class WebpageUserController extends Controller
         ], 200);
     }
 
-    // Send the reset password link to the user's email
-    public function sendResetLinkEmail(Request $request)
+    // // Send the reset password link to the user's email
+    // public function sendResetLinkEmail(Request $request)
+    // {
+    //     // Validate the email input
+    //     $validator = Validator::make($request->all(), [
+    //         'email' => 'required|email'
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return response()->json([
+    //             'message' => 'Validation failed',
+    //             'errors' => $validator->errors()
+    //         ], 422);
+    //     }
+
+    //     // Send the reset password email
+    //     $response = Password::sendResetLink(
+    //         $request->only('email')
+    //     );
+
+    //     if ($response == Password::RESET_LINK_SENT) {
+    //         return response()->json(['message' => 'Password reset link sent successfully.', 'status' => 'Success'], 200);
+    //     }
+
+    //     return response()->json(['message' => 'Failed to send reset link, please check your email.'], 400);
+    // }
+
+    // // Reset the password using the provided token
+    // public function reset(Request $request)
+    // {
+    //     // Validate the reset password request
+    //     $validator = Validator::make($request->all(), [
+    //         'token' => 'required',
+    //         'email' => 'required|email',
+    //         'password' => 'required|confirmed|min:8',
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return response()->json([
+    //             'message' => 'Validation failed',
+    //             'errors' => $validator->errors()
+    //         ], 422);
+    //     }
+
+    //     // Attempt to reset the password using the token and email
+    //     $response = Password::reset(
+    //         $request->only('email', 'password', 'password_confirmation', 'token'),
+    //         function ($user, $password) {
+    //             // Update the user's password
+    //             $user->forceFill(['password' => bcrypt($password)])->save();
+    //         }
+    //     );
+
+    //     // Check the response status
+    //     if ($response == Password::PASSWORD_RESET) {
+    //         return response()->json(['message' => 'Password reset successfully.', 'status' => 'Success'], 200);
+    //     }
+
+    //     return response()->json(['message' => 'Failed to reset password, invalid token or email.'], 400);
+    // }
+
+    // public function showResetForm(Request $request, $token)
+    // {
+    //     return view('auth.reset-password', [
+    //         'token' => $token,
+    //         'email' => $request->email,
+    //     ]);
+    // }
+
+    public function sendOtp(Request $request)
     {
-        // Validate the email input
         $validator = Validator::make($request->all(), [
             'email' => 'required|email'
         ]);
 
         if ($validator->fails()) {
             return response()->json([
+                'status' => 'error',
                 'message' => 'Validation failed',
                 'errors' => $validator->errors()
             ], 422);
         }
 
-        // Send the reset password email
-        $response = Password::sendResetLink(
-            $request->only('email')
-        );
-
-        if ($response == Password::RESET_LINK_SENT) {
-            return response()->json(['message' => 'Password reset link sent successfully.', 'status' => 'Success'], 200);
+        // Check if user exists
+        $user = WebUser::where('email', $request->email)->first();
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No user found with this email address'
+            ], 404);
         }
 
-        return response()->json(['message' => 'Failed to send reset link, please check your email.'], 400);
+        // Generate 6-digit OTP
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Delete any existing OTPs for this email
+        PasswordResetOtp::where('email', $request->email)->delete();
+
+        // Create new OTP record (valid for 2 minutes)
+        PasswordResetOtp::create([
+            'email' => $request->email,
+            'otp' => $otp,
+            'expires_at' => Carbon::now()->addMinutes(2), //  OTP expires in 2 minutes
+            'is_used' => false
+        ]);
+
+
+        // Send OTP via email
+        try {
+            Mail::send('emails.custom-password-reset', ['otp' => $otp, 'user' => $user], function ($message) use ($request) {
+        $message->to($request->email)
+                ->subject('Fuoday - Password Reset OTP');
+    });
+
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'OTP sent successfully to your email address',
+                'debug' => config('app.debug') ? [
+                    'otp' => $otp,
+                    'email' => $request->email,
+                    'mail_driver' => config('mail.default')
+                ] : null
+            ], 200);
+
+        } catch (Exception $e) {
+            Log::error('Failed to send OTP email: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to send OTP. Please try again.'
+            ], 500);
+        }
     }
 
-// Reset the password using the provided token
-public function reset(Request $request)
-{
-    // Validate the reset password request
-    $validator = Validator::make($request->all(), [
-        'token' => 'required',
-        'email' => 'required|email',
-        'password' => 'required|confirmed|min:8',
-    ]);
 
-    if ($validator->fails()) {
+    /**
+     * Verify OTP
+     */
+    public function verifyOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'otp' => 'required|string|size:6'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Find the OTP record
+        $otpRecord = PasswordResetOtp::where('email', $request->email)
+                                   ->where('otp', $request->otp)
+                                   ->first();
+
+        if (!$otpRecord) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invalid OTP'
+            ], 400);
+        }
+
+        if (!$otpRecord->isValid()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $otpRecord->isExpired() ? 'OTP has expired' : 'OTP has already been used'
+            ], 400);
+        }
+
         return response()->json([
-            'message' => 'Validation failed',
-            'errors' => $validator->errors()
-        ], 422);
+            'status' => 'success',
+            'message' => 'OTP verified successfully'
+        ], 200);
     }
 
-    // Attempt to reset the password using the token and email
-    $response = Password::reset(
-        $request->only('email', 'password', 'password_confirmation', 'token'),
-        function ($user, $password) {
-            // Update the user's password
-            $user->forceFill(['password' => bcrypt($password)])->save();
+    /**
+     * Reset password with OTP
+     */
+    public function resetPasswordWithOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'otp' => 'required|string|size:6',
+            'password' => 'required|string|min:8|confirmed'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
         }
-    );
 
-    // Check the response status
-    if ($response == Password::PASSWORD_RESET) {
-        return response()->json(['message' => 'Password reset successfully.', 'status' => 'Success'], 200);
+        // Find the OTP record
+        $otpRecord = PasswordResetOtp::where('email', $request->email)
+                                   ->where('otp', $request->otp)
+                                   ->first();
+
+        if (!$otpRecord) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invalid OTP'
+            ], 400);
+        }
+
+        if (!$otpRecord->isValid()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $otpRecord->isExpired() ? 'OTP has expired' : 'OTP has already been used'
+            ], 400);
+        }
+
+        // Find the user
+        $user = WebUser::where('email', $request->email)->first();
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        try {
+            // Update user password
+            $user->update([
+                'password' => Hash::make($request->password)
+            ]);
+
+            // Mark OTP as used
+            $otpRecord->markAsUsed();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Password reset successfully'
+            ], 200);
+        } catch (Exception $e) {
+            Log::error('Failed to reset password: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to reset password. Please try again.'
+            ], 500);
+        }
     }
-
-    return response()->json(['message' => 'Failed to reset password, invalid token or email.'], 400);
-}
-
-public function showResetForm(Request $request, $token)
-{
-    return view('auth.reset-password', [
-        'token' => $token,
-        'email' => $request->email,
-    ]);
-}
 
 }

@@ -27,7 +27,11 @@ class LeaveRequest extends Model
         'regulation_date',
         'regulation_reason',
         'regulation_status',
-        'regulation_comment'
+        'regulation_comment',
+        'hr_status',
+        'manager_status',
+        'hr_regulation_status',
+        'manager_regulation_status'
     ];
 
     protected $casts = [

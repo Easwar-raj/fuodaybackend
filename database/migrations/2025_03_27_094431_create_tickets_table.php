@@ -25,6 +25,17 @@ return new class extends Migration
             $table->date('date');
             $table->string('status')->nullable();
             $table->enum('system_type', ['hrms', 'ats'])->default('hrms');
+            $table->foreignId('reassigned_id')->nullable()->constrained('web_users')->onDelete('cascade');
+            $table->string('reason_to_reassign', 500)->nullable();
+            $table->text('description_to_reassign')->nullable();
+            $table->enum('work_status', ['pending', 'in_progress', 'completed', 'reassigned', 'on_hold', 'cancelled'])->default('pending');
+            $table->string('surrogate_key')->unique()->nullable();
+            $table->text('work_status_reason')->nullable();
+            $table->string('task_status')->nullable();
+            $table->text('task_description')->nullable();
+            $table->string('assignment_type')->nullable(); // e.g., 'Internal' or 'External'
+            $table->string('support_by')->nullable(); // To store the support person's name
+            $table->text('assignee_description')->nullable(); // A single column for the description
             $table->timestamps();
         });
     }

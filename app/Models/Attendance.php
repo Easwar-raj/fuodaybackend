@@ -25,6 +25,8 @@ class Attendance extends Model
         'regulation_status',
         'reason',
         'status',
+        'hr_regulation_status',
+        'manager_regulation_status'
     ];
 
     protected $casts = [

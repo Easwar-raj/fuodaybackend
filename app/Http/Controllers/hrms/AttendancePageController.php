@@ -30,7 +30,9 @@ class AttendancePageController extends Controller
                     DB::raw('GROUP_CONCAT(worked_hours) as worked_hours_concat'),
                     DB::raw('MAX(regulation_status) as regulation_status'),
                     DB::raw('MAX(regulation_checkin) as regulation_checkin'),
-                    DB::raw('MAX(regulation_checkout) as regulation_checkout')
+                    DB::raw('MAX(regulation_checkout) as regulation_checkout'),
+                    DB::raw('MAX(hr_regulation_status) as hr_regulation_status'),
+                    DB::raw('MAX(manager_regulation_status) as manager_regulation_status')
                 )
                 ->groupBy('date')
                 ->orderBy('date', 'desc')
@@ -139,7 +141,7 @@ class AttendancePageController extends Controller
                     if (!isset($analytics['monthly_counts'][$monthKey])) {
                         $analytics['monthly_counts'][$monthKey] = 0;
                     }
-                    
+
                     $status = strtolower(trim(explode(',', $a->status_concat)[0]));
                     if (in_array($status, ['present', 'late', 'early', 'on leave', 'leave'])) {
                         $analytics['monthly_counts'][$monthKey]++;
@@ -177,6 +179,8 @@ class AttendancePageController extends Controller
                         'checkout' => $checkout ? $checkout->format('h:i:s A') : null,
                         'status' => explode(',', $a->status_concat)[0] ?? 'Unknown',
                         'regulation_status' => $a->regulation_status,
+                        'hr_regulation_status' => $a->hr_regulation_status,
+                        'manager_regulation_status' => $a->manager_regulation_status,
                         'worked_hours' => sprintf('%02d:%02d hours', $hours1, $minutes1) ?? '00:00 hours'
                     ];
 
@@ -762,27 +766,30 @@ class AttendancePageController extends Controller
         }
     }
 
-    public function getAllLateArrivals()
+    public function getAllLateArrivals($managerId = null)
     {
         try {
             $user = Auth::user();
             $webUser = WebUser::find($user->id);
             $standardStartTime = '09:00:00';
 
-            $allLateData = [];
-            $summaryStats = [
-                'total_employees' => 0,
+            // ---------------- HR SECTION ----------------
+            $employeesHR = WebUser::where('admin_user_id', $webUser->admin_user_id)
+                ->where(function ($query) {
+                    $query->where('role', 'employee')->orWhere('role', 'hr');
+                })
+                ->get();
+
+            $summaryStatsHR = [
+                'total_employees' => $employeesHR->count(),
                 'employees_with_late_arrivals' => 0,
                 'total_late_instances' => 0,
                 'total_late_minutes' => 0
             ];
 
-            // Get all employees
-            $employees = WebUser::where('admin_user_id', $webUser->admin_user_id)->where(function ($query) {
-                $query->where('role', 'employee')->orWhere('role', 'hr');
-            })->get();
-            $summaryStats['total_employees'] = $employees->count();
-            foreach ($employees as $employee) {
+            $allLateDataHR = [];
+
+            foreach ($employeesHR as $employee) {
                 $attendances = DB::table('attendances')
                     ->where('web_user_id', $employee->id)
                     ->whereNotNull('checkin')
@@ -805,7 +812,6 @@ class AttendancePageController extends Controller
                 $totalLateMinutes = 0;
                 $lateCount = 0;
                 $updatedRecords = 0;
-                $employeeName = $employee->name;
 
                 foreach ($attendances as $attendance) {
                     $checkinTime = Carbon::parse($attendance->checkin)->format('H:i:s');
@@ -826,7 +832,6 @@ class AttendancePageController extends Controller
                         $lateCount++;
                         $totalLateMinutes += $lateMinutes;
 
-                        // Update status to 'Late' if not already
                         if (strtolower($attendance->status) !== 'late') {
                             DB::table('attendances')
                                 ->where('id', $attendance->id)
@@ -837,13 +842,13 @@ class AttendancePageController extends Controller
                 }
 
                 if ($lateCount > 0) {
-                    $summaryStats['employees_with_late_arrivals']++;
-                    $summaryStats['total_late_instances'] += $lateCount;
-                    $summaryStats['total_late_minutes'] += $totalLateMinutes;
+                    $summaryStatsHR['employees_with_late_arrivals']++;
+                    $summaryStatsHR['total_late_instances'] += $lateCount;
+                    $summaryStatsHR['total_late_minutes'] += $totalLateMinutes;
 
-                    $allLateData[] = [
+                    $allLateDataHR[] = [
                         'employee_id' => $employee->id,
-                        'employee_name' => $employeeName,
+                        'employee_name' => $employee->name,
                         'late_count' => $lateCount,
                         'total_late_minutes' => $totalLateMinutes,
                         'average_late_minutes' => round($totalLateMinutes / $lateCount, 2),
@@ -854,12 +859,206 @@ class AttendancePageController extends Controller
                 }
             }
 
+            // ---------------- MANAGER SECTION ----------------
+            $reportingEmployees = EmployeeDetails::query()
+                ->when($managerId, function ($q) use ($managerId) {
+                    $q->where('reporting_manager_id', $managerId);
+                }, function ($q) use ($webUser) {
+                    $q->where('reporting_manager_id', $webUser->id);
+                })
+                ->get(['web_user_id', 'reporting_manager_id', 'reporting_manager_name']);
+
+            $employeesManager = WebUser::whereIn('id', $reportingEmployees->pluck('web_user_id'))->get();
+
+            $summaryStatsManager = [
+                'total_employees' => $employeesManager->count(),
+                'employees_with_late_arrivals' => 0,
+                'total_late_instances' => 0,
+                'total_late_minutes' => 0
+            ];
+
+            $allLateDataManager = [];
+
+            foreach ($employeesManager as $employee) {
+                $attendances = DB::table('attendances')
+                    ->where('web_user_id', $employee->id)
+                    ->whereNotNull('checkin')
+                    ->select([
+                        DB::raw('MIN(id) as id'),
+                        'date',
+                        DB::raw('MIN(status) as status'),
+                        DB::raw('MIN(emp_name) as emp_name'),
+                        DB::raw('MIN(checkin) as checkin'),
+                    ])
+                    ->groupBy('date')
+                    ->orderBy('date', 'desc')
+                    ->get();
+
+                if ($attendances->isEmpty()) {
+                    continue;
+                }
+
+                $lateArrivals = [];
+                $totalLateMinutes = 0;
+                $lateCount = 0;
+                $updatedRecords = 0;
+
+                foreach ($attendances as $attendance) {
+                    $checkinTime = Carbon::parse($attendance->checkin)->format('H:i:s');
+
+                    if ($checkinTime > $standardStartTime) {
+                        $standard = Carbon::parse($attendance->date . ' ' . $standardStartTime);
+                        $actual = Carbon::parse($attendance->date . ' ' . $checkinTime);
+                        $lateMinutes = $standard->diffInMinutes($actual);
+
+                        $lateArrivals[] = [
+                            'date' => $attendance->date,
+                            'checkin_time' => Carbon::parse($attendance->checkin)->format('h:i:s A'),
+                            'minutes_late' => $lateMinutes,
+                            'hours_minutes_late' => floor($lateMinutes / 60) . 'h ' . ($lateMinutes % 60) . 'm',
+                            'current_status' => $attendance->status
+                        ];
+
+                        $lateCount++;
+                        $totalLateMinutes += $lateMinutes;
+
+                        if (strtolower($attendance->status) !== 'late') {
+                            DB::table('attendances')
+                                ->where('id', $attendance->id)
+                                ->update(['status' => 'Late']);
+                            $updatedRecords++;
+                        }
+                    }
+                }
+
+                if ($lateCount > 0) {
+                    $summaryStatsManager['employees_with_late_arrivals']++;
+                    $summaryStatsManager['total_late_instances'] += $lateCount;
+                    $summaryStatsManager['total_late_minutes'] += $totalLateMinutes;
+
+                    $details = $reportingEmployees->firstWhere('web_user_id', $employee->id);
+
+                    $allLateDataManager[] = [
+                        'employee_id' => $employee->id,
+                        'employee_name' => $employee->name,
+                        'reporting_manager_id' => $details->reporting_manager_id ?? null,
+                        'reporting_manager_name' => $details->reporting_manager_name ?? null,
+                        'late_count' => $lateCount,
+                        'total_late_minutes' => $totalLateMinutes,
+                        'average_late_minutes' => round($totalLateMinutes / $lateCount, 2),
+                        'late_arrival_percentage' => round(($lateCount / $attendances->count()) * 100, 2),
+                        'records_updated' => $updatedRecords,
+                        'late_arrivals' => $lateArrivals
+                    ];
+                }
+            }
+
+
+            $teamEmployees = EmployeeDetails::where('team_id', $managerId ?? $webUser->id) // ✅ use passed ID as team_id
+                ->get(['web_user_id', 'team_id']);
+
+            $employeesTeam = WebUser::whereIn('id', $teamEmployees->pluck('web_user_id'))->get();
+
+            $summaryStatsTeam = [
+                'total_employees' => $employeesTeam->count(),
+                'employees_with_late_arrivals' => 0,
+                'total_late_instances' => 0,
+                'total_late_minutes' => 0
+            ];
+
+            $allLateDataTeam = [];
+
+            foreach ($employeesTeam as $employee) {
+                $attendances = DB::table('attendances')
+                    ->where('web_user_id', $employee->id)
+                    ->whereNotNull('checkin')
+                    ->select([
+                        DB::raw('MIN(id) as id'),
+                        'date',
+                        DB::raw('MIN(status) as status'),
+                        DB::raw('MIN(emp_name) as emp_name'),
+                        DB::raw('MIN(checkin) as checkin'),
+                    ])
+                    ->groupBy('date')
+                    ->orderBy('date', 'desc')
+                    ->get();
+
+                if ($attendances->isEmpty()) {
+                    continue;
+                }
+
+                $lateArrivals = [];
+                $totalLateMinutes = 0;
+                $lateCount = 0;
+                $updatedRecords = 0;
+
+                foreach ($attendances as $attendance) {
+                    $checkinTime = Carbon::parse($attendance->checkin)->format('H:i:s');
+
+                    if ($checkinTime > $standardStartTime) {
+                        $standard = Carbon::parse($attendance->date . ' ' . $standardStartTime);
+                        $actual = Carbon::parse($attendance->date . ' ' . $checkinTime);
+                        $lateMinutes = $standard->diffInMinutes($actual);
+
+                        $lateArrivals[] = [
+                            'date' => $attendance->date,
+                            'checkin_time' => Carbon::parse($attendance->checkin)->format('h:i:s A'),
+                            'minutes_late' => $lateMinutes,
+                            'hours_minutes_late' => floor($lateMinutes / 60) . 'h ' . ($lateMinutes % 60) . 'm',
+                            'current_status' => $attendance->status
+                        ];
+
+                        $lateCount++;
+                        $totalLateMinutes += $lateMinutes;
+
+                        if (strtolower($attendance->status) !== 'late') {
+                            DB::table('attendances')
+                                ->where('id', $attendance->id)
+                                ->update(['status' => 'Late']);
+                            $updatedRecords++;
+                        }
+                    }
+                }
+
+                if ($lateCount > 0) {
+                    $summaryStatsTeam['employees_with_late_arrivals']++;
+                    $summaryStatsTeam['total_late_instances'] += $lateCount;
+                    $summaryStatsTeam['total_late_minutes'] += $totalLateMinutes;
+
+                    $teamDetails = $teamEmployees->firstWhere('web_user_id', $employee->id);
+
+                    $allLateDataTeam[] = [
+                        'employee_id' => $employee->id,
+                        'employee_name' => $employee->name,
+                        'team_id' => $teamDetails->team_id ?? null,
+                        'late_count' => $lateCount,
+                        'total_late_minutes' => $totalLateMinutes,
+                        'average_late_minutes' => round($totalLateMinutes / $lateCount, 2),
+                        'late_arrival_percentage' => round(($lateCount / $attendances->count()) * 100, 2),
+                        'records_updated' => $updatedRecords,
+                        'late_arrivals' => $lateArrivals
+                    ];
+                }
+            }
+
+            // ---------------- FINAL RESPONSE ----------------
             return response()->json([
-                'message' => 'Late arrivals data for all employees retrieved successfully',
                 'status' => 'Success',
-                'data' => [
-                    'summary_stats' => $summaryStats,
-                    'employees' => $allLateData
+                'message' => 'Late arrivals data retrieved successfully',
+                'hr_section' => [
+                    'total_count' => count($allLateDataHR),
+                    'summary_stats' => $summaryStatsHR,
+                    'employees' => $allLateDataHR
+                ],
+                'manager_section' => [
+                    'total_count' => count($allLateDataManager),
+                    'summary_stats' => $summaryStatsManager,
+                    'employees' => $allLateDataManager
+                ],
+                'team_section' => [
+                    'total_count' => count($allLateDataTeam),
+                    'summary_stats' => $summaryStatsTeam,
+                    'employees' => $allLateDataTeam
                 ]
             ], 200);
 

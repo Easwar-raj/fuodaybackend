@@ -28,6 +28,7 @@ class EmployeeDetails extends Model
         'date_of_joining',
         'reporting_manager_id',
         'reporting_manager_name',
+        'team_id',
         'aadhaar_no',
         'pan_no',
         'blood_group',
@@ -59,9 +60,19 @@ class EmployeeDetails extends Model
         return $this->belongsTo(WebUser::class, 'web_user_id');
     }
 
+    public function employeeDetails()
+    {
+        return $this->hasOne(EmployeeDetails::class, 'web_user_id', 'id');
+    }
+
     public function reportingManager()
     {
         return $this->belongsTo(WebUser::class, 'reporting_manager_id');
+    }
+
+    public function teamLead()
+    {
+        return $this->belongsTo(WebUser::class, 'team_id', 'id');
     }
 
 }

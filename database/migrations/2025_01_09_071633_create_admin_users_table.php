@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id(); // Primary key
             $table->string('name');
             $table->string('email')->unique(); // Unique constraint on email
+            $table->string('support_by')->nullable();
             $table->string('phone');
             $table->string('password'); // Store hashed passwords
             $table->string('company_name');

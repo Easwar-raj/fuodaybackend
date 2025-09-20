@@ -22,7 +22,18 @@ class Ticket extends Model
         'priority',
         'date',
         'status',
-        'system_type'
+        'system_type',
+        'reassigned_id',
+        'reason_to_reassign',
+        'description_to_reassign',
+        'work_status',
+        'work_status_reason',
+        'surrogate_key',
+        'task_status',
+        'task_description' ,
+        'assignment_type',
+        'support_by',
+        'assignee_description'
     ];
 
     protected $casts = [

@@ -30,6 +30,7 @@ return new class extends Migration
             $table->date('date_of_joining');
             $table->string('reporting_manager_id')->nullable();
             $table->string('reporting_manager_name')->nullable();
+            $table->string('team_id')->nullable();
             $table->string('aadhaar_no')->nullable();
             $table->string('pan_no')->nullable();
             $table->string('blood_group')->nullable();

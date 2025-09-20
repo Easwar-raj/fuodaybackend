@@ -23,6 +23,7 @@ use App\Models\Payroll;
 use Exception;
 use NumberToWords\NumberToWords;
 use App\Models\EmployeeDetails;
+use Illuminate\Support\Facades\Log;
 
 class HrPageController extends Controller
 {
@@ -200,19 +201,71 @@ class HrPageController extends Controller
 
     public function getWebUsers($id)
     {
-        // Step 1: Find the admin_user_id for the given web_user_id
-        $webUser = WebUser::findOrFail($id);
+        $webUser = WebUser::find($id);
 
-        if (!$webUser->admin_user_id || $webUser->role !== 'hr') {
-            return response()->json(['message' => 'Invalid details'], 403);
+        if (!$webUser || !$webUser->admin_user_id) {
+            return response()->json([
+                'message' => 'User not found.'
+            ], 404);
         }
-        // Step 2: Fetch all web_users having the same admin_user_id
-        $webUsers = WebUser::where('admin_user_id', $webUser->admin_user_id)->get();
+
+        $response = [];
+
+        // HR Users Section
+        $hrUsers = WebUser::where('admin_user_id', $webUser->admin_user_id)
+            ->get(['id as web_user_id', 'emp_id', 'email', 'name as emp_name', 'role']);
+
+        $response['hr'] = [
+            'total_count' => $hrUsers->count(),
+            'data' => $hrUsers
+        ];
+
+        // Manager Users Section
+        $reportingEmployees = EmployeeDetails::where('reporting_manager_id', $id)
+            ->get(['web_user_id', 'reporting_manager_id', 'reporting_manager_name']);
+
+        $managerTeam = WebUser::whereIn('id', $reportingEmployees->pluck('web_user_id'))
+            ->get(['id as web_user_id', 'emp_id', 'email', 'name as emp_name', 'role']);
+
+        $managerTeam = $managerTeam->map(function ($member) use ($reportingEmployees) {
+            $details = $reportingEmployees->firstWhere('web_user_id', $member->web_user_id);
+            return [
+                'web_user_id' => $member->web_user_id,
+                'emp_id' => $member->emp_id,
+                'email' => $member->email,
+                'emp_name' => $member->emp_name,
+                'role' => $member->role,
+                'reporting_manager_id' => $details->reporting_manager_id ?? null,
+                'reporting_manager_name' => $details->reporting_manager_name ?? null,
+            ];
+        });
+
+        $response['manager'] = [
+            'total_count' => $managerTeam->count(),
+            'data' => $managerTeam
+        ];
+
+        // ----------------- START: NEW TEAMS SECTION -----------------
+
+        // Get the web_user_ids of employees who are in this user's team.
+        $teamEmployeeIds = EmployeeDetails::where('team_id', $id)->pluck('web_user_id');
+
+        // Fetch the details for those employees from the WebUser table.
+        $teamMembers = WebUser::whereIn('id', $teamEmployeeIds)
+            ->get(['id as web_user_id', 'emp_id', 'email', 'name as emp_name', 'role']);
+
+        $response['teams'] = [
+            'total_count' => $teamMembers->count(),
+            'data' => $teamMembers
+        ];
+
+        // ----------------- END: NEW TEAMS SECTION -----------------
+
 
         return response()->json([
             'status' => 'Success',
-            'message' => 'Web users retrieved successfully',
-            'data' => $webUsers
+            'message' => 'HR, Manager, and Teams data fetched successfully',
+            'data' => $response
         ], 200);
     }
     
@@ -281,94 +334,253 @@ class HrPageController extends Controller
         }
     }
 
-    public function getAllLeaveRequestsByStatus($status)
+    public function getAllLeaveRequestsByStatus(Request $request, $status = null, $managerId = null, $teamId = null)
     {
-        $user = Auth::user();
-        $webUser = WebUser::find($user->id);
-        $employeeIds = WebUser::where('admin_user_id', $webUser->admin_user_id)
-            ->where('role', 'employee')
-            ->pluck('id');
-        $validStatuses = ['pending', 'approved', 'rejected'];
-        $status = strtolower($status);
+        try {
+            $user = Auth::user();
+            $webUser = WebUser::find($user->id);
 
-        if (!in_array($status, $validStatuses)) {
-            return response()->json(['message' => 'Invalid status value'], 400);
+            $validStatuses = ['Pending', 'Approved', 'Rejected'];
+            $status = ucfirst(strtolower($status ?? $request->input('status')));
+
+            if (!$status || !in_array($status, $validStatuses)) {
+                return response()->json(['message' => 'Invalid or missing status value'], 400);
+            }
+
+            /**
+             * HR SECTION (all employees under same admin_user_id)
+             */
+            $employeeIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
+
+            $hrLeaveRequests = LeaveRequest::with(['webUser:id,name,emp_id'])
+                ->whereIn('web_user_id', $employeeIds)
+                ->where('status', $status)
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(function ($leave) {
+                    return [
+                        'id' => $leave->id,
+                        'web_user_id' => $leave->web_user_id,
+                        'name' => $leave->webUser->name ?? null,
+                        'emp_id' => $leave->webUser->emp_id ?? null,
+                        'date' => $leave->date,
+                        'type' => $leave->type,
+                        'from' => $leave->from,
+                        'to' => $leave->to,
+                        'reason' => $leave->reason,
+                        'permission_timing' => $leave->permission_timing,
+                        'hr_status' => $leave->hr_status,
+                        'manager_status' => $leave->manager_status,
+                        'status' => $leave->status,
+                        'regulation_date' => $leave->regulation_date,
+                        'regulation_reason' => $leave->regulation_reason,
+                    ];
+                });
+
+            /**
+             * MANAGER SECTION (employees who report to a manager)
+             */
+            $currentManagerId = $managerId ?? $webUser->id;
+            $managerInfo = WebUser::find($currentManagerId);
+            $reportingEmployeeIds = EmployeeDetails::where('reporting_manager_id', $currentManagerId)->pluck('web_user_id');
+
+            $managerLeaveRequests = collect();
+            if ($reportingEmployeeIds->isNotEmpty()) {
+                $managerLeaveRequests = LeaveRequest::with(['webUser:id,name,emp_id'])
+                    ->whereIn('web_user_id', $reportingEmployeeIds)
+                    ->where('status', $status)
+                    ->orderByDesc('created_at')
+                    ->get()
+                    ->map(function ($leave) use ($currentManagerId, $managerInfo) {
+                        return [
+                            'id' => $leave->id,
+                            'web_user_id' => $leave->web_user_id,
+                            'name' => $leave->webUser->name ?? null,
+                            'emp_id' => $leave->webUser->emp_id ?? null,
+                            'date' => $leave->date,
+                            'type' => $leave->type,
+                            'from' => $leave->from,
+                            'to' => $leave->to,
+                            'reason' => $leave->reason,
+                            'permission_timing' => $leave->permission_timing,
+                            'status' => $leave->status,
+                            'regulation_date' => $leave->regulation_date,
+                            'regulation_reason' => $leave->regulation_reason,
+                            'reporting_manager_id' => $currentManagerId,
+                            'reporting_manager_name' => $managerInfo->name ?? null,
+                        ];
+                    });
+            }
+
+            /**
+             * TEAM SECTION (employees whose employee_details.team_id == <team leader web_user_id>)
+             *
+             * Determine which team-leader id to use:
+             * - If a $teamId parameter was passed -> use it
+             * - Else if a team_id query param was passed -> use it
+             * - Else default to logged-in user (useful when the logged-in user is the team lead)
+             */
+            $currentTeamLeaderId = $teamId ?? $request->input('team_id') ?? $webUser->id;
+            $teamLeaveRequests = collect();
+
+            // Get web_user_ids of employees assigned to that team leader id
+            $teamEmployeeIds = EmployeeDetails::where('team_id', $currentTeamLeaderId)->pluck('web_user_id');
+
+            if ($teamEmployeeIds->isNotEmpty()) {
+                $teamLeaveRequests = LeaveRequest::with(['webUser:id,name,emp_id'])
+                    ->whereIn('web_user_id', $teamEmployeeIds)
+                    ->where('status', $status)
+                    ->orderByDesc('created_at')
+                    ->get()
+                    ->map(function ($leave) use ($currentTeamLeaderId) {
+                        return [
+                            'id' => $leave->id,
+                            'web_user_id' => $leave->web_user_id,
+                            'name' => $leave->webUser->name ?? null,
+                            'emp_id' => $leave->webUser->emp_id ?? null,
+                            'date' => $leave->date,
+                            'type' => $leave->type,
+                            'from' => $leave->from,
+                            'to' => $leave->to,
+                            'reason' => $leave->reason,
+                            'permission_timing' => $leave->permission_timing,
+                            'status' => $leave->status,
+                            'regulation_date' => $leave->regulation_date,
+                            'regulation_reason' => $leave->regulation_reason,
+                            'team_leader_id' => $currentTeamLeaderId,
+                        ];
+                    });
+            }
+
+            return response()->json([
+                'status' => 'Success',
+                'message' => $status . ' leave requests retrieved successfully',
+                'hr_section' => [
+                    'total_count' => $hrLeaveRequests->count(),
+                    'data' => $hrLeaveRequests,
+                ],
+                'manager_section' => [
+                    'total_count' => $managerLeaveRequests->count(),
+                    'data' => $managerLeaveRequests,
+                ],
+                'team_section' => [
+                    'total_count' => $teamLeaveRequests->count(),
+                    'data' => $teamLeaveRequests,
+                ],
+            ], 200);
+
+        } catch (Exception $e) {
+            Log::error('Error in getAllLeaveRequestsByStatus', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'status' => 'Error',
+                'message' => 'Internal server error',
+                'error_message' => $e->getMessage()
+            ], 500);
         }
-
-        $leaveRequests = LeaveRequest::with(['webUser:id,name,emp_id'])
-            ->whereIn('web_user_id', $employeeIds)
-            ->where('status', $status)
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(function ($leave) {
-                return [
-                    'id' => $leave->id,
-                    'web_user_id' => $leave->web_user_id,
-                    'name' => $leave->webUser->name ?? null,
-                    'date' => $leave->date,
-                    'type' => $leave->type,
-                    'from' => $leave->from,
-                    'to' => $leave->to,
-                    'reason' => $leave->reason,
-                    'permission_timing'=> $leave->permission_timing,
-                    'status' => $leave->status,
-                    'regulation_date' => $leave->regulation_date,
-                    'regulation_reason' => $leave->regulation_reason,
-                ];
-            });
-        return response()->json([
-            'status' => 'Success',
-            'message' => ucfirst($status) . ' leave requests retrieved successfully',
-            'data' => $leaveRequests
-        ]);
     }
 
-    public function getAllEmployeeAttendance(Request $request)
+    public function getAllEmployeeAttendance($id = null)
     {
-
         $user = Auth::user();
-        $webUser = WebUser::find($user->id);
+        $webUser = $id ? WebUser::find($id) : WebUser::find($user->id);
+
+        if (!$webUser) {
+            return response()->json([
+                'status' => 'Error',
+                'message' => 'User not found.',
+            ], 404);
+        }
+
+        // ---------------- HR SECTION ----------------
         $employeeIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
-        // Step 1: Get all attendance records, joining with web_users
-        $query = Attendance::with(['employee' => function ($q) {
-            $q->select('id', 'name', 'emp_id'); // Keep only needed fields
-        }])->whereIn('web_user_id', $employeeIds);
 
-        // Step 2: Apply optional filters
-        if ($request->has('name')) {
-            $query->whereHas('employee', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->name . '%');
-            });
-        }
+        $hrAttendance = Attendance::with(['employee' => function ($q) {
+            $q->select('id', 'name', 'emp_id');
+        }])->whereIn('web_user_id', $employeeIds)
+        ->orderBy('date', 'desc')
+        ->get();
 
-        if ($request->has('month')) {
-            $query->whereMonth('date', $request->month);
-        }
+        $hrData = $hrAttendance->map(fn($att) => [
+            'name' => $att->employee->name ?? 'N/A',
+            'emp_id' => $att->employee->emp_id ?? 'N/A',
+            'date' => $att->date->format('Y-m-d'),
+            'checkin' => $att->checkin,
+            'checkout' => $att->checkout,
+            'worked_hours' => $att->worked_hours,
+            'status' => $att->status,
+        ]);
 
-        if ($request->has('year')) {
-            $query->whereYear('date', $request->year);
-        }
+        // ---------------- MANAGER SECTION ----------------
+        $managerId = $id ?? $webUser->id;
 
-        // Step 3: Get results
-        $attendances = $query->orderBy('date', 'desc')->get();
+        $reportingEmployees = EmployeeDetails::where('reporting_manager_id', $managerId)->pluck('web_user_id');
 
-        // Step 4: Format
-        $data = $attendances->map(function ($att) {
-            return [
+        $managerData = collect();
+        if ($reportingEmployees->isNotEmpty()) {
+            $managerAttendance = Attendance::with(['employee' => function ($q) {
+                $q->select('id', 'name', 'emp_id');
+            }])->whereIn('web_user_id', $reportingEmployees)
+            ->orderBy('date', 'desc')
+            ->get();
+
+            $managerData = $managerAttendance->map(fn($att) => [
                 'name' => $att->employee->name ?? 'N/A',
-                'emp_id' => $att->emp_id ?? 'N/A',
+                'emp_id' => $att->employee->emp_id ?? 'N/A',
                 'date' => $att->date->format('Y-m-d'),
                 'checkin' => $att->checkin,
                 'checkout' => $att->checkout,
                 'worked_hours' => $att->worked_hours,
                 'status' => $att->status,
-            ];
-        });
+                'reporting_manager_id' => $managerId,
+                'reporting_manager_name' => $webUser->name ?? 'N/A',
+            ]);
+        }
 
+        // ---------------- TEAM SECTION ----------------
+        $teamEmployees = EmployeeDetails::where('team_id', $managerId)->pluck('web_user_id');
+
+        $teamData = collect();
+        if ($teamEmployees->isNotEmpty()) {
+            $teamAttendance = Attendance::with(['employee' => function ($q) {
+                $q->select('id', 'name', 'emp_id');
+            }])->whereIn('web_user_id', $teamEmployees)
+            ->orderBy('date', 'desc')
+            ->get();
+
+            $teamData = $teamAttendance->map(fn($att) => [
+                'name' => $att->employee->name ?? 'N/A',
+                'emp_id' => $att->employee->emp_id ?? 'N/A',
+                'date' => $att->date->format('Y-m-d'),
+                'checkin' => $att->checkin,
+                'checkout' => $att->checkout,
+                'worked_hours' => $att->worked_hours,
+                'status' => $att->status,
+                'team_id' => $managerId,
+            ]);
+        }
+
+        // ---------------- RESPONSE ----------------
         return response()->json([
             'status' => 'Success',
-            'message' => 'All employee attendance data retrieved successfully.',
-            'data' => $data,
+            'message' => 'Attendance data retrieved successfully.',
+
+                'hr_section' => [
+                    'total_count' => $hrData->count(),
+                    'data' => $hrData,
+                ],
+                'manager_section' => [
+                    'total_count' => $managerData->count(),
+                    'data' => $managerData,
+                ],
+                'team_section' => [
+                    'total_count' => $teamData->count(),
+                    'data' => $teamData,
+                ],
+
         ]);
     }
 
@@ -547,18 +759,24 @@ class HrPageController extends Controller
     {
         try {
             $webUser = WebUser::find($id);
-            $webUserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
+
             if (!$webUser) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'User not found'
                 ], 404);
             }
-            $attendanceRegulations = Attendance::whereNotNull('regulation_status')
-                ->whereIn('web_user_id', $webUserIds)
+
+            // HR Section
+            
+            $hrUserIds = WebUser::where('admin_user_id', $webUser->admin_user_id)->pluck('id');
+
+            $attendanceRegulationsHR = Attendance::whereNotNull('regulation_status')
+                ->whereIn('web_user_id', $hrUserIds)
                 ->where('regulation_status', '!=', 'None')
-                ->select('id', 'emp_id', 'emp_name', 'date', 'checkin', 'checkout', 'regulation_checkin', 'regulation_checkout',
-                    'reason', 'regulation_date', 'regulation_status', 'status')
+                ->select('id', 'emp_id', 'emp_name', 'date', 'checkin', 'checkout',
+                        'regulation_checkin', 'regulation_checkout', 'reason',
+                        'regulation_date', 'regulation_status', 'status')
                 ->orderBy('created_at', 'desc')
                 ->get()
                 ->map(function ($item) {
@@ -566,11 +784,12 @@ class HrPageController extends Controller
                     return $item;
                 });
 
-            $leaveRegulations = LeaveRequest::whereNotNull('regulation_status')
-                ->whereIn('web_user_id', $webUserIds)
+            $leaveRegulationsHR = LeaveRequest::whereNotNull('regulation_status')
+                ->whereIn('web_user_id', $hrUserIds)
                 ->where('regulation_status', '!=', 'None')
-                ->select('id', 'emp_id', 'emp_name', 'type', 'from', 'to', 'days', 'reason', 
-                    'regulation_date', 'regulation_status', 'status', 'regulation_comment', 'comment')
+                ->select('id', 'emp_id', 'emp_name', 'type', 'from', 'to', 'days', 'reason',
+                        'regulation_date', 'regulation_status', 'status',
+                        'regulation_comment', 'comment')
                 ->orderBy('created_at', 'desc')
                 ->get()
                 ->map(function ($item) {
@@ -578,12 +797,119 @@ class HrPageController extends Controller
                     return $item;
                 });
 
-            $allRegulations = $attendanceRegulations->concat($leaveRegulations)->sortByDesc('regulation_date')->values();
+            $allRegulationsHR = $attendanceRegulationsHR
+                ->concat($leaveRegulationsHR)
+                ->sortByDesc('regulation_date')
+                ->values();
+
+            // Manager Section
+
+            $reportingEmployeeIds = EmployeeDetails::where('reporting_manager_id', $webUser->id)
+                ->pluck('web_user_id');
+
+            $managerInfo = $webUser;
+
+            $attendanceRegulationsManager = collect();
+            $leaveRegulationsManager = collect();
+
+            if ($reportingEmployeeIds->isNotEmpty()) {
+                $attendanceRegulationsManager = Attendance::whereNotNull('regulation_status')
+                    ->whereIn('web_user_id', $reportingEmployeeIds)
+                    ->where('regulation_status', '!=', 'None')
+                    ->select('id', 'emp_id', 'emp_name', 'date', 'checkin', 'checkout',
+                            'regulation_checkin', 'regulation_checkout', 'reason',
+                            'regulation_date', 'regulation_status', 'status')
+                    ->orderBy('created_at', 'desc')
+                    ->get()
+                    ->map(function ($item) use ($managerInfo) {
+                        $item->type = 'attendance';
+                        $item->reporting_manager_id = $managerInfo->id;
+                        $item->reporting_manager_name = $managerInfo->name ?? null;
+                        return $item;
+                    });
+
+                $leaveRegulationsManager = LeaveRequest::whereNotNull('regulation_status')
+                    ->whereIn('web_user_id', $reportingEmployeeIds)
+                    ->where('regulation_status', '!=', 'None')
+                    ->select('id', 'emp_id', 'emp_name', 'type', 'from', 'to', 'days', 'reason',
+                            'regulation_date', 'regulation_status', 'status',
+                            'regulation_comment', 'comment')
+                    ->orderBy('created_at', 'desc')
+                    ->get()
+                    ->map(function ($item) use ($managerInfo) {
+                        $item->type = 'leave';
+                        $item->reporting_manager_id = $managerInfo->id;
+                        $item->reporting_manager_name = $managerInfo->name ?? null;
+                        return $item;
+                    });
+            }
+
+            $allRegulationsManager = $attendanceRegulationsManager
+                ->concat($leaveRegulationsManager)
+                ->sortByDesc('regulation_date')
+                ->values();
+
+            //Team Section
+
+            $teamEmployeeIds = EmployeeDetails::where('team_id', $webUser->id)
+                ->pluck('web_user_id');
+
+            $attendanceRegulationsTeam = collect();
+            $leaveRegulationsTeam = collect();
+
+            if ($teamEmployeeIds->isNotEmpty()) {
+                $attendanceRegulationsTeam = Attendance::whereNotNull('regulation_status')
+                    ->whereIn('web_user_id', $teamEmployeeIds)
+                    ->where('regulation_status', '!=', 'None')
+                    ->select('id', 'emp_id', 'emp_name', 'date', 'checkin', 'checkout',
+                            'regulation_checkin', 'regulation_checkout', 'reason',
+                            'regulation_date', 'regulation_status', 'status')
+                    ->orderBy('created_at', 'desc')
+                    ->get()
+                    ->map(function ($item) use ($webUser) {
+                        $item->type = 'attendance';
+                        $item->team_leader_id = $webUser->id;
+                        $item->team_leader_name = $webUser->name ?? null;
+                        return $item;
+                    });
+
+                $leaveRegulationsTeam = LeaveRequest::whereNotNull('regulation_status')
+                    ->whereIn('web_user_id', $teamEmployeeIds)
+                    ->where('regulation_status', '!=', 'None')
+                    ->select('id', 'emp_id', 'emp_name', 'type', 'from', 'to', 'days', 'reason',
+                            'regulation_date', 'regulation_status', 'status',
+                            'regulation_comment', 'comment')
+                    ->orderBy('created_at', 'desc')
+                    ->get()
+                    ->map(function ($item) use ($webUser) {
+                        $item->type = 'leave';
+                        $item->team_leader_id = $webUser->id;
+                        $item->team_leader_name = $webUser->name ?? null;
+                        return $item;
+                    });
+            }
+
+            $allRegulationsTeam = $attendanceRegulationsTeam
+                ->concat($leaveRegulationsTeam)
+                ->sortByDesc('regulation_date')
+                ->values();
 
             return response()->json([
                 'status' => 'Success',
-                'data' => $allRegulations
+                'hr_section' => [
+                    'total_count' => $allRegulationsHR->count(),
+                    'data' => $allRegulationsHR,
+                ],
+                'manager_section' => [
+                    'total_count' => $allRegulationsManager->count(),
+                    'data' => $allRegulationsManager,
+                ],
+                'team_section' => [
+                    'total_count' => $allRegulationsTeam->count(),
+                    'data' => $allRegulationsTeam,
+                ]
             ]);
+
         } catch (Exception $e) {
             return response()->json([
                 'status' => 'Error',
@@ -594,87 +920,101 @@ class HrPageController extends Controller
 
     public function updateRegulationStatus(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'id' => 'required|integer',
+            'access' => 'in:HR,Manager',
             'status' => 'required|in:Approved,Rejected',
-            'type' => 'required|in:attendance,leave',
+            'comment' => 'nullable|string',
+            'module' => 'nullable|string'
         ]);
 
         try {
             DB::beginTransaction();
 
-            if ($request->type === 'attendance') {
-                $request->validate([
-                    'id' => 'exists:attendances,id',
-                ]);
+            $module = $request->module ?? 'leave';
 
+            if ($module === 'attendance') {
                 $regulation = Attendance::findOrFail($request->id);
 
-                $updateData = [
-                    'regulation_status' => $request->status,
-                    'reason' => $regulation->reason,
-                    'regulation_date' => $regulation->regulation_date
-                ];
+                if ($request->access === 'Manager') {
+                    $regulation->manager_regulation_status = $request->status;
+                } elseif ($request->access === 'HR') {
+                    if ($request->status === 'Approved' && $regulation->manager_regulation_status !== 'Approved') {
+                        return response()->json([
+                            'message' => 'HR cannot approve before Manager approves.',
+                            'status' => 'error',
+                        ], 403);
+                    }
+                    $regulation->hr_regulation_status = $request->status;
+                }
 
-                if ($request->status === 'Approved') {
+                if ($regulation->hr_regulation_status === 'Approved' && $regulation->manager_regulation_status === 'Approved') {
+                    $regulation->regulation_status = 'Approved';
                     $checkin = $regulation->regulation_checkin;
-
                     if ($checkin) {
                         $standardTime = Carbon::createFromTimeString('09:00:00');
                         $actualCheckin = Carbon::createFromTimeString($checkin);
-
-                        if ($actualCheckin->lessThanOrEqualTo($standardTime)) {
-                            $updateData['status'] = 'Present';
-                        } else {
-                            $updateData['status'] = 'Late';
-                        }
+                        $regulation->status = $actualCheckin->lessThanOrEqualTo($standardTime) ? 'Present' : 'Late';
                     } else {
-                        $updateData['status'] = 'Present';
+                        $regulation->status = 'Present';
+                    }
+                } elseif ($regulation->hr_regulation_status === 'Rejected' || $regulation->manager_regulation_status === 'Rejected') {
+                    $regulation->regulation_status = 'Rejected';
+                } else {
+                    $regulation->regulation_status = 'Pending';
+                }
+
+                $regulation->reason = $request->comment ?? $regulation->reason;
+                $regulation->save();
+
+            } elseif ($module === 'leave') {
+                $regulation = LeaveRequest::findOrFail($request->id);
+
+                if ($request->access === 'Manager') {
+                    $regulation->manager_regulation_status = $request->status;
+                } elseif ($request->access === 'HR') {
+                    if (
+                        $request->status === 'Approved' &&
+                        $regulation->manager_regulation_status !== 'Approved' &&
+                        $regulation->type !== 'Permission'
+                    ) {
+                        return response()->json([
+                            'message' => 'HR cannot approve before Manager approves.',
+                            'status' => 'error',
+                        ], 403);
+                    }
+                    $regulation->hr_regulation_status = $request->status;
+                }
+
+                if ($regulation->type === 'Permission') {
+                    $regulation->regulation_status = $regulation->hr_regulation_status;
+                } else {
+                    if ($regulation->hr_regulation_status === 'Approved' && $regulation->manager_regulation_status === 'Approved') {
+                        $regulation->regulation_status = 'Approved';
+                    } elseif ($regulation->hr_regulation_status === 'Rejected' || $regulation->manager_regulation_status === 'Rejected') {
+                        $regulation->regulation_status = 'Rejected';
+                    } else {
+                        $regulation->regulation_status = 'Pending';
                     }
                 }
 
-                $regulation->update($updateData);
-
-            } else if ($request->type === 'leave') {
-                $request->validate([
-                    'id' => 'exists:leave_requests,id',
-                ]);
-
-                $regulation = DB::table('leave_requests')->where('id', $request->id)->first();
-                
-                if (!$regulation) {
-                    throw new Exception('Leave regulation not found');
-                }
-
-                $updateData = [
-                    'regulation_status' => $request->status,
-                    'regulation_date' => now(),
-                ];
-
-                if ($request->status === 'Approved') {
-                    $updateData['status'] = 'Approved';
-                    
-                } else if ($request->status === 'Rejected') {
-                    $updateData['status'] = 'Rejected';
-                }
-
-                DB::table('leave_requests')
-                    ->where('id', $request->id)
-                    ->update($updateData);
+                $regulation->reason = $request->comment ?? $regulation->reason;
+                $regulation->save();
             }
 
             DB::commit();
 
             return response()->json([
+                'message' => ucfirst($module) . ' regulation updated successfully.',
                 'status' => 'Success',
-                'message' => ucfirst($request->type) . ' regulation ' . strtolower($request->status) . ' successfully.',
-            ]);
+                'data' => $regulation
+            ], 200);
 
         } catch (Exception $e) {
             DB::rollBack();
             return response()->json([
                 'status' => 'Error',
-                'message' => 'Failed to update regulation status: ' . $e->getMessage(),
+                'message' => 'Failed to update regulation: ' . $e->getMessage(),
             ], 500);
         }
     }
